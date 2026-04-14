@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi import File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from kbase.application.capabilities.add_item_to_project import add_item_to_project
 from kbase.application.capabilities.assign_labels import assign_labels
@@ -62,6 +62,7 @@ from kbase.application.dto.capabilities import (
 from kbase.application.dto.common import AssetData, ItemSummary, LabelData, MetadataEntryData
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
+from kbase.infrastructure.files.item_file_store import ItemFileStore
 from kbase.interfaces.api.schemas import (
     AddProjectItemRequest,
     AssignLabelsRequest,
@@ -156,6 +157,30 @@ def create_app() -> FastAPI:
         actor: ActorContext = Depends(_actor_context),
     ) -> ItemDetailResult:
         return get_item(GetItemInput(item_id=item_id, actor=actor))
+
+    @app.get("/api/items/{item_id}/files/{file_id}/content")
+    def get_item_file_content_endpoint(
+        item_id: str,
+        file_id: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> FileResponse:
+        detail = get_item(GetItemInput(item_id=item_id, actor=actor))
+        item_file = next((entry for entry in detail.files if entry.id == file_id), None)
+        if item_file is None:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        storage_root = ItemFileStore().root.resolve()
+        target = (storage_root / item_file.relative_path).resolve()
+        if not str(target).startswith(str(storage_root)):
+            raise HTTPException(status_code=400, detail="Invalid file path")
+        if not target.exists():
+            raise HTTPException(status_code=404, detail="Stored file missing")
+
+        return FileResponse(
+            path=target,
+            media_type=item_file.mime_type or "application/octet-stream",
+            filename=item_file.original_filename or target.name,
+        )
 
     @app.get("/api/items", response_model=ListItemsResult)
     def list_items_endpoint(

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import ReactQuill from "react-quill";
+import { getFileContentUrl } from "../../features/files/api.js";
 import { useFileViewerWorkspace } from "../../features/files/hooks.js";
 import { FILE_TREE_LAYOUTS } from "../../features/files/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
@@ -107,6 +108,14 @@ export function FileViewerPage() {
   const workspace = useFileViewerWorkspace();
   const [collapsedIds, setCollapsedIds] = useState([]);
   const selectedFile = workspace.selectedItem?.files?.[0] ?? null;
+  const isPdfPreview =
+    Boolean(selectedFile?.id) &&
+    (String(selectedFile?.mime_type ?? "").toLowerCase().includes("pdf") ||
+      String(selectedFile?.original_filename ?? "").toLowerCase().endsWith(".pdf"));
+  const filePreviewUrl =
+    workspace.selectedItem && selectedFile?.id
+      ? getFileContentUrl(workspace.selectedItem.item.id, selectedFile.id)
+      : "";
 
   const expandedIds = useMemo(() => {
     const ids = new Set();
@@ -230,7 +239,7 @@ export function FileViewerPage() {
           <Panel eyebrow="Selected file" title={selectedFile?.original_filename ?? "Choose a file"}>
             {workspace.selectedItem ? (
               <div className="search-detail-stack">
-                <div className="detail-kv-grid">
+                <div className="detail-kv-grid compact">
                   <div className="detail-kv-row">
                     <span>Title</span>
                     <strong>{workspace.selectedItem.item.title}</strong>
@@ -356,6 +365,23 @@ export function FileViewerPage() {
               </div>
             ) : (
               <p className="muted">No metadata stored for this file.</p>
+            )}
+          </Panel>
+
+          <Panel eyebrow="Preview" title="File preview">
+            {isPdfPreview ? (
+              <iframe
+                className="file-preview-frame"
+                src={filePreviewUrl}
+                title={`Preview of ${selectedFile?.original_filename ?? "file"}`}
+              />
+            ) : workspace.selectedItem ? (
+              <EmptyState
+                title="No preview available"
+                description="The preview area is ready. PDF files render here first; more file types can follow."
+              />
+            ) : (
+              <EmptyState title="No file selected" description="Choose a file to see a preview here." />
             )}
           </Panel>
         </div>

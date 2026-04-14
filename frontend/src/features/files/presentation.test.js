@@ -17,3 +17,8 @@ test("wrapping class enables long path line breaks", () => {
   assert.match(wrapRule, /overflow-wrap:\s*anywhere/);
   assert.match(wrapRule, /word-break:\s*break-word/);
 });
+
+test("file viewer renders a dedicated preview area", () => {
+  assert.match(pageSource, /title="File preview"/);
+  assert.match(pageSource, /className="file-preview-frame"/);
+});

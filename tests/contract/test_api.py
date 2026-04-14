@@ -182,6 +182,13 @@ def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> No
     assert len(file_payload["files"]) == 1
     assert file_payload["files"][0]["original_filename"] == "demo.txt"
 
+    download = client.get(
+        f"/api/items/{file_item_id}/files/{file_payload['files'][0]['id']}/content",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert download.status_code == 200
+    assert download.content == b"hello attachment"
+
 
 def test_api_can_list_and_import_inbox_file(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
