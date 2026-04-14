@@ -49,24 +49,57 @@ function createResponse(payload) {
   };
 }
 
-function createWorkspaceHarness() {
+function createWorkspaceHarness(onWorkspace) {
   return function WorkspaceHarness() {
     const workspace = useNotesWorkspace();
+    onWorkspace?.(workspace);
 
     return React.createElement(
       "div",
       null,
       React.createElement("div", { "data-testid": "loading" }, workspace.selectedNoteLoading ? "yes" : "no"),
-      React.createElement("div", { "data-testid": "title" }, workspace.editor.title),
-      React.createElement("div", { "data-testid": "body" }, workspace.editor.markdown_body),
+      React.createElement("div", { "data-testid": "autosave-state" }, workspace.autosaveState),
+      React.createElement("div", { "data-testid": "title" }, workspace.editor?.title ?? ""),
+      React.createElement("div", { "data-testid": "body" }, workspace.editor?.markdown_body ?? ""),
       React.createElement("div", { "data-testid": "selected-id" }, workspace.selectedId ?? ""),
       React.createElement("div", { "data-testid": "notes-count" }, String(workspace.notes.length)),
       React.createElement(
         "button",
         {
           type: "button",
+          "data-testid": "edit-title",
+          onClick: () =>
+            workspace.setEditor((current) => ({
+              ...current,
+              title: "Alpha updated",
+            })),
+        },
+        "edit-title",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "edit-body",
+          onClick: () =>
+            workspace.setEditor((current) => ({
+              ...current,
+              html_body: "<p>Body updated</p>",
+              markdown_body: "Body updated",
+            })),
+        },
+        "edit-body",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
           "data-testid": "same-note",
-          onClick: () => workspace.handleSelectNote(workspace.notes[0]),
+          onClick: () => {
+            if (workspace.notes[0]) {
+              workspace.handleSelectNote(workspace.notes[0]);
+            }
+          },
         },
         "same",
       ),
@@ -75,7 +108,11 @@ function createWorkspaceHarness() {
         {
           type: "button",
           "data-testid": "other-note",
-          onClick: () => workspace.handleSelectNote(workspace.notes[1]),
+          onClick: () => {
+            if (workspace.notes[1]) {
+              workspace.handleSelectNote(workspace.notes[1]);
+            }
+          },
         },
         "other",
       ),
@@ -85,7 +122,10 @@ function createWorkspaceHarness() {
 
 test("workspace keeps showing complete note data when the same note is selected again", async () => {
   const container = createDom();
-  const Harness = createWorkspaceHarness();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
 
   global.fetch = async (url) => {
     const value = String(url);
@@ -141,7 +181,7 @@ test("workspace keeps showing complete note data when the same note is selected 
   assert.match(container.querySelector('[data-testid="body"]').textContent, /Body A/);
 
   await act(async () => {
-    container.querySelector('[data-testid="same-note"]').click();
+    latestWorkspace.handleSelectNote(latestWorkspace.notes[0]);
   });
   await flush();
   await flush();
@@ -155,9 +195,200 @@ test("workspace keeps showing complete note data when the same note is selected 
   });
 });
 
+test("workspace autosaves debounced changes without reloading note details", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  globalThis.__KBASE_AUTOSAVE_DELAY_MS__ = 5;
+
+  let fetchNoteCount = 0;
+  let updateCoreCount = 0;
+  let replaceContentCount = 0;
+  let replaceLabelsCount = 0;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+          { id: "note-b", title: "Beta", category_key: "decision", status: "active", updated_at: "2026-04-14T11:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      if (method === "PATCH") {
+        updateCoreCount += 1;
+        return createResponse({ id: "note-a", title: "Alpha updated" });
+      }
+      fetchNoteCount += 1;
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/content")) {
+      replaceContentCount += 1;
+      return createResponse({});
+    }
+    if (value.endsWith("/api/items/note-a/labels")) {
+      replaceLabelsCount += 1;
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-b")) {
+      return createResponse({
+        item: { id: "note-b", title: "Beta", category_key: "decision", status: "active" },
+        primary_content_part: { content_text: "# Beta\nBody B" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-b/history")) {
+      return createResponse({ events: [] });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(fetchNoteCount, 1);
+    assert.match(container.querySelector('[data-testid="body"]').textContent, /Body A/);
+  });
+
+  await act(async () => {
+    latestWorkspace.setEditor((current) => ({
+      ...current,
+      title: "Alpha updated",
+    }));
+    latestWorkspace.setEditor((current) => ({
+      ...current,
+      html_body: "<p>Body updated</p>",
+      markdown_body: "Body updated",
+    }));
+  });
+
+  await waitFor(() => {
+    assert.equal(updateCoreCount, 1);
+    assert.equal(replaceContentCount, 1);
+    assert.equal(replaceLabelsCount, 1);
+    assert.equal(fetchNoteCount, 1);
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Alpha updated");
+    assert.match(container.querySelector('[data-testid="body"]').textContent, /Body updated/);
+    assert.equal(container.querySelector('[data-testid="autosave-state"]').textContent, "saved");
+  });
+
+  delete globalThis.__KBASE_AUTOSAVE_DELAY_MS__;
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("same-note click with unsaved changes does not overwrite the editor", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  globalThis.__KBASE_AUTOSAVE_DELAY_MS__ = 5000;
+
+  global.fetch = async (url) => {
+    const value = String(url);
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+          { id: "note-b", title: "Beta", category_key: "decision", status: "active", updated_at: "2026-04-14T11:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-b")) {
+      return createResponse({
+        item: { id: "note-b", title: "Beta", category_key: "decision", status: "active" },
+        primary_content_part: { content_text: "# Beta\nBody B" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-b/history")) {
+      return createResponse({ events: [] });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.match(container.querySelector('[data-testid="body"]').textContent, /Body A/);
+  });
+
+  await act(async () => {
+    latestWorkspace.setEditor((current) => ({
+      ...current,
+      html_body: "<p>Body updated</p>",
+      markdown_body: "Body updated",
+    }));
+  });
+  await waitFor(() => {
+    assert.match(container.querySelector('[data-testid="body"]').textContent, /Body updated/);
+    assert.equal(container.querySelector('[data-testid="autosave-state"]').textContent, "pending");
+  });
+
+  await act(async () => {
+    latestWorkspace.handleSelectNote(latestWorkspace.notes[0]);
+  });
+  await flush();
+
+  assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  assert.match(container.querySelector('[data-testid="body"]').textContent, /Body updated/);
+
+  delete globalThis.__KBASE_AUTOSAVE_DELAY_MS__;
+  await act(async () => {
+    root.unmount();
+  });
+});
+
 test("workspace ends with the last selected note when note requests resolve out of order", async () => {
   const container = createDom();
-  const Harness = createWorkspaceHarness();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
 
   let resolveNoteA;
   let resolveHistoryA;
@@ -219,7 +450,7 @@ test("workspace ends with the last selected note when note requests resolve out 
   });
 
   await act(async () => {
-    container.querySelector('[data-testid="other-note"]').click();
+    latestWorkspace.handleSelectNote(latestWorkspace.notes[1]);
   });
   await flush();
   await waitFor(() => {

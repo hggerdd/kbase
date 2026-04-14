@@ -4,6 +4,7 @@ import {
   combineLabelPaths,
   deriveSelectionTransition,
   editorFromItemDetail,
+  serializeEditorState,
 } from "./state.js";
 
 test("same note selection does not reset the editor and triggers a reload", () => {
@@ -15,6 +16,14 @@ test("same note selection does not reset the editor and triggers a reload", () =
   assert.equal(transition.shouldClearHistory, false);
   assert.equal(transition.nextSelectedNote, null);
   assert.equal(transition.nextEditor, null);
+});
+
+test("same note selection with unsaved edits does not trigger reload", () => {
+  const note = { id: "note-1", title: "Alpha", category_key: "research", status: "draft" };
+  const transition = deriveSelectionTransition("note-1", note, { isDirty: true });
+
+  assert.equal(transition.isSameSelection, true);
+  assert.equal(transition.shouldReloadImmediately, false);
 });
 
 test("switching to another note creates a clean placeholder transition", () => {
@@ -68,4 +77,27 @@ test("label combination removes duplicates and trims whitespace", () => {
   const combined = combineLabelPaths(["work/alpha", "work/beta"], " work/beta, private/home , , work/alpha ");
 
   assert.deepEqual(combined, ["work/alpha", "work/beta", "private/home"]);
+});
+
+test("editor serialization is stable for semantically identical states", () => {
+  const left = serializeEditorState({
+    title: "Alpha",
+    category_key: "research",
+    status: "draft",
+    markdown_body: "Body",
+    html_body: "<p>Body</p>",
+    label_paths: "",
+    selected_labels: ["b/two", "a/one"],
+  });
+  const right = serializeEditorState({
+    title: "Alpha",
+    category_key: "research",
+    status: "draft",
+    markdown_body: "Body",
+    html_body: "<p>Body</p>",
+    label_paths: "",
+    selected_labels: ["a/one", "b/two"],
+  });
+
+  assert.equal(left, right);
 });

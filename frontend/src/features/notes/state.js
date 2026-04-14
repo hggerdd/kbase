@@ -60,7 +60,19 @@ export function editorFromItemDetail(notePayload, htmlBody) {
   };
 }
 
-export function deriveSelectionTransition(currentSelectedId, note) {
+export function serializeEditorState(editor) {
+  return JSON.stringify({
+    title: editor.title,
+    category_key: editor.category_key ?? "research",
+    status: editor.status ?? "",
+    markdown_body: editor.markdown_body ?? "",
+    html_body: editor.html_body ?? "",
+    label_paths: editor.label_paths ?? "",
+    selected_labels: [...editor.selected_labels].sort(),
+  });
+}
+
+export function deriveSelectionTransition(currentSelectedId, note, { isDirty = false } = {}) {
   const isSameSelection = currentSelectedId === note.id;
   return {
     isSameSelection,
@@ -68,6 +80,6 @@ export function deriveSelectionTransition(currentSelectedId, note) {
     nextSelectedNote: isSameSelection ? null : provisionalNoteFromSummary(note),
     nextEditor: isSameSelection ? null : editorFromItemSummary(note),
     shouldClearHistory: !isSameSelection,
-    shouldReloadImmediately: isSameSelection,
+    shouldReloadImmediately: isSameSelection && !isDirty,
   };
 }
