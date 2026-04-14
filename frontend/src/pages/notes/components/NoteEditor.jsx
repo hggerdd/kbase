@@ -88,7 +88,16 @@ export function NoteEditor({ workspace }) {
             <button className="primary" type="button" onClick={workspace.handleSaveSelected} disabled={workspace.saving}>
               {workspace.saving ? "Saving..." : "Save note"}
             </button>
-            <span className="muted">Item ID: {workspace.selectedNote.item.id}</span>
+            <div className="editor-status">
+              {workspace.autosaving ? <span className="muted">Autosaving...</span> : null}
+              {!workspace.autosaving && workspace.autosaveState === "saved" ? (
+                <span className="muted">All changes saved</span>
+              ) : null}
+              {!workspace.autosaving && workspace.autosaveState === "pending" ? (
+                <span className="muted">Changes pending</span>
+              ) : null}
+              <span className="muted">Item ID: {workspace.selectedNote.item.id}</span>
+            </div>
           </div>
         </>
       ) : (
