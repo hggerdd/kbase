@@ -6,6 +6,7 @@ import {
   fetchProject,
   fetchProjects,
   searchProjectCandidates,
+  updateProjectCore,
   uploadFileToProject,
 } from "./api.js";
 import { isFileKind } from "./state.js";
@@ -303,6 +304,27 @@ export function useProjectsWorkspace() {
     }
   }
 
+  async function handleUpdateProjectStatus(status) {
+    if (!selectedId) {
+      return false;
+    }
+
+    setActionLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      await updateProjectCore(selectedId, { status });
+      setNotice("Project status updated");
+      await refreshActiveProject(selectedId);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   return {
     actionLoading,
     availableKinds,
@@ -318,6 +340,7 @@ export function useProjectsWorkspace() {
     handleCreateProject,
     handleCreateProjectNote,
     handleProjectUpload,
+    handleUpdateProjectStatus,
     itemSearch,
     kindFilter,
     loading,

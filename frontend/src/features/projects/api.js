@@ -28,6 +28,13 @@ export async function createProject(input) {
   });
 }
 
+export async function updateProjectCore(itemId, input) {
+  return request(`/api/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function createProjectNote(input) {
   return request("/api/notes", {
     method: "POST",

@@ -77,6 +77,8 @@ export function ProjectsPage() {
   const workspace = useProjectsWorkspace();
   const [activeSection, setActiveSection] = useState("items");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState("active");
   const [projectQuery, setProjectQuery] = useState("");
   const [hasSubmittedProjectSearch, setHasSubmittedProjectSearch] = useState(false);
   const [expandedNoteId, setExpandedNoteId] = useState(null);
@@ -163,6 +165,18 @@ export function ProjectsPage() {
   useEffect(() => {
     setExpandedNoteId(null);
   }, [workspace.selectedId]);
+
+  useEffect(() => {
+    setPendingStatus(activeProject?.status ?? "active");
+  }, [activeProject?.id, activeProject?.status]);
+
+  async function handleStatusSubmit(event) {
+    event.preventDefault();
+    const success = await workspace.handleUpdateProjectStatus(pendingStatus);
+    if (success) {
+      setIsStatusModalOpen(false);
+    }
+  }
 
   return (
     <ResponsiveContainer>
@@ -262,7 +276,13 @@ export function ProjectsPage() {
                     <span className="project-inline-category">{formatCategoryLabel(activeProject.category_key)}</span>
                   </div>
                   <div className="project-summary-meta-row">
-                    <span className={getStatusBadgeClass(activeProject.status)}>{formatStatusLabel(activeProject.status)}</span>
+                    <button
+                      type="button"
+                      className={`status-badge status-badge-button ${getStatusBadgeClass(activeProject.status)}`.trim()}
+                      onClick={() => setIsStatusModalOpen(true)}
+                    >
+                      {formatStatusLabel(activeProject.status)}
+                    </button>
                     <span className="project-created-pill"><ClockIcon />{formatDate(activeProject.created_at, { dateStyle: "medium" })}</span>
                     <span>{workspace.projectMetrics.totalItems} items</span>
                     <span>{workspace.projectMetrics.noteCount} notes</span>
@@ -476,6 +496,48 @@ export function ProjectsPage() {
       </div>
 
       <CreateProjectModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} workspace={workspace} />
+      {activeProject && isStatusModalOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsStatusModalOpen(false)}>
+          <section
+            className="modal-sheet project-status-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-status-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <p className="eyebrow">Project</p>
+                <h2 id="project-status-title">Set status</h2>
+              </div>
+              <button className="secondary" type="button" onClick={() => setIsStatusModalOpen(false)}>
+                Cancel
+              </button>
+            </div>
+
+            <form className="create-form" onSubmit={handleStatusSubmit}>
+              <label>
+                <span>Status</span>
+                <select value={pendingStatus} onChange={(event) => setPendingStatus(event.target.value)}>
+                  <option value="active">active</option>
+                  <option value="on_hold">on_hold</option>
+                  <option value="done">done</option>
+                  <option value="archived">archived</option>
+                </select>
+              </label>
+
+              <div className="modal-actions">
+                <button className="secondary" type="button" onClick={() => setIsStatusModalOpen(false)}>
+                  Cancel
+                </button>
+                <button className="primary" type="submit" disabled={workspace.actionLoading}>
+                  {workspace.actionLoading ? "Saving..." : "Save status"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </ResponsiveContainer>
   );
 }
