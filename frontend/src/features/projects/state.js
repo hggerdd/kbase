@@ -1,5 +1,5 @@
 export const PROJECT_SECTIONS = [
-  { id: "overview", label: "Overview" },
+  { id: "items", label: "Items" },
   { id: "notes", label: "Notes" },
   { id: "files", label: "Files" },
 ];

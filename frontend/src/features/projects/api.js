@@ -17,6 +17,10 @@ export async function fetchProject(itemId) {
   };
 }
 
+export async function fetchProjectItemDetail(itemId) {
+  return request(`/api/items/${itemId}`);
+}
+
 export async function createProject(input) {
   return request("/api/projects", {
     method: "POST",

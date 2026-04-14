@@ -215,6 +215,15 @@ export function TagIcon() {
   );
 }
 
+export function PlusIcon() {
+  return (
+    <IconBase>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </IconBase>
+  );
+}
+
 export function getNavIcon(routeId) {
   switch (routeId) {
     case "home":

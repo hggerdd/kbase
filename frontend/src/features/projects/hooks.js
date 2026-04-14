@@ -88,13 +88,10 @@ export function useProjectsWorkspace() {
       const items = await fetchProjects();
       setProjects(items);
       setSelectedId((current) => {
-        if (!items.length) {
-          return null;
-        }
         if (current && items.some((item) => item.id === current)) {
           return current;
         }
-        return items[0].id;
+        return null;
       });
     } catch (err) {
       setError(err.message);

@@ -1,76 +1,194 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchProjectItemDetail } from "../../features/projects/api";
 import { useProjectsWorkspace } from "../../features/projects/hooks";
 import { PROJECT_SECTIONS } from "../../features/projects/state";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { EmptyState } from "../../shared/ui/EmptyState";
-import { ClockIcon, FileStackIcon, FolderIcon, NoteIcon, SparkIcon, TagIcon } from "../../shared/ui/Icons";
-import { PageHeader } from "../../shared/ui/PageHeader";
+import { ClockIcon, TagIcon, SearchIcon } from "../../shared/ui/Icons";
 import { Panel } from "../../shared/ui/Panel";
-import { StatCard } from "../../shared/ui/StatCard";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
 import { formatDate, formatDuration, formatFileSize } from "../../shared/utils/format";
+import { CreateProjectModal } from "./components/CreateProjectModal";
 
-const PROJECT_CATEGORY_OPTIONS = [
-  { value: "project_general", label: "Project" },
-  { value: "case_context", label: "Case Context" },
-  { value: "topic_space", label: "Topic Space" },
-  { value: "life_area", label: "Life Area" },
-];
+function normalizeText(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function itemMatchesQuery(item, query) {
+  if (!query) {
+    return true;
+  }
+
+  const haystack = [
+    item.title,
+    item.category_key,
+    item.status,
+    item.item_kind,
+    item.match_reason,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+function formatCategoryLabel(categoryKey) {
+  return String(categoryKey ?? "project_general")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatStatusLabel(status) {
+  if (!status) {
+    return "Active";
+  }
+  return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getStatusBadgeClass(status) {
+  switch (status) {
+    case "done":
+      return "status-badge is-done";
+    case "on_hold":
+      return "status-badge is-on-hold";
+    case "archived":
+      return "status-badge is-archived";
+    case "active":
+    default:
+      return "status-badge is-active";
+  }
+}
+
+function getTabCount(sectionId, workspace) {
+  if (sectionId === "items") {
+    return workspace.projectMetrics.totalItems;
+  }
+  if (sectionId === "notes") {
+    return workspace.projectMetrics.noteCount;
+  }
+  if (sectionId === "files") {
+    return workspace.projectMetrics.fileCount;
+  }
+  return 0;
+}
 
 export function ProjectsPage() {
   const workspace = useProjectsWorkspace();
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState("items");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [projectQuery, setProjectQuery] = useState("");
+  const [hasSubmittedProjectSearch, setHasSubmittedProjectSearch] = useState(false);
+  const [expandedNoteId, setExpandedNoteId] = useState(null);
+  const [noteDetailsById, setNoteDetailsById] = useState({});
+  const [noteDetailErrorById, setNoteDetailErrorById] = useState({});
+  const [noteLoadingId, setNoteLoadingId] = useState(null);
   const activeProject = workspace.projectDetail?.item ?? null;
   const projectDescription = workspace.projectMetrics.description;
+  const showProjectResults = hasSubmittedProjectSearch || workspace.statusFilter !== "all";
+
+  const itemQuery = normalizeText(workspace.itemSearch);
+  const filteredProjectItems = useMemo(() => {
+    return workspace.projectItems.filter((item) => {
+      if (workspace.kindFilter !== "all" && item.item_kind !== workspace.kindFilter) {
+        return false;
+      }
+      return itemMatchesQuery(item, itemQuery);
+    });
+  }, [itemQuery, workspace.kindFilter, workspace.projectItems]);
+
+  const filteredFileItems = useMemo(() => {
+    return workspace.files.filter((item) => itemMatchesQuery(item, itemQuery));
+  }, [itemQuery, workspace.files]);
+
   const visibleItems = useMemo(() => {
     if (activeSection === "notes") {
       return workspace.notes;
     }
     if (activeSection === "files") {
-      return workspace.files;
+      return filteredFileItems;
     }
-    return workspace.filteredItems;
-  }, [activeSection, workspace.files, workspace.filteredItems, workspace.notes]);
+    return filteredProjectItems;
+  }, [activeSection, filteredFileItems, filteredProjectItems, workspace.notes]);
+
+  const handleProjectSearch = (event) => {
+    event.preventDefault();
+    workspace.setSearch(projectQuery);
+    setHasSubmittedProjectSearch(Boolean(projectQuery.trim()) || workspace.statusFilter !== "all");
+  };
+
+  const handleStatusFilterChange = (event) => {
+    const nextStatus = event.target.value;
+    workspace.setStatusFilter(nextStatus);
+    setHasSubmittedProjectSearch(Boolean(projectQuery.trim()) || nextStatus !== "all");
+  };
+
+  async function handleToggleNote(noteId) {
+    if (expandedNoteId === noteId) {
+      setExpandedNoteId(null);
+      return;
+    }
+
+    setExpandedNoteId(noteId);
+    if (noteDetailsById[noteId]) {
+      return;
+    }
+
+    setNoteLoadingId(noteId);
+    setNoteDetailErrorById((current) => ({ ...current, [noteId]: "" }));
+    try {
+      const detail = await fetchProjectItemDetail(noteId);
+      setNoteDetailsById((current) => ({ ...current, [noteId]: detail }));
+    } catch (error) {
+      setNoteDetailErrorById((current) => ({ ...current, [noteId]: error.message }));
+    } finally {
+      setNoteLoadingId((current) => (current === noteId ? null : current));
+    }
+  }
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("kbase:projects-header-meta", {
+        detail: { count: workspace.projects.length },
+      }),
+    );
+  }, [workspace.projects.length]);
+
+  useEffect(() => {
+    const handleOpenCreate = () => setIsCreateOpen(true);
+    window.addEventListener("kbase:projects-create", handleOpenCreate);
+    return () => window.removeEventListener("kbase:projects-create", handleOpenCreate);
+  }, []);
+
+  useEffect(() => {
+    setExpandedNoteId(null);
+  }, [workspace.selectedId]);
 
   return (
     <ResponsiveContainer>
-      <PageHeader
-        className="projects-page-header"
-        eyebrow="Projects"
-        title="Projekt"
-        description={null}
-        aside={
-          <div className="projects-header-meta">
-            <span className="pill projects-header-pill">
-              <FolderIcon />
-              {workspace.projects.length} {workspace.projects.length === 1 ? "Projekt" : "Projekte"}
-            </span>
-            <span className="pill projects-header-pill projects-header-pill-status">
-              <span className="pulse-dot" />
-              Bereit
-            </span>
-          </div>
-        }
-      />
-
       <StatusBanner error={workspace.error} notice={workspace.notice} />
 
       <div className="projects-workspace">
-        <Panel className="projects-sidebar-panel" eyebrow="Browse" title="Project index">
-          <div className="projects-toolbar">
+        <Panel className="projects-sidebar-panel">
+          <form className="projects-search-form" onSubmit={handleProjectSearch}>
+            <div className="projects-search-row">
+              <label className="search-field search-field-wide">
+                <input
+                  aria-label="Search projects"
+                  value={projectQuery}
+                  onChange={(event) => setProjectQuery(event.target.value)}
+                  placeholder="Search projects"
+                />
+              </label>
+              <button className="secondary icon-button" type="submit" aria-label="Search projects">
+                <SearchIcon />
+              </button>
+            </div>
             <label className="search-field">
-              <span>Search</span>
-              <input
-                value={workspace.search}
-                onChange={(event) => workspace.setSearch(event.target.value)}
-                placeholder="Search title, category, status"
-              />
-            </label>
-            <label className="search-field">
-              <span>Status</span>
               <select
+                aria-label="Filter project status"
                 value={workspace.statusFilter}
-                onChange={(event) => workspace.setStatusFilter(event.target.value)}
+                onChange={handleStatusFilterChange}
               >
                 <option value="all">All statuses</option>
                 <option value="active">Active</option>
@@ -79,79 +197,78 @@ export function ProjectsPage() {
                 <option value="archived">Archived</option>
               </select>
             </label>
-          </div>
+          </form>
 
           {workspace.loading ? <p className="muted">Loading projects...</p> : null}
-          {!workspace.loading && workspace.filteredProjects.length === 0 ? (
+          {!workspace.loading && showProjectResults && workspace.filteredProjects.length === 0 ? (
             <EmptyState
               title="No projects found"
-              description="Create the first project or widen the filters to bring existing contexts back into view."
+              description="Adjust the search or widen the filters to bring matching projects into view."
             />
           ) : null}
 
-          <div className="stack-list">
-            {workspace.filteredProjects.map((project) => (
-              <button
-                key={project.id}
-                type="button"
-                className={`stack-card project-card ${project.id === workspace.selectedId ? "active" : ""}`.trim()}
-                onClick={() => workspace.setSelectedId(project.id)}
-              >
-                <div>
-                  <strong>{project.title}</strong>
-                  <p>{project.category_key ?? "project_general"}</p>
-                </div>
-                <div className="project-card-meta">
-                  <span className="token">{project.status ?? "active"}</span>
-                  <small>{formatDate(project.updated_at, { dateStyle: "medium" })}</small>
-                </div>
-              </button>
-            ))}
-          </div>
+          {!workspace.loading && !showProjectResults ? (
+            <p className="muted projects-search-hint">Search for a project to open it here.</p>
+          ) : null}
+
+          {showProjectResults ? (
+            <div className="stack-list project-results-list">
+              {workspace.filteredProjects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  className={`stack-card project-card ${project.id === workspace.selectedId ? "active" : ""}`.trim()}
+                  onClick={() => workspace.setSelectedId(project.id)}
+                >
+                  <div className="project-result-main">
+                    <strong>{project.title}</strong>
+                    <span className={getStatusBadgeClass(project.status)}>{formatStatusLabel(project.status)}</span>
+                  </div>
+                  <small>Created {formatDate(project.created_at, { dateStyle: "medium" })}</small>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </Panel>
 
-        <div className="projects-main-column">
-          <Panel
-            eyebrow="Project"
-            title={activeProject?.title ?? "Select a project"}
-            action={activeProject ? <span className="pill"><ClockIcon />{formatDate(activeProject.updated_at, { dateStyle: "medium" })}</span> : null}
-          >
-            {workspace.projectLoading ? <p className="muted">Loading project detail...</p> : null}
-            {!workspace.projectLoading && !activeProject ? (
+        <div className={`projects-main-column ${activeProject ? "has-project" : ""}`.trim()}>
+          {workspace.projectLoading ? (
+            <Panel className="projects-detail-panel" title={null}>
+              <p className="muted">Loading project detail...</p>
+            </Panel>
+          ) : null}
+
+          {!workspace.projectLoading && !activeProject ? (
+            <Panel className="projects-detail-panel projects-detail-placeholder" title={null}>
               <EmptyState
                 title="No project selected"
                 description="Choose a project from the left column to inspect linked items and metadata."
               />
-            ) : null}
+            </Panel>
+          ) : null}
 
-            {activeProject ? (
+          {activeProject ? (
+            <Panel className="projects-detail-panel" title={null}>
+              <div className="projects-detail-close-row">
+                <button className="secondary compact-button" type="button" onClick={() => workspace.setSelectedId(null)}>
+                  Close
+                </button>
+              </div>
+
               <div className="project-detail-stack">
-                <div className="project-hero">
-                  <div>
-                    <p className="eyebrow">Context</p>
+                <div className="project-summary-head">
+                  <div className="project-summary-title-row">
                     <h3>{activeProject.title}</h3>
-                    <p>{projectDescription || "No description stored yet. The project exists, but its narrative context is still empty."}</p>
+                    <span className="project-inline-category">{formatCategoryLabel(activeProject.category_key)}</span>
                   </div>
-                  <div className="project-detail-meta">
-                    <div className="detail-card">
-                      <span>Status</span>
-                      <strong>{activeProject.status ?? "active"}</strong>
-                    </div>
-                    <div className="detail-card">
-                      <span>Category</span>
-                      <strong>{activeProject.category_key ?? "project_general"}</strong>
-                    </div>
-                    <div className="detail-card">
-                      <span>Created</span>
-                      <strong>{formatDate(activeProject.created_at, { dateStyle: "medium" })}</strong>
-                    </div>
+                  <div className="project-summary-meta-row">
+                    <span className={getStatusBadgeClass(activeProject.status)}>{formatStatusLabel(activeProject.status)}</span>
+                    <span className="project-created-pill"><ClockIcon />{formatDate(activeProject.created_at, { dateStyle: "medium" })}</span>
+                    <span>{workspace.projectMetrics.totalItems} items</span>
+                    <span>{workspace.projectMetrics.noteCount} notes</span>
+                    <span>{workspace.projectMetrics.fileCount} files</span>
                   </div>
-                </div>
-
-                <div className="stats-grid projects-stats-grid">
-                  <StatCard label="Linked items" value={workspace.projectMetrics.totalItems} tone="cyan" icon={FolderIcon} />
-                  <StatCard label="Notes" value={workspace.projectMetrics.noteCount} tone="gold" icon={NoteIcon} />
-                  <StatCard label="Files" value={workspace.projectMetrics.fileCount} tone="coral" icon={FileStackIcon} />
+                  {projectDescription ? <p className="project-summary-description">{projectDescription}</p> : null}
                 </div>
 
                 <div className="section-tabs">
@@ -162,107 +279,115 @@ export function ProjectsPage() {
                       className={`section-tab ${activeSection === section.id ? "active" : ""}`.trim()}
                       onClick={() => setActiveSection(section.id)}
                     >
-                      {section.label}
+                      {section.label} <span className="section-tab-count">{getTabCount(section.id, workspace)}</span>
                     </button>
                   ))}
                 </div>
 
-                <div className="projects-toolbar projects-toolbar-inline">
-                  <label className="search-field">
-                    <span>Filter items</span>
-                    <input
-                      value={workspace.itemSearch}
-                      onChange={(event) => workspace.setItemSearch(event.target.value)}
-                      placeholder="Search linked notes, files, status"
-                    />
-                  </label>
-                  <label className="search-field">
-                    <span>Kind</span>
-                    <select
-                      value={workspace.kindFilter}
-                      onChange={(event) => workspace.setKindFilter(event.target.value)}
-                    >
-                      <option value="all">All item kinds</option>
-                      {workspace.availableKinds.map((itemKind) => (
-                        <option key={itemKind} value={itemKind}>
-                          {itemKind}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                {activeSection !== "notes" ? (
+                  <div className="projects-toolbar projects-toolbar-inline">
+                    <label className="search-field">
+                      <span>Filter items</span>
+                      <input
+                        value={workspace.itemSearch}
+                        onChange={(event) => workspace.setItemSearch(event.target.value)}
+                        placeholder={activeSection === "files" ? "Search files" : "Search linked items"}
+                      />
+                    </label>
+                    <label className="search-field">
+                      <span>{activeSection === "files" ? "Type" : "Kind"}</span>
+                      <select
+                        value={workspace.kindFilter}
+                        onChange={(event) => workspace.setKindFilter(event.target.value)}
+                      >
+                        <option value="all">All item kinds</option>
+                        {workspace.availableKinds.map((itemKind) => (
+                          <option key={itemKind} value={itemKind}>
+                            {itemKind}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
 
-                {activeSection === "overview" ? (
-                  <div className="projects-actions-grid">
-                    <Panel eyebrow="Link" title="Add existing item">
-                      <form className="create-form" onSubmit={workspace.handleCandidateSearch}>
-                        <label>
-                          <span>Search existing notes and files</span>
-                          <input
-                            value={workspace.candidateQuery}
-                            onChange={(event) => workspace.setCandidateQuery(event.target.value)}
-                            placeholder="Search across the knowledge base"
-                          />
-                        </label>
-                        <button className="secondary" type="submit" disabled={workspace.actionLoading}>
-                          {workspace.actionLoading ? "Searching..." : "Search items"}
-                        </button>
-                      </form>
-
+                {activeSection === "items" ? (
+                  <>
+                    {visibleItems.length === 0 ? (
+                      <EmptyState
+                        title="No linked items match"
+                        description="This project has no linked items for the current filters."
+                      />
+                    ) : (
                       <div className="stack-list">
-                        {workspace.candidateResults.map((item) => (
-                          <div key={item.id} className="stack-card static project-action-card">
+                        {visibleItems.map((item) => (
+                          <article key={item.id} className="stack-card static project-item-row">
                             <div>
                               <strong>{item.title}</strong>
                               <p>{item.category_key ?? item.item_kind}</p>
                             </div>
-                            <button className="secondary compact-button" type="button" onClick={() => workspace.handleAddItemToProject(item.id)}>
-                              Add
-                            </button>
-                          </div>
+                            <div className="project-card-meta">
+                              <span className="token project-kind-token"><TagIcon />{item.item_kind}</span>
+                              <small>{formatDate(item.updated_at, { dateStyle: "medium", timeStyle: "short" })}</small>
+                            </div>
+                          </article>
                         ))}
-                        {!workspace.candidateResults.length ? (
-                          <p className="muted">Search for an existing note or file to link it into this project.</p>
-                        ) : null}
                       </div>
-                    </Panel>
-                  </div>
+                    )}
+                  </>
                 ) : null}
 
                 {activeSection === "notes" ? (
-                  <div className="projects-actions-grid">
-                    <Panel eyebrow="New note" title="Create note in project">
-                      <form className="create-form" onSubmit={workspace.handleCreateProjectNote}>
-                        <label>
-                          <span>Title</span>
-                          <input
-                            value={workspace.noteDraft.title}
-                            onChange={(event) => workspace.setNoteDraft({ ...workspace.noteDraft, title: event.target.value })}
-                            placeholder="Decision log, meeting notes, research angle"
-                            required
-                          />
-                        </label>
-                        <label>
-                          <span>Category</span>
-                          <input
-                            value={workspace.noteDraft.category_key}
-                            onChange={(event) => workspace.setNoteDraft({ ...workspace.noteDraft, category_key: event.target.value })}
-                          />
-                        </label>
-                        <label>
-                          <span>Body</span>
-                          <textarea
-                            rows="6"
-                            value={workspace.noteDraft.markdown_body}
-                            onChange={(event) => workspace.setNoteDraft({ ...workspace.noteDraft, markdown_body: event.target.value })}
-                            placeholder="Write the first project note directly here."
-                          />
-                        </label>
-                        <button className="primary" type="submit" disabled={workspace.actionLoading}>
-                          {workspace.actionLoading ? "Creating..." : "Create note"}
-                        </button>
-                      </form>
-                    </Panel>
+                  <div className="project-notes-accordion">
+                    {!workspace.notes.length ? (
+                      <EmptyState
+                        title="No notes in this project"
+                        description="Create the first note or link an existing note into this project."
+                      />
+                    ) : (
+                      <div className="project-note-table">
+                        <div className="project-note-table-head">
+                          <span>Note</span>
+                          <span>Status</span>
+                          <span>Updated</span>
+                        </div>
+                        {workspace.notes.map((note) => {
+                          const isExpanded = expandedNoteId === note.id;
+                          const detail = noteDetailsById[note.id];
+                          const noteError = noteDetailErrorById[note.id];
+                          const noteBody = detail?.primary_content_part?.content_text ?? "";
+
+                          return (
+                            <div key={note.id} className={`project-note-row ${isExpanded ? "expanded" : ""}`.trim()}>
+                              <button
+                                type="button"
+                                className="project-note-summary"
+                                onClick={() => void handleToggleNote(note.id)}
+                              >
+                                <strong>{note.title}</strong>
+                                <span className={getStatusBadgeClass(note.status)}>{formatStatusLabel(note.status)}</span>
+                                <span>{formatDate(note.updated_at, { dateStyle: "medium" })}</span>
+                              </button>
+                              {isExpanded ? (
+                                <div className="project-note-body">
+                                  {noteLoadingId === note.id ? <p className="muted">Loading note...</p> : null}
+                                  {noteError ? <p className="error">{noteError}</p> : null}
+                                  {!noteLoadingId && !noteError ? (
+                                    <>
+                                      <div className="project-note-body-meta">
+                                        <span>{formatCategoryLabel(note.category_key)}</span>
+                                        <span>ID {note.id}</span>
+                                      </div>
+                                      <pre>{noteBody || "No note body stored yet."}</pre>
+                                    </>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ) : null}
 
@@ -320,101 +445,37 @@ export function ProjectsPage() {
                         </button>
                       </form>
                     </Panel>
+
+                    {visibleItems.length === 0 ? (
+                      <EmptyState
+                        title="No files in this project"
+                        description="Upload or link files to populate this section."
+                      />
+                    ) : (
+                      <div className="stack-list">
+                        {visibleItems.map((item) => (
+                          <article key={item.id} className="stack-card static project-item-row">
+                            <div>
+                              <strong>{item.title}</strong>
+                              <p>{item.category_key ?? item.item_kind}</p>
+                            </div>
+                            <div className="project-card-meta">
+                              <span className="token project-kind-token"><TagIcon />{item.item_kind}</span>
+                              <small>{formatDate(item.updated_at, { dateStyle: "medium", timeStyle: "short" })}</small>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : null}
-
-                {visibleItems.length === 0 ? (
-                  <EmptyState
-                    title="No linked items match"
-                    description="This project has no items for the current section and filters yet."
-                  />
-                ) : (
-                  <div className="stack-list">
-                    {visibleItems.map((item) => (
-                      <article key={item.id} className="stack-card static project-item-row">
-                        <div>
-                          <strong>{item.title}</strong>
-                          <p>{item.category_key ?? item.item_kind}</p>
-                        </div>
-                        <div className="project-card-meta">
-                          <span className="token project-kind-token"><TagIcon />{item.item_kind}</span>
-                          <small>{formatDate(item.updated_at, { dateStyle: "medium", timeStyle: "short" })}</small>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
               </div>
-            ) : null}
-          </Panel>
+            </Panel>
+          ) : null}
         </div>
-
-        <Panel className="projects-create-panel" eyebrow="Create" title="Open a new project">
-          <form className="create-form" onSubmit={workspace.handleCreateProject}>
-            <label>
-              <span>Title</span>
-              <input
-                value={workspace.draft.title}
-                onChange={(event) => workspace.setDraft({ ...workspace.draft, title: event.target.value })}
-                placeholder="Kitchen renovation 2026"
-                required
-              />
-            </label>
-            <label>
-              <span>Category</span>
-              <select
-                value={workspace.draft.category_key}
-                onChange={(event) => workspace.setDraft({ ...workspace.draft, category_key: event.target.value })}
-              >
-                {PROJECT_CATEGORY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Status</span>
-              <select
-                value={workspace.draft.status}
-                onChange={(event) => workspace.setDraft({ ...workspace.draft, status: event.target.value })}
-              >
-                <option value="active">active</option>
-                <option value="on_hold">on_hold</option>
-                <option value="done">done</option>
-              </select>
-            </label>
-            <label>
-              <span>Description</span>
-              <textarea
-                rows="5"
-                value={workspace.draft.description}
-                onChange={(event) => workspace.setDraft({ ...workspace.draft, description: event.target.value })}
-                placeholder="What belongs in this project and how should it structure notes, documents, and imports?"
-              />
-            </label>
-            <button className="primary" type="submit" disabled={workspace.saving}>
-              {workspace.saving ? "Creating..." : "Create project"}
-            </button>
-          </form>
-
-          <div className="roadmap projects-create-hints">
-            <div>
-              <strong>Create project shell</strong>
-              <p>The project is stored as a first-class item with project metadata.</p>
-            </div>
-            <div>
-              <strong>Use linked items now</strong>
-              <p>Existing notes and imported files can already point at project IDs through current backend flows.</p>
-            </div>
-            <div>
-              <strong>Next UI step</strong>
-              <p>Direct linking, upload into project, and section-specific tabs can build on this workspace without a reset.</p>
-            </div>
-          </div>
-        </Panel>
-
       </div>
+
+      <CreateProjectModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} workspace={workspace} />
     </ResponsiveContainer>
   );
 }
