@@ -5,6 +5,7 @@ import { HomePage } from "./pages/home/HomePage";
 import { ImportsPage } from "./pages/imports/ImportsPage";
 import { NotesPage } from "./pages/notes/NotesPage";
 import { ProjectsPage } from "./pages/projects/ProjectsPage";
+import { SearchPage } from "./pages/search/SearchPage";
 
 function useHashRoute() {
   const [route, setRoute] = useState(() => getRouteFromHash(window.location.hash));
@@ -33,44 +34,73 @@ function useHashRoute() {
 
 export default function App() {
   const [route, navigate] = useHashRoute();
-  const [globalSearch, setGlobalSearch] = useState("");
-  const [notesSearchState, setNotesSearchState] = useState({ query: "", version: 0 });
+  const [searchState, setSearchState] = useState({
+    query: "",
+    globalScope: false,
+    scopeRoute: "home",
+    version: 0,
+  });
 
   function handleGlobalSearchSubmit(event) {
     event.preventDefault();
-    navigate("notes");
-    setNotesSearchState((current) => ({
-      query: globalSearch.trim(),
+    navigate("search");
+    setSearchState((current) => ({
+      ...current,
+      query: current.query.trim(),
+      scopeRoute: route === "search" ? current.scopeRoute : route,
       version: current.version + 1,
     }));
   }
 
+  function handleSearchStateChange(patch) {
+    setSearchState((current) => ({
+      ...current,
+      ...patch,
+    }));
+  }
+
+  function seedGlobalSearch(query, { navigateTo = false, scopeRoute = route } = {}) {
+    setSearchState((current) => ({
+      ...current,
+      query,
+      globalScope: false,
+      scopeRoute,
+      version: navigateTo ? current.version + 1 : current.version,
+    }));
+
+    if (navigateTo) {
+      navigate("search");
+    }
+  }
+
   const activePage = useMemo(() => {
     switch (route) {
+      case "search":
+        return <SearchPage searchRequest={searchState} onSearchStateChange={handleSearchStateChange} />;
       case "notes":
-        return (
-          <NotesPage
-            externalSearch={notesSearchState.query}
-            externalSearchVersion={notesSearchState.version}
-          />
-        );
+        return <NotesPage />;
       case "projects":
         return <ProjectsPage />;
       case "imports":
         return <ImportsPage />;
       case "home":
       default:
-        return <HomePage onNavigate={navigate} onSeedSearch={setGlobalSearch} />;
+        return <HomePage onNavigate={navigate} onSeedSearch={seedGlobalSearch} />;
     }
-  }, [navigate, notesSearchState.query, notesSearchState.version, route]);
+  }, [navigate, route, searchState]);
+
+  const searchContextRoute = route === "search" ? searchState.scopeRoute : route;
 
   return (
     <AppShell
       activeRoute={route}
-      globalSearch={globalSearch}
-      onGlobalSearchChange={setGlobalSearch}
+      globalScope={searchState.globalScope}
+      globalSearch={searchState.query}
+      onGlobalScopeChange={(value) => handleSearchStateChange({ globalScope: value })}
+      onGlobalSearchChange={(value) => handleSearchStateChange({ query: value })}
       onGlobalSearchSubmit={handleGlobalSearchSubmit}
       onNavigate={navigate}
+      searchContextRoute={searchContextRoute}
     >
       {activePage}
     </AppShell>

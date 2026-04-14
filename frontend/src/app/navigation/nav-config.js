@@ -1,5 +1,6 @@
 export const NAV_ITEMS = [
   { id: "home", label: "Home", shortLabel: "HM" },
+  { id: "search", label: "Search", shortLabel: "SR" },
   { id: "notes", label: "Notes", shortLabel: "NT" },
   { id: "projects", label: "Projects", shortLabel: "PJ" },
   { id: "imports", label: "Imports", shortLabel: "IM" },
