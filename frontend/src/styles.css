@@ -60,11 +60,14 @@ textarea {
 }
 
 .app-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  min-height: 100vh;
+  height: 100vh;
   padding: 16px 12px;
   background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
 }
