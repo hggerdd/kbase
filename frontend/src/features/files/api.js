@@ -24,3 +24,13 @@ export async function fetchFileLabels(query = "") {
   params.set("limit", "100");
   return request(`/api/labels?${params.toString()}`);
 }
+
+export async function replaceFileSummary(itemId, markdownBody) {
+  return request(`/api/items/${itemId}/content`, {
+    method: "PUT",
+    body: JSON.stringify({
+      content_text: markdownBody,
+      change_reason: "file-summary-edit",
+    }),
+  });
+}

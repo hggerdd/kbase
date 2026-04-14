@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { marked } from "marked";
-import { fetchFileItemDetail, fetchFileItemSummaries, fetchFileLabels } from "./api.js";
+import TurndownService from "turndown";
+import { fetchFileItemDetail, fetchFileItemSummaries, fetchFileLabels, replaceFileSummary } from "./api.js";
 import { buildFileTree, itemMatchesFileFilters } from "./state.js";
+
+const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
 export function useFileViewerWorkspace() {
   const [items, setItems] = useState([]);
@@ -12,6 +15,10 @@ export function useFileViewerWorkspace() {
   const [categoryPrefix, setCategoryPrefix] = useState("");
   const [selectedLabels, setSelectedLabels] = useState(["test"]);
   const [renderedSummary, setRenderedSummary] = useState("");
+  const [summaryEditorHtml, setSummaryEditorHtml] = useState("");
+  const [summaryEditing, setSummaryEditing] = useState(false);
+  const [summarySaving, setSummarySaving] = useState(false);
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -65,6 +72,8 @@ export function useFileViewerWorkspace() {
   useEffect(() => {
     if (!selectedItem) {
       setRenderedSummary("");
+      setSummaryEditorHtml("");
+      setSummaryEditing(false);
       return;
     }
 
@@ -77,6 +86,7 @@ export function useFileViewerWorkspace() {
     void Promise.resolve(marked.parse(summaryText)).then((html) => {
       if (!cancelled) {
         setRenderedSummary(html);
+        setSummaryEditorHtml(html);
       }
     });
     return () => {
@@ -100,6 +110,55 @@ export function useFileViewerWorkspace() {
     );
   }
 
+  async function saveSummary() {
+    if (!selectedItem) {
+      return;
+    }
+
+    setSummarySaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const markdownBody = turndown.turndown(summaryEditorHtml || "");
+      await replaceFileSummary(selectedItem.item.id, markdownBody);
+      setItems((currentItems) =>
+        currentItems.map((detail) =>
+          detail.item.id === selectedItem.item.id
+            ? {
+                ...detail,
+                primary_content_part: detail.primary_content_part
+                  ? {
+                      ...detail.primary_content_part,
+                      content_text: markdownBody,
+                    }
+                  : {
+                      id: `generated-${detail.item.id}`,
+                      item_id: detail.item.id,
+                      part_kind: "markdown_body",
+                      sequence_no: 1,
+                      content_text: markdownBody,
+                      content_format: "markdown",
+                      source_method: "manual",
+                      source_data_class: "canonical",
+                      language_code: null,
+                      created_by_principal_id: null,
+                      created_at: detail.item.updated_at,
+                      updated_at: detail.item.updated_at,
+                    },
+              }
+            : detail,
+        ),
+      );
+      setRenderedSummary(await Promise.resolve(marked.parse(markdownBody)));
+      setSummaryEditing(false);
+      setNotice("File summary saved");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSummarySaving(false);
+    }
+  }
+
   return {
     availableLabels,
     categoryPrefix,
@@ -107,16 +166,23 @@ export function useFileViewerWorkspace() {
     filteredItems,
     items,
     loading,
+    notice,
     query,
     refresh: loadItems,
     renderedSummary,
+    saveSummary,
     selectedId,
     selectedItem,
     selectedLabels,
     setCategoryPrefix,
     setQuery,
     setSelectedId,
+    setSummaryEditorHtml,
+    setSummaryEditing,
     setTreeLayout,
+    summaryEditing,
+    summaryEditorHtml,
+    summarySaving,
     toggleLabelFilter,
     tree,
     treeLayout,

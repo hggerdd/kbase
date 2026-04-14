@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import ReactQuill from "react-quill";
 import { useFileViewerWorkspace } from "../../features/files/hooks.js";
 import { FILE_TREE_LAYOUTS } from "../../features/files/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
@@ -135,7 +136,7 @@ export function FileViewerPage() {
         description="Browse file items by category, label, and original filename. Filter the tree down to a working slice, then inspect metadata and the stored markdown summary without leaving the explorer."
       />
 
-      <StatusBanner error={workspace.error} />
+      <StatusBanner error={workspace.error} notice={workspace.notice} />
 
       <div className="files-layout">
         <Panel
@@ -285,20 +286,60 @@ export function FileViewerPage() {
             )}
           </Panel>
 
-          <Panel eyebrow="Summary" title="Markdown preview">
+          <Panel
+            eyebrow="Summary"
+            title="File summary"
+            action={
+              workspace.selectedItem ? (
+                workspace.summaryEditing ? (
+                  <div className="header-actions">
+                    <button
+                      className="secondary compact-button"
+                      type="button"
+                      onClick={() => workspace.setSummaryEditing(false)}
+                      disabled={workspace.summarySaving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="primary compact-button"
+                      type="button"
+                      onClick={workspace.saveSummary}
+                      disabled={workspace.summarySaving}
+                    >
+                      {workspace.summarySaving ? "Saving..." : "Save summary"}
+                    </button>
+                  </div>
+                ) : (
+                  <button className="secondary compact-button" type="button" onClick={() => workspace.setSummaryEditing(true)}>
+                    Edit
+                  </button>
+                )
+              ) : null
+            }
+          >
             {workspace.selectedItem ? (
-              workspace.renderedSummary ? (
+              workspace.summaryEditing ? (
+                <label className="editor-body">
+                  <span>Summary editor</span>
+                  <ReactQuill
+                    theme="snow"
+                    value={workspace.summaryEditorHtml}
+                    onChange={workspace.setSummaryEditorHtml}
+                  />
+                </label>
+              ) : workspace.renderedSummary ? (
                 <div
                   className="rich-markdown file-summary-preview"
                   dangerouslySetInnerHTML={{ __html: workspace.renderedSummary }}
                 />
               ) : (
-                <p className="muted">No summary stored yet for this file.</p>
+                <p className="muted">No file summary stored yet for this file.</p>
               )
             ) : (
               <EmptyState
-                title="No summary available"
-                description="Once a file is selected, its markdown summary appears here with formatting."
+                title="No file summary available"
+                description="Once a file is selected, its summary appears here with end-user formatting."
               />
             )}
           </Panel>
