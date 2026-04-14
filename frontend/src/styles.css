@@ -761,6 +761,13 @@ button:disabled {
   font-size: 0.88rem;
 }
 
+.detail-value-wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: right;
+}
+
 .search-advanced-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

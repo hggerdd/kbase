@@ -252,7 +252,7 @@ export function FileViewerPage() {
                   </div>
                   <div className="detail-kv-row">
                     <span>Stored path</span>
-                    <strong>{selectedFile?.relative_path ?? "n/a"}</strong>
+                    <strong className="detail-value-wrap">{selectedFile?.relative_path ?? "n/a"}</strong>
                   </div>
                   <div className="detail-kv-row">
                     <span>Mime type</span>
