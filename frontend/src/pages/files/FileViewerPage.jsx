@@ -68,7 +68,7 @@ function TreeNode({ node, expandedIds, onSelectFile, onToggle, selectedId }) {
           <span className={`tree-node-icon ${className}`}>
             <Icon />
           </span>
-          <span>{node.label}</span>
+          <span className="tree-node-label">{node.label}</span>
         </button>
       </li>
     );
@@ -82,8 +82,7 @@ function TreeNode({ node, expandedIds, onSelectFile, onToggle, selectedId }) {
         <span className="tree-node-icon tree-icon-folder">
           {isExpanded ? <FolderOpenIcon /> : <FolderClosedIcon />}
         </span>
-        <span>{node.label}</span>
-        <strong>{node.children.length}</strong>
+        <span className="tree-node-label">{node.label}</span>
       </button>
       {isExpanded ? (
         <ul className="tree-list nested" role="group">
