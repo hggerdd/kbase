@@ -1,0 +1,6 @@
+# Salary January 2025
+
+Net salary statement for January 2025.
+
+- Employer: Acme Payroll
+- Status: booked
