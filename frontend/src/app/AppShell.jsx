@@ -2,16 +2,21 @@ import React from "react";
 import { BottomNav } from "./navigation/BottomNav";
 import { NAV_ITEMS } from "./navigation/nav-config";
 import { getNavIcon, HelpIcon, SearchIcon } from "../shared/ui/Icons";
+import { getSearchScopeForRoute } from "../features/search/state.js";
 
 export function AppShell({
   activeRoute,
   children,
+  globalScope,
   globalSearch,
+  onGlobalScopeChange,
   onGlobalSearchChange,
   onGlobalSearchSubmit,
   onNavigate,
+  searchContextRoute,
 }) {
   const activeNav = NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
+  const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
 
   return (
     <div className="app-shell">
@@ -71,6 +76,15 @@ export function AppShell({
               placeholder="Search notes, docs, decisions, projects"
               aria-label="Global search"
             />
+            <label className="search-toggle">
+              <input
+                type="checkbox"
+                checked={globalScope}
+                onChange={(event) => onGlobalScopeChange(event.target.checked)}
+              />
+              <span>Global</span>
+            </label>
+            <span className="search-scope-pill">{globalScope ? "All content" : searchScope.label}</span>
             <button type="submit">Search</button>
           </form>
 

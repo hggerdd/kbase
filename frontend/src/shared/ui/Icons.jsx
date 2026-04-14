@@ -56,6 +56,26 @@ export function SearchIcon() {
   );
 }
 
+export function FilterIcon() {
+  return (
+    <IconBase>
+      <path d="M4.5 6.5h15" />
+      <path d="M7.5 12h9" />
+      <path d="M10.5 17.5h3" />
+    </IconBase>
+  );
+}
+
+export function HistoryIcon() {
+  return (
+    <IconBase>
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 5.5v4h4" />
+      <path d="M12 8.5v4l2.5 1.5" />
+    </IconBase>
+  );
+}
+
 export function HelpIcon() {
   return (
     <IconBase>
@@ -107,6 +127,8 @@ export function getNavIcon(routeId) {
   switch (routeId) {
     case "home":
       return HomeIcon;
+    case "search":
+      return SearchIcon;
     case "notes":
       return NoteIcon;
     case "projects":
