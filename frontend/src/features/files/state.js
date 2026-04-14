@@ -61,11 +61,16 @@ export function itemMatchesFileFilters(detail, filters) {
 }
 
 function buildFileLeaf(detail) {
+  const primaryFile = detail.files?.[0];
+  const originalFilename = getPrimaryFilename(detail);
   return {
     id: `file:${detail.item.id}`,
     type: "file",
-    label: getPrimaryFilename(detail),
+    label: originalFilename,
     itemId: detail.item.id,
+    itemKind: detail.item.item_kind ?? null,
+    filename: originalFilename,
+    mimeType: primaryFile?.mime_type ?? null,
   };
 }
 

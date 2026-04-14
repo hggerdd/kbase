@@ -74,7 +74,7 @@ export function useFileViewerWorkspace() {
       "";
 
     let cancelled = false;
-    void marked.parse(summaryText).then((html) => {
+    void Promise.resolve(marked.parse(summaryText)).then((html) => {
       if (!cancelled) {
         setRenderedSummary(html);
       }

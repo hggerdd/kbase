@@ -38,6 +38,24 @@ export function FolderIcon() {
   );
 }
 
+export function FolderClosedIcon() {
+  return (
+    <IconBase>
+      <path d="M3.5 8h6l1.8 1.8H20a1.5 1.5 0 0 1 1.5 1.5v6.8a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8z" />
+      <path d="M3.5 8V6.7a1.7 1.7 0 0 1 1.7-1.7h4.5l1.5 1.7h7.1A1.7 1.7 0 0 1 20 8.4v1.4" />
+    </IconBase>
+  );
+}
+
+export function FolderOpenIcon() {
+  return (
+    <IconBase>
+      <path d="M2.8 10.2h18.4l-1.8 8a1.7 1.7 0 0 1-1.6 1.3H6.1a1.7 1.7 0 0 1-1.7-1.4z" />
+      <path d="M3.5 8.1V6.8a1.8 1.8 0 0 1 1.8-1.8h4.3l1.6 1.8h7.1a1.8 1.8 0 0 1 1.8 1.8v1.6" />
+    </IconBase>
+  );
+}
+
 export function InboxIcon() {
   return (
     <IconBase>
@@ -93,6 +111,64 @@ export function FileStackIcon() {
       <path d="M15 4.5v3h3" />
       <path d="M9 11h6" />
       <path d="M9 14h4" />
+    </IconBase>
+  );
+}
+
+export function GenericFileIcon() {
+  return (
+    <IconBase>
+      <path d="M7 4.5h7l3 3V19H7z" />
+      <path d="M14 4.5v3h3" />
+    </IconBase>
+  );
+}
+
+export function TextFileIcon() {
+  return (
+    <IconBase>
+      <path d="M7 4.5h7l3 3V19H7z" />
+      <path d="M14 4.5v3h3" />
+      <path d="M9.2 11.1h5.6" />
+      <path d="M9.2 14h5.6" />
+      <path d="M9.2 16.9h4.1" />
+    </IconBase>
+  );
+}
+
+export function PdfFileIcon() {
+  return (
+    <IconBase>
+      <path d="M7 4.5h7l3 3V19H7z" />
+      <path d="M14 4.5v3h3" />
+      <path d="M9 15.8V11h1.9a1.2 1.2 0 0 1 0 2.4H9" />
+      <path d="M12.1 15.8V11h1.4a2 2 0 0 1 0 4.8h-1.4" />
+      <path d="M15.4 15.8V11h2.5" />
+      <path d="M15.4 13.4H17.3" />
+    </IconBase>
+  );
+}
+
+export function ImageFileIcon() {
+  return (
+    <IconBase>
+      <path d="M7 4.5h7l3 3V19H7z" />
+      <path d="M14 4.5v3h3" />
+      <circle cx="10.2" cy="11" r="1.1" />
+      <path d="m9 16 2.2-2.4 1.8 1.7 1.8-2.1 1.2 2.8" />
+    </IconBase>
+  );
+}
+
+export function SheetFileIcon() {
+  return (
+    <IconBase>
+      <path d="M7 4.5h7l3 3V19H7z" />
+      <path d="M14 4.5v3h3" />
+      <path d="M9 11h6" />
+      <path d="M9 14h6" />
+      <path d="M11 11v6" />
+      <path d="M14 11v6" />
     </IconBase>
   );
 }

@@ -4,21 +4,70 @@ import { FILE_TREE_LAYOUTS } from "../../features/files/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { formatDate, formatFileSize } from "../../shared/utils/format";
 import { EmptyState } from "../../shared/ui/EmptyState";
-import { FileStackIcon, FilterIcon, FolderIcon, TagIcon } from "../../shared/ui/Icons.jsx";
+import {
+  FilterIcon,
+  FolderClosedIcon,
+  FolderOpenIcon,
+  GenericFileIcon,
+  ImageFileIcon,
+  PdfFileIcon,
+  SheetFileIcon,
+  TagIcon,
+  TextFileIcon,
+} from "../../shared/ui/Icons.jsx";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
 
+function getFileIcon(node) {
+  const filename = String(node.filename ?? node.label ?? "").toLowerCase();
+  const mimeType = String(node.mimeType ?? "").toLowerCase();
+
+  if (filename.endsWith(".pdf")) {
+    return { Icon: PdfFileIcon, className: "tree-icon-pdf" };
+  }
+  if (
+    filename.endsWith(".png") ||
+    filename.endsWith(".jpg") ||
+    filename.endsWith(".jpeg") ||
+    filename.endsWith(".gif") ||
+    filename.endsWith(".webp") ||
+    mimeType.startsWith("image/")
+  ) {
+    return { Icon: ImageFileIcon, className: "tree-icon-image" };
+  }
+  if (
+    filename.endsWith(".csv") ||
+    filename.endsWith(".xls") ||
+    filename.endsWith(".xlsx") ||
+    node.itemKind === "spreadsheet"
+  ) {
+    return { Icon: SheetFileIcon, className: "tree-icon-sheet" };
+  }
+  if (
+    filename.endsWith(".txt") ||
+    filename.endsWith(".md") ||
+    filename.endsWith(".doc") ||
+    filename.endsWith(".docx")
+  ) {
+    return { Icon: TextFileIcon, className: "tree-icon-text" };
+  }
+  return { Icon: GenericFileIcon, className: "tree-icon-generic" };
+}
+
 function TreeNode({ node, expandedIds, onSelectFile, onToggle, selectedId }) {
   if (node.type === "file") {
+    const { Icon, className } = getFileIcon(node);
     return (
-      <li>
+      <li role="treeitem" aria-selected={selectedId === node.itemId}>
         <button
           type="button"
           className={`tree-file-row ${selectedId === node.itemId ? "active" : ""}`}
           onClick={() => onSelectFile(node.itemId)}
         >
-          <FileStackIcon />
+          <span className={`tree-node-icon ${className}`}>
+            <Icon />
+          </span>
           <span>{node.label}</span>
         </button>
       </li>
@@ -27,14 +76,17 @@ function TreeNode({ node, expandedIds, onSelectFile, onToggle, selectedId }) {
 
   const isExpanded = expandedIds.has(node.id);
   return (
-    <li>
+    <li role="treeitem" aria-expanded={isExpanded}>
       <button type="button" className="tree-group-row" onClick={() => onToggle(node.id)}>
-        <FolderIcon />
+        <span className={`tree-caret ${isExpanded ? "expanded" : ""}`} />
+        <span className="tree-node-icon tree-icon-folder">
+          {isExpanded ? <FolderOpenIcon /> : <FolderClosedIcon />}
+        </span>
         <span>{node.label}</span>
-        <strong>{isExpanded ? "−" : "+"}</strong>
+        <strong>{node.children.length}</strong>
       </button>
       {isExpanded ? (
-        <ul className="tree-list nested">
+        <ul className="tree-list nested" role="group">
           {node.children.map((child) => (
             <TreeNode
               key={child.id}
@@ -89,8 +141,8 @@ export function FileViewerPage() {
       <div className="files-layout">
         <Panel
           className="files-sidebar-panel"
-          eyebrow="Explorer"
-          title={`Tree (${workspace.filteredItems.length} files)`}
+          eyebrow="Filters"
+          title="File filters"
           action={
             <button className="secondary compact-button" type="button" onClick={workspace.refresh}>
               Reload
@@ -123,7 +175,7 @@ export function FileViewerPage() {
               <input
                 value={workspace.categoryPrefix}
                 onChange={(event) => workspace.setCategoryPrefix(event.target.value)}
-                placeholder="income_document or finance/income"
+                placeholder="income_document"
               />
             </label>
 
@@ -150,7 +202,9 @@ export function FileViewerPage() {
               <span>Current mode: {FILE_TREE_LAYOUTS.find((layout) => layout.id === workspace.treeLayout)?.label}</span>
             </div>
           </div>
+        </Panel>
 
+        <Panel className="files-tree-panel" eyebrow="Explorer" title={`Tree (${workspace.filteredItems.length} files)`}>
           {workspace.loading ? <p className="muted">Loading file explorer...</p> : null}
           {!workspace.loading && workspace.tree.length === 0 ? (
             <EmptyState
@@ -158,7 +212,7 @@ export function FileViewerPage() {
               description="Adjust category and label filters or seed the file-viewer test data."
             />
           ) : null}
-          <ul className="tree-list">
+          <ul className="tree-list tree-root" role="tree" aria-label="File explorer tree">
             {workspace.tree.map((node) => (
               <TreeNode
                 key={node.id}
@@ -172,7 +226,7 @@ export function FileViewerPage() {
           </ul>
         </Panel>
 
-        <div className="files-detail-stack">
+        <div className="files-detail-column">
           <Panel eyebrow="Selected file" title={selectedFile?.original_filename ?? "Choose a file"}>
             {workspace.selectedItem ? (
               <div className="search-detail-stack">
