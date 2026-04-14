@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { AppShell } from "./app/AppShell";
 import { NAV_ITEMS, getRouteFromHash, routeToHash } from "./app/navigation/nav-config";
 import { HomePage } from "./pages/home/HomePage";
+import { FileViewerPage } from "./pages/files/FileViewerPage";
 import { ImportsPage } from "./pages/imports/ImportsPage";
 import { NotesPage } from "./pages/notes/NotesPage";
 import { ProjectsPage } from "./pages/projects/ProjectsPage";
@@ -77,6 +78,8 @@ export default function App() {
     switch (route) {
       case "search":
         return <SearchPage searchRequest={searchState} onSearchStateChange={handleSearchStateChange} />;
+      case "files":
+        return <FileViewerPage />;
       case "notes":
         return <NotesPage />;
       case "projects":

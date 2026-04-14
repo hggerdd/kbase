@@ -1,0 +1,6 @@
+# Offer Side Project 2026
+
+Offer for freelance work.
+
+- Vendor: Client North
+- Priority: medium

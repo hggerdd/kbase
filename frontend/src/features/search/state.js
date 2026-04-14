@@ -2,6 +2,7 @@ export const SEARCH_HISTORY_STORAGE_KEY = "kbase.search.history";
 
 export const SEARCH_SCOPE_OPTIONS = [
   { route: "home", label: "All content" },
+  { route: "files", label: "Files" },
   { route: "notes", label: "Notes" },
   { route: "projects", label: "Projects" },
   { route: "imports", label: "Imports" },
@@ -9,6 +10,7 @@ export const SEARCH_SCOPE_OPTIONS = [
 
 const ROUTE_SCOPE_MAP = {
   home: { label: "All content", itemKinds: [] },
+  files: { label: "Files", itemKinds: ["document", "image", "spreadsheet", "summary"] },
   notes: { label: "Notes", itemKinds: ["note"] },
   projects: { label: "Projects", itemKinds: ["project"] },
   imports: { label: "Imports", itemKinds: ["document", "image", "spreadsheet"] },

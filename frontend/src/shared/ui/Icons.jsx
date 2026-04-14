@@ -97,6 +97,22 @@ export function FileStackIcon() {
   );
 }
 
+export function ExplorerTreeIcon() {
+  return (
+    <IconBase>
+      <path d="M6.5 5.5h5" />
+      <path d="M6.5 12h5" />
+      <path d="M12 5.5v13" />
+      <path d="M12 9h4.5" />
+      <path d="M12 15.5h4.5" />
+      <rect x="3.5" y="4" width="3" height="3" />
+      <rect x="3.5" y="10.5" width="3" height="3" />
+      <rect x="16.5" y="7.5" width="4" height="3" />
+      <rect x="16.5" y="14" width="4" height="3" />
+    </IconBase>
+  );
+}
+
 export function SparkIcon() {
   return (
     <IconBase>
@@ -129,6 +145,8 @@ export function getNavIcon(routeId) {
       return HomeIcon;
     case "search":
       return SearchIcon;
+    case "files":
+      return ExplorerTreeIcon;
     case "notes":
       return NoteIcon;
     case "projects":

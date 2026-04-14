@@ -1,0 +1,6 @@
+# Salary February 2026
+
+Income document for February 2026.
+
+- Employer: Acme Payroll
+- Notes: year-over-year comparison ready

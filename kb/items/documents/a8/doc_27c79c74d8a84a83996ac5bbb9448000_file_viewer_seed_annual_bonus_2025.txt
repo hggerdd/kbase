@@ -1,0 +1,6 @@
+# Annual Bonus 2025
+
+Bonus confirmation for fiscal year 2025.
+
+- Type: bonus
+- Category: income

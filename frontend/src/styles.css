@@ -470,6 +470,13 @@ button:disabled {
   align-items: start;
 }
 
+.files-layout {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
 .dashboard-grid {
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
@@ -533,14 +540,87 @@ button:disabled {
 }
 
 .search-results-panel,
-.search-main-stack {
+.search-main-stack,
+.files-sidebar-panel,
+.files-detail-stack {
   min-width: 0;
 }
 
-.search-main-stack {
+.search-main-stack,
+.files-detail-stack {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.file-controls,
+.metadata-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tree-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tree-list.nested {
+  margin: 8px 0 0 18px;
+}
+
+.tree-group-row,
+.tree-file-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--surface-border);
+  background: #ffffff;
+  color: var(--text);
+  text-align: left;
+}
+
+.tree-group-row strong {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.tree-group-row svg,
+.tree-file-row svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.tree-file-row.active,
+.token-button.active {
+  border-color: #8db0ff;
+  background: #f8fbff;
+}
+
+.file-summary-preview {
+  padding: 18px;
+  border: 1px solid var(--surface-border);
+  background: #ffffff;
+}
+
+.rich-markdown h1,
+.rich-markdown h2,
+.rich-markdown h3 {
+  margin-top: 0;
+}
+
+.rich-markdown p,
+.rich-markdown ul,
+.rich-markdown ol {
+  margin: 0 0 12px;
 }
 
 .search-results-list,
@@ -1032,6 +1112,7 @@ button:disabled {
   .page-header,
   .notes-layout,
   .search-layout,
+  .files-layout,
   .meta-grid,
   .editor-grid,
   .stats-grid,
