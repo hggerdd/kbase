@@ -1,0 +1,115 @@
+import React from "react";
+import ReactQuill from "react-quill";
+import TurndownService from "turndown";
+import { NOTE_CATEGORIES } from "../../../features/notes/constants";
+
+const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
+
+export function CreateNotePanel({ workspace, isOpen, onClose }) {
+  const labelSuggestions = workspace.availableLabels.slice(0, 18);
+
+  if (!isOpen) {
+    return null;
+  }
+
+  async function handleSubmit(event) {
+    const success = await workspace.handleCreateNote(event);
+    if (success) {
+      onClose();
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Create note">
+      <div className="modal-sheet note-modal">
+        <div className="modal-header">
+          <div>
+            <p className="panel-label">New note</p>
+            <h3>Create a note</h3>
+          </div>
+          <button className="secondary" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+        <form className="create-form note-modal-form" onSubmit={handleSubmit}>
+          <div className="note-modal-grid">
+            <label>
+              <span>Title</span>
+              <input
+                value={workspace.draft.title}
+                onChange={(event) => workspace.setDraft({ ...workspace.draft, title: event.target.value })}
+                placeholder="A new brief, insight, or decision"
+                required
+              />
+            </label>
+            <label>
+              <span>Category</span>
+              <select
+                value={workspace.draft.category_key}
+                onChange={(event) =>
+                  workspace.setDraft({ ...workspace.draft, category_key: event.target.value })
+                }
+              >
+                {NOTE_CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>New labels</span>
+            <input
+              value={workspace.draft.label_paths}
+              onChange={(event) => workspace.setDraft({ ...workspace.draft, label_paths: event.target.value })}
+              placeholder="research/alpha, docs/contracts"
+            />
+          </label>
+
+          <div className="suggestions-block">
+            <span>Use existing labels</span>
+            <div className="token-list selectable">
+              {labelSuggestions.map((label) => (
+                <button
+                  key={label.id}
+                  type="button"
+                  className={`token ${workspace.draft.selected_labels.includes(label.full_path) ? "active" : ""}`}
+                  onClick={() => workspace.toggleDraftLabel(label.full_path)}
+                >
+                  {label.full_path}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="note-modal-editor">
+            <span>Body</span>
+            <ReactQuill
+              theme="snow"
+              value={workspace.draft.html_body}
+              onChange={(value) =>
+                workspace.setDraft({
+                  ...workspace.draft,
+                  html_body: value,
+                  markdown_body: turndown.turndown(value || ""),
+                })
+              }
+            />
+          </label>
+
+          <div className="modal-actions">
+            <button className="secondary" type="button" onClick={onClose}>
+              Cancel
+            </button>
+            <button className="primary" type="submit" disabled={workspace.saving}>
+              {workspace.saving ? "Submitting..." : "Create note"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

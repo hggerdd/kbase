@@ -1,0 +1,603 @@
+from __future__ import annotations
+
+from kbase.application.capabilities.add_item_to_project import add_item_to_project
+from kbase.application.capabilities.assign_labels import assign_labels
+from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
+from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_note import create_note
+from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.get_item import get_item
+from kbase.application.capabilities.get_item_history import get_item_history
+from kbase.application.capabilities.get_item_provenance import get_item_provenance
+from kbase.application.capabilities.link_items import link_items
+from kbase.application.capabilities.list_labels import list_labels
+from kbase.application.capabilities.list_items import list_items
+from kbase.application.capabilities.list_project_items import list_project_items
+from kbase.application.capabilities.list_related_items import list_related_items
+from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
+from kbase.application.capabilities.register_asset import register_asset
+from kbase.application.capabilities.replace_labels import replace_labels
+from kbase.application.capabilities.replace_content_part import replace_content_part
+from kbase.application.capabilities.search_content import search_content
+from kbase.application.capabilities.update_item_core import update_item_core
+from kbase.application.dto.capabilities import (
+    AddItemToProjectInput,
+    AssignLabelsInput,
+    AttachAssetToItemInput,
+    ClassifyItemInput,
+    CreateNoteInput,
+    CreateProjectInput,
+    GetItemInput,
+    LinkItemsInput,
+    ListLabelsInput,
+    ListItemsInput,
+    ListProjectItemsInput,
+    ListRelatedItemsInput,
+    PatchItemMetadataInput,
+    RegisterAssetInput,
+    ReplaceContentPartInput,
+    SearchContentInput,
+    UpdateItemCoreInput,
+)
+from kbase.core.value_objects.actor import ActorContext
+from kbase.core.value_objects.provenance import ProvenanceInput
+
+
+def actor() -> ActorContext:
+    return ActorContext(principal_id="heiko")
+
+
+def provenance(method: str) -> ProvenanceInput:
+    return ProvenanceInput(method_key=method, data_class="canonical")
+
+
+def test_create_note_and_get_item(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="ETF Strategy",
+            category_key="decision",
+            markdown_body="# Decision\nUse PEA",
+            label_paths=["finance/investing"],
+            metadata={"description": "Initial draft"},
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    item = get_item(
+        GetItemInput(item_id=created.item.id, actor=actor()),
+        session_factory=session_factory,
+    )
+
+    assert item.item.title == "ETF Strategy"
+    assert item.primary_content_part is not None
+    assert item.primary_content_part.content_text.startswith("# Decision")
+    assert item.labels[0].full_path == "finance/investing"
+    assert item.metadata[0].field_key == "description"
+
+
+def test_replace_content_part_creates_history_and_provenance(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Search",
+            category_key="research",
+            markdown_body="initial",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    replace_content_part(
+        ReplaceContentPartInput(
+            item_id=created.item.id,
+            content_text="updated",
+            change_reason="refine",
+            actor=actor(),
+            provenance=provenance("test.replace_content_part"),
+        ),
+        session_factory=session_factory,
+    )
+
+    history = get_item_history(
+        GetItemInput(item_id=created.item.id, actor=actor()),
+        session_factory=session_factory,
+    )
+    provenance_result = get_item_provenance(
+        GetItemInput(item_id=created.item.id, actor=actor()),
+        session_factory=session_factory,
+    )
+
+    assert len(history.events) >= 2
+    assert any(event.operation_key == "replace_content_part" for event in history.events)
+    assert any(record.method_key == "test.replace_content_part" for record in provenance_result.records)
+
+
+def test_asset_link_project_and_search_flow(session_factory) -> None:
+    note = create_note(
+        CreateNoteInput(
+            title="Waschmaschine",
+            category_key="research",
+            markdown_body="Bosch vs Siemens",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    project = create_project(
+        CreateProjectInput(
+            title="Haushalt 2026",
+            description="Household project",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+    add_item_to_project(
+        AddItemToProjectInput(
+            project_id=project.id,
+            item_id=note.item.id,
+            actor=actor(),
+            provenance=provenance("test.add_item_to_project"),
+        ),
+        session_factory=session_factory,
+    )
+    assign_labels(
+        AssignLabelsInput(
+            item_id=note.item.id,
+            label_paths=["household/appliances"],
+            actor=actor(),
+            provenance=provenance("test.assign_labels"),
+        ),
+        session_factory=session_factory,
+    )
+    patch_item_metadata(
+        PatchItemMetadataInput(
+            item_id=note.item.id,
+            set_fields={"research_subject": "washing machine"},
+            actor=actor(),
+            provenance=provenance("test.patch_item_metadata"),
+        ),
+        session_factory=session_factory,
+    )
+    asset = register_asset(
+        RegisterAssetInput(
+            storage_path="kb/items/images/demo/bosch.jpg",
+            asset_kind="source_file",
+            original_filename="bosch.jpg",
+            mime_type="image/jpeg",
+            actor=actor(),
+            provenance=provenance("test.register_asset"),
+        ),
+        session_factory=session_factory,
+    )
+    attach_asset_to_item(
+        AttachAssetToItemInput(
+            item_id=note.item.id,
+            asset_id=asset.id,
+            relationship_role="attachment",
+            actor=actor(),
+            provenance=provenance("test.attach_asset_to_item"),
+        ),
+        session_factory=session_factory,
+    )
+
+    search_result = search_content(
+        SearchContentInput(
+            query="Bosch",
+            project_id=project.id,
+            label_paths=["household/appliances"],
+            actor=actor(),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert len(search_result.items) == 1
+    assert search_result.items[0].title == "Waschmaschine"
+
+
+def test_linked_items_are_returned(session_factory) -> None:
+    source = create_note(
+        CreateNoteInput(
+            title="Research",
+            category_key="research",
+            markdown_body="Body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    target = create_note(
+        CreateNoteInput(
+            title="Decision",
+            category_key="decision",
+            markdown_body="Decision body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    link_items(
+        LinkItemsInput(
+            from_item_id=source.item.id,
+            to_item_id=target.item.id,
+            link_type="decision_for",
+            actor=actor(),
+            provenance=provenance("test.link_items"),
+        ),
+        session_factory=session_factory,
+    )
+    item = get_item(GetItemInput(item_id=source.item.id, actor=actor()), session_factory=session_factory)
+    assert item.related_items[0].title == "Decision"
+
+
+def test_update_item_core_updates_title_status_and_language(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Old title",
+            category_key="research",
+            markdown_body="Body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    updated = update_item_core(
+        UpdateItemCoreInput(
+            item_id=created.item.id,
+            title="New title",
+            status="active",
+            language_code="de",
+            actor=actor(),
+            provenance=provenance("test.update_item_core"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert updated.title == "New title"
+    item = get_item(GetItemInput(item_id=created.item.id, actor=actor()), session_factory=session_factory)
+    assert item.item.status == "active"
+    assert item.item.language_code == "de"
+
+
+def test_archived_items_are_hidden_by_default_and_search_can_include_them(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Archive me",
+            category_key="reference",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    update_item_core(
+        UpdateItemCoreInput(
+            item_id=created.item.id,
+            is_archived=True,
+            actor=actor(),
+            provenance=provenance("test.update_item_core"),
+        ),
+        session_factory=session_factory,
+    )
+
+    listed = list_items(ListItemsInput(actor=actor()), session_factory=session_factory)
+    hidden_search = search_content(
+        SearchContentInput(query="Archive me", actor=actor()),
+        session_factory=session_factory,
+    )
+    visible_search = search_content(
+        SearchContentInput(query="Archive me", include_archived=True, actor=actor()),
+        session_factory=session_factory,
+    )
+
+    assert all(item.id != created.item.id for item in listed.items)
+    assert hidden_search.items == []
+    assert [item.id for item in visible_search.items] == [created.item.id]
+
+
+def test_list_items_filters_by_kind_and_category(session_factory) -> None:
+    create_note(
+        CreateNoteInput(
+            title="Research note",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    create_note(
+        CreateNoteInput(
+            title="Decision note",
+            category_key="decision",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    create_project(
+        CreateProjectInput(
+            title="Side project",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+
+    filtered = list_items(
+        ListItemsInput(item_kind="note", category_key="research", actor=actor()),
+        session_factory=session_factory,
+    )
+
+    assert [item.title for item in filtered.items] == ["Research note"]
+
+
+def test_classify_item_sets_primary_and_secondary_categories(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Laptop research",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    classify_item(
+        ClassifyItemInput(
+            item_id=created.item.id,
+            primary_category_key="decision",
+            secondary_category_keys=["learning", "decision"],
+            actor=actor(),
+            provenance=provenance("test.classify_item"),
+        ),
+        session_factory=session_factory,
+    )
+
+    item = get_item(GetItemInput(item_id=created.item.id, actor=actor()), session_factory=session_factory)
+    assert item.item.category_key == "decision"
+    assert item.classifications == ["learning"]
+
+
+def test_patch_item_metadata_can_unset_existing_field(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Metadata note",
+            category_key="research",
+            markdown_body="body",
+            metadata={"description": "keep", "research_subject": "washing machine"},
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    metadata_rows = patch_item_metadata(
+        PatchItemMetadataInput(
+            item_id=created.item.id,
+            set_fields={"description": "updated"},
+            unset_fields=["research_subject"],
+            actor=actor(),
+            provenance=provenance("test.patch_item_metadata"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert [row.field_key for row in metadata_rows] == ["description"]
+    assert metadata_rows[0].value == "updated"
+
+
+def test_list_related_items_returns_linked_item_refs(session_factory) -> None:
+    first = create_note(
+        CreateNoteInput(
+            title="First",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    second = create_note(
+        CreateNoteInput(
+            title="Second",
+            category_key="reference",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    link_items(
+        LinkItemsInput(
+            from_item_id=first.item.id,
+            to_item_id=second.item.id,
+            link_type="related",
+            actor=actor(),
+            provenance=provenance("test.link_items"),
+        ),
+        session_factory=session_factory,
+    )
+
+    result = list_related_items(
+        ListRelatedItemsInput(item_id=first.item.id, actor=actor()),
+        session_factory=session_factory,
+    )
+
+    assert [entry.title for entry in result.related_items] == ["Second"]
+
+
+def test_list_project_items_returns_only_project_members(session_factory) -> None:
+    project = create_project(
+        CreateProjectInput(
+            title="Migration",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+    note_in_project = create_note(
+        CreateNoteInput(
+            title="Included",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    note_outside = create_note(
+        CreateNoteInput(
+            title="Outside",
+            category_key="reference",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    add_item_to_project(
+        AddItemToProjectInput(
+            project_id=project.id,
+            item_id=note_in_project.item.id,
+            actor=actor(),
+            provenance=provenance("test.add_item_to_project"),
+        ),
+        session_factory=session_factory,
+    )
+
+    result = list_project_items(
+        ListProjectItemsInput(project_id=project.id, actor=actor()),
+        session_factory=session_factory,
+    )
+
+    assert [item.title for item in result.items] == ["Included"]
+    assert note_outside.item.id not in [item.id for item in result.items]
+
+
+def test_create_note_can_attach_project_during_create(session_factory) -> None:
+    project = create_project(
+        CreateProjectInput(
+            title="Home office",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+
+    note = create_note(
+        CreateNoteInput(
+            title="Desk research",
+            category_key="research",
+            markdown_body="body",
+            project_ids=[project.id],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    item = get_item(GetItemInput(item_id=note.item.id, actor=actor()), session_factory=session_factory)
+    assert [project_ref.id for project_ref in item.projects] == [project.id]
+
+
+def test_search_content_filters_by_status_and_creator(session_factory) -> None:
+    wife_actor = ActorContext(principal_id="wife")
+    create_note(
+        CreateNoteInput(
+            title="Shared note",
+            category_key="reference",
+            status="active",
+            markdown_body="family context",
+            actor=wife_actor,
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    create_note(
+        CreateNoteInput(
+            title="Heiko note",
+            category_key="reference",
+            status="draft",
+            markdown_body="private context",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    result = search_content(
+        SearchContentInput(
+            statuses=["active"],
+            created_by_principal_ids=["wife"],
+            actor=actor(),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert [item.title for item in result.items] == ["Shared note"]
+
+
+def test_create_project_defaults_to_project_general(session_factory) -> None:
+    project = create_project(
+        CreateProjectInput(
+            title="Default category project",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+
+    item = get_item(GetItemInput(item_id=project.id, actor=actor()), session_factory=session_factory)
+    assert item.item.item_kind == "project"
+    assert item.item.category_key == "project_general"
+
+
+def test_replace_labels_replaces_existing_item_labels(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Replace labels",
+            category_key="research",
+            markdown_body="body",
+            label_paths=["alpha/one", "beta/two"],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    result = replace_labels(
+        AssignLabelsInput(
+            item_id=created.item.id,
+            label_paths=["beta/two", "gamma/three"],
+            actor=actor(),
+            provenance=provenance("test.replace_labels"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert [label.full_path for label in result] == ["beta/two", "gamma/three"]
+    item = get_item(GetItemInput(item_id=created.item.id, actor=actor()), session_factory=session_factory)
+    assert [label.full_path for label in item.labels] == ["beta/two", "gamma/three"]
+
+
+def test_list_labels_returns_known_labels(session_factory) -> None:
+    create_note(
+        CreateNoteInput(
+            title="Label inventory",
+            category_key="research",
+            markdown_body="body",
+            label_paths=["finance/investing", "household/appliances"],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    labels = list_labels(ListLabelsInput(actor=actor(), limit=20), session_factory=session_factory)
+    assert "finance/investing" in [label.full_path for label in labels]

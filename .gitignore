@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+venv/
+env/
+.venv/
+Pipfile.lock
+pip-wheel-metadata/
+build/
+dist/
+*.egg-info/
+*.egg
+
+# SQLite and local database files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+kb/db/*.sqlite
+kb/db/*.sqlite-shm
+kb/db/*.sqlite-wal
+
+# Node / frontend
+node_modules/
+/dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# IDEs / editors
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs and runtime artifacts
+*.log
+kb/logs/
+
+# Local temporary workspace material
+kb/inbox/processing/
+kb/inbox/rejected/
+kb/workspaces/projects/
+kb/workspaces/reviews/
