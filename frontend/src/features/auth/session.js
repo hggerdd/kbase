@@ -1,4 +1,4 @@
-const DEFAULT_ACTOR = import.meta.env.VITE_KBASE_ACTOR ?? "heiko";
+const DEFAULT_ACTOR = import.meta?.env?.VITE_KBASE_ACTOR ?? "heiko";
 
 export function getSession() {
   return {

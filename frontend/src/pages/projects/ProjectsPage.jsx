@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { request } from "../../shared/api/client";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { EmptyState } from "../../shared/ui/EmptyState";
+import { ClockIcon, FolderIcon, SparkIcon } from "../../shared/ui/Icons";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
 import { StatCard } from "../../shared/ui/StatCard";
@@ -56,9 +57,9 @@ export function ProjectsPage() {
         description="This page already supports project creation, but a proper list and detail read model still needs dedicated backend capabilities. The UI is shaped so those reads can slot in without another redesign."
         aside={
           <div className="stats-grid">
-            <StatCard label="Create flow" value="Live" tone="coral" />
-            <StatCard label="Project list" value="Pending" tone="gold" detail="Needs list_projects" />
-            <StatCard label="Project detail" value="Pending" tone="cyan" detail="Needs get_project" />
+            <StatCard label="Create flow" value="Live" tone="coral" icon={SparkIcon} />
+            <StatCard label="Project list" value="Pending" tone="gold" detail="Needs list_projects" icon={FolderIcon} />
+            <StatCard label="Project detail" value="Pending" tone="cyan" detail="Needs get_project" icon={ClockIcon} />
           </div>
         }
       />

@@ -1,4 +1,4 @@
-import { request } from "../../shared/api/client";
+import { request } from "../../shared/api/client.js";
 
 export async function fetchNotes(query = "", { limit = 100 } = {}) {
   const path = query

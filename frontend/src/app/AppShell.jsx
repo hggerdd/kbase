@@ -1,6 +1,7 @@
 import React from "react";
 import { BottomNav } from "./navigation/BottomNav";
 import { NAV_ITEMS } from "./navigation/nav-config";
+import { getNavIcon, HelpIcon, SearchIcon } from "../shared/ui/Icons";
 
 export function AppShell({
   activeRoute,
@@ -19,16 +20,23 @@ export function AppShell({
 
         <nav className="sidebar-nav" aria-label="Primary navigation">
           {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`sidebar-link sidebar-link-rail ${activeRoute === item.id ? "active" : ""}`}
-              onClick={() => onNavigate(item.id)}
-              aria-label={item.label}
-              title={item.label}
-            >
-              <span className="sidebar-link-key">{item.shortLabel}</span>
-            </button>
+            (() => {
+              const Icon = getNavIcon(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`sidebar-link sidebar-link-rail ${activeRoute === item.id ? "active" : ""}`}
+                  onClick={() => onNavigate(item.id)}
+                  aria-label={item.label}
+                  title={item.label}
+                >
+                  <span className="sidebar-link-icon">
+                    <Icon />
+                  </span>
+                </button>
+              );
+            })()
           ))}
         </nav>
 
@@ -54,6 +62,9 @@ export function AppShell({
           </div>
 
           <form className="global-search" onSubmit={onGlobalSearchSubmit}>
+            <span className="input-icon">
+              <SearchIcon />
+            </span>
             <input
               value={globalSearch}
               onChange={(event) => onGlobalSearchChange(event.target.value)}
@@ -65,7 +76,10 @@ export function AppShell({
 
           <div className="app-bar-actions">
             <button className="header-link" type="button">
-              Help
+              <span className="header-link-icon">
+                <HelpIcon />
+              </span>
+              <span>Help</span>
             </button>
             <div className="header-avatar">{activeNav.shortLabel.slice(0, 1)}</div>
           </div>

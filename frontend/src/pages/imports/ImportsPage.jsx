@@ -3,6 +3,7 @@ import { useImportsWorkspace } from "../../features/imports/hooks";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { formatDate, formatFileSize } from "../../shared/utils/format";
 import { EmptyState } from "../../shared/ui/EmptyState";
+import { ClockIcon, FileStackIcon, InboxIcon } from "../../shared/ui/Icons";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
 import { StatCard } from "../../shared/ui/StatCard";
@@ -21,12 +22,18 @@ export function ImportsPage() {
         description="The inbox flow now has a proper place in the app. Pick a raw file, set its intended role, and import it into the item model instead of leaving files stranded outside the knowledge graph."
         aside={
           <div className="stats-grid">
-            <StatCard label="Inbox files" value={workspace.files.length} tone="coral" />
-            <StatCard label="Selected" value={workspace.selectedFile ? "Ready" : "None"} tone="cyan" />
+            <StatCard label="Inbox files" value={workspace.files.length} tone="coral" icon={InboxIcon} />
+            <StatCard
+              label="Selected"
+              value={workspace.selectedFile ? "Ready" : "None"}
+              tone="cyan"
+              icon={FileStackIcon}
+            />
             <StatCard
               label="Last import"
               value={workspace.lastImportedItem ? workspace.lastImportedItem.item_kind : "n/a"}
               tone="gold"
+              icon={ClockIcon}
             />
           </div>
         }
@@ -70,7 +77,7 @@ export function ImportsPage() {
                   <strong>{workspace.selectedFile.filename}</strong>
                   <p>{workspace.selectedFile.relative_path}</p>
                   <small>
-                    {formatFileSize(workspace.selectedFile.size_bytes)} ·{" "}
+                    {formatFileSize(workspace.selectedFile.size_bytes)} |{" "}
                     {formatDate(workspace.selectedFile.modified_at, {
                       dateStyle: "medium",
                       timeStyle: "short",

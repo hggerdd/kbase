@@ -27,6 +27,13 @@ export function NoteEditor({ workspace }) {
     >
       {workspace.selectedNote ? (
         <>
+          {workspace.selectedNoteLoading ? (
+            <div className="detail-loading-banner">
+              <span className="detail-loading-dot" />
+              <span>Loading current note...</span>
+            </div>
+          ) : null}
+
           <div className="editor-grid">
             <label>
               <span>Title</span>

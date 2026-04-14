@@ -11,54 +11,23 @@ import {
   replaceNoteContent,
   updateNoteCore,
   uploadAttachment,
-} from "./api";
-import { EMPTY_DRAFT } from "./constants";
+} from "./api.js";
+import { EMPTY_DRAFT } from "./constants.js";
+import {
+  combineLabelPaths,
+  deriveSelectionTransition,
+  editorFromItemDetail,
+  emptyEditor,
+} from "./state.js";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
-
-function emptyEditor() {
-  return {
-    title: "",
-    category_key: "research",
-    status: "",
-    markdown_body: "",
-    html_body: "",
-    label_paths: "",
-    selected_labels: [],
-  };
-}
-
-function combineLabelPaths(selectedLabels, labelPathsText) {
-  return [
-    ...selectedLabels,
-    ...labelPathsText
-      .split(",")
-      .map((entry) => entry.trim())
-      .filter(Boolean),
-  ].filter((value, index, all) => all.indexOf(value) === index);
-}
-
-function provisionalNoteFromSummary(note) {
-  return {
-    item: note,
-    primary_content_part: null,
-    content_parts: [],
-    files: [],
-    labels: [],
-    classifications: [],
-    metadata: [],
-    linked_assets: [],
-    outgoing_links: [],
-    related_items: [],
-    projects: [],
-  };
-}
 
 export function useNotesWorkspace({ externalSearch = "", externalSearchVersion = 0 } = {}) {
   const noteRequestRef = useRef(0);
   const [notes, setNotes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedNote, setSelectedNote] = useState(null);
+  const [selectedNoteLoading, setSelectedNoteLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [availableLabels, setAvailableLabels] = useState([]);
   const [search, setSearch] = useState(externalSearch);
@@ -104,9 +73,11 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
 
   async function loadNote(itemId) {
     if (!itemId) {
+      setSelectedNoteLoading(false);
       return;
     }
     const requestId = ++noteRequestRef.current;
+    setSelectedNoteLoading(true);
     setError("");
     try {
       const [notePayload, historyPayload] = await Promise.all([fetchNote(itemId), fetchHistory(itemId)]);
@@ -114,36 +85,35 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
         return;
       }
       const markdownBody = notePayload.primary_content_part?.content_text ?? "";
-      const itemLabels = notePayload.labels.map((label) => label.full_path);
       setSelectedNote(notePayload);
       setHistory(historyPayload.events);
-      setEditor({
-        title: notePayload.item.title,
-        category_key: notePayload.item.category_key ?? "research",
-        status: notePayload.item.status ?? "",
-        markdown_body: markdownBody,
-        html_body: await marked.parse(markdownBody),
-        label_paths: "",
-        selected_labels: itemLabels,
-      });
+      setEditor(editorFromItemDetail(notePayload, await marked.parse(markdownBody)));
     } catch (err) {
+      if (requestId !== noteRequestRef.current) {
+        return;
+      }
       setError(err.message);
+    } finally {
+      if (requestId === noteRequestRef.current) {
+        setSelectedNoteLoading(false);
+      }
     }
   }
 
   function handleSelectNote(note) {
-    setSelectedId(note.id);
-    setSelectedNote((current) => (current?.item?.id === note.id ? current : provisionalNoteFromSummary(note)));
-    setHistory([]);
-    setEditor({
-      title: note.title,
-      category_key: note.category_key ?? "research",
-      status: note.status ?? "",
-      markdown_body: "",
-      html_body: "",
-      label_paths: "",
-      selected_labels: [],
-    });
+    const transition = deriveSelectionTransition(selectedId, note);
+    if (transition.shouldReloadImmediately) {
+      void loadNote(note.id);
+      return;
+    }
+
+    setSelectedId(transition.nextSelectedId);
+    setSelectedNote(transition.nextSelectedNote);
+    setSelectedNoteLoading(true);
+    if (transition.shouldClearHistory) {
+      setHistory([]);
+    }
+    setEditor(transition.nextEditor);
   }
 
   function toggleDraftLabel(labelPath) {
@@ -281,6 +251,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     search,
     selectedId,
     selectedNote,
+    selectedNoteLoading,
     setAttachmentFile,
     setDraft,
     setEditor,

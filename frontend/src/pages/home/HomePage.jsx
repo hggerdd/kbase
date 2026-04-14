@@ -4,6 +4,7 @@ import { useHomeSnapshot } from "../../features/notes/hooks";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { formatDate } from "../../shared/utils/format";
 import { EmptyState } from "../../shared/ui/EmptyState";
+import { ClockIcon, InboxIcon, NoteIcon, SparkIcon } from "../../shared/ui/Icons";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
 import { StatCard } from "../../shared/ui/StatCard";
@@ -32,13 +33,14 @@ export function HomePage({ onNavigate, onSeedSearch }) {
         }
         aside={
           <div className="stats-grid">
-            <StatCard label="Recent notes" value={notes.length} tone="cyan" detail="Latest workspace slice" />
-            <StatCard label="Decision notes" value={decisionCount} tone="gold" detail="Fast route to outcomes" />
+            <StatCard label="Recent notes" value={notes.length} tone="cyan" detail="Latest workspace slice" icon={NoteIcon} />
+            <StatCard label="Decision notes" value={decisionCount} tone="gold" detail="Fast route to outcomes" icon={SparkIcon} />
             <StatCard
               label="Inbox files"
               value={imports.files.length}
               tone="coral"
               detail="Ready to be turned into items"
+              icon={InboxIcon}
             />
           </div>
         }
@@ -90,7 +92,7 @@ export function HomePage({ onNavigate, onSeedSearch }) {
           </div>
         </Panel>
 
-        <Panel eyebrow="Imports" title="Inbox pulse" action={<span className="pill">{imports.files.length} queued</span>}>
+        <Panel eyebrow="Imports" title="Inbox pulse" action={<span className="pill"><InboxIcon />{imports.files.length} queued</span>}>
           {imports.loading ? <p className="muted">Scanning inbox...</p> : null}
           {!imports.loading && imports.files.length === 0 ? (
             <p className="muted">Inbox is clear. Drop files into the raw inbox to process them here.</p>
@@ -108,15 +110,15 @@ export function HomePage({ onNavigate, onSeedSearch }) {
         <Panel eyebrow="Roadmap" title="Workspace expansion">
           <div className="roadmap">
             <div>
-              <strong>Notes</strong>
+              <strong><NoteIcon />Notes</strong>
               <p>Operational today with editing, labeling, history, and file attachment.</p>
             </div>
             <div>
-              <strong>Imports</strong>
+              <strong><InboxIcon />Imports</strong>
               <p>Now grounded in the inbox endpoints so files can become first-class items.</p>
             </div>
             <div>
-              <strong>Projects</strong>
+              <strong><ClockIcon />Projects</strong>
               <p>UI is prepared, but list and detail reads still need dedicated capabilities.</p>
             </div>
           </div>
