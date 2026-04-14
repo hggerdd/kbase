@@ -9,6 +9,8 @@ Diese Datei ist die strukturierte ToDo-Liste für dieses Repository. Aufgaben si
 - Acceptance: kurze, prüfbare Kriterien unter der Aufgabe
 
 ## Epic: Label Management
+- [ ] Labels are currently only words. But I want also hierarchical labels (eg. finance\income\data or finance\bank\depot\data) that are not just strings with a divider but realy different levels that can individually be searched (not just "label starts with finance"). And data below finance\income is something else than data under finance\bank
+- [ ] Refactor the app to handle this kind of labels (also in the filter criteria)
 - [ ] Festlegen: Label-Lifecycle & Regeln (delete vs deactivate; rename-Propagation)
 	- Acceptance: Dokument mit Beispiel-Scenarios (rename, deactivate) vorhanden
 	- Owner: TBD
@@ -20,7 +22,10 @@ Diese Datei ist die strukturierte ToDo-Liste für dieses Repository. Aufgaben si
 - [ ] API: POST /api/labels, GET /api/labels, PATCH /api/labels/{id}, POST /api/labels/{id}/deactivate
 - [ ] CLI: mirror capabilities (kbase label create|list|rename|deactivate)
 - [ ] Frontend: Label-Management UI (search, create, rename, deactivate)
+- [ ] Frontend: Label-Management standard modal ui for create, rename, remove that is reused in multiple places (in each place of the app where a lable can be added that modal can be used to spontantinious update the labels and use it)
 - [ ] Tests & Fixtures für Label-Flows
+
+- [ ] Spec & implementation plan: siehe [03_implementation_plan/10_label_management_plan.md](03_implementation_plan/10_label_management_plan.md)
 
 ## Epic: Search
 - [ ] Globale Suchleiste (sichtbar auf allen Seiten, toggle global default: off)
