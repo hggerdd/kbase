@@ -1,4 +1,4 @@
-import { request } from "../../shared/api/client.js";
+import { buildApiUrl, request } from "../../shared/api/client.js";
 import { FILE_ITEM_KINDS } from "./state.js";
 
 export async function fetchFileItemSummaries() {
@@ -33,4 +33,8 @@ export async function replaceFileSummary(itemId, markdownBody) {
       change_reason: "file-summary-edit",
     }),
   });
+}
+
+export function getFileContentUrl(itemId, fileId) {
+  return buildApiUrl(`/api/items/${itemId}/files/${fileId}/content`);
 }

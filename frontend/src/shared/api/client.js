@@ -2,10 +2,14 @@ import { getSession } from "../../features/auth/session.js";
 
 const API_BASE = import.meta?.env?.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+export function buildApiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 export async function request(path, options = {}) {
   const isFormData = options.body instanceof FormData;
   const session = getSession();
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(buildApiUrl(path), {
     headers: {
       "x-kbase-actor": session.actorId,
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
