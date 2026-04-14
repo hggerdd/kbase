@@ -168,13 +168,25 @@ Noch zu klaeren:
 6. danach Frontend-Management ergaenzen
 
 
-# prüfen wo dateien landen
-wenn ich eine datei hochlade von einer notiz aus, dann ist diese unterhalb der files mit der id der notiz gespeichert. ist dies sinnvoll? aus einer datei kann auch wieder etwas entstehen und eine datei ist ebenfalls ein item. lese die dateien unter 02_ideas und prüfe, ob das aktuelle verhalten so geplant war.
-
-
-## datein sind items
-Dateien müssen alle neben dem speicherort metainformationen haben (was ist im modell schon drin). Wichtig es kann neben dem Namen einen Titel haben, labels, categories, summaries (evtl. irgendwann autogeneriert durch pdf summary, png beschreibung, etc.). Dateien können mit anderen items verknüpft sein (erbt dann evtl. Metadaten oder verweist auf diese).
-
 ## prüfe die aktuelle implementierung gegen das konzept
 - passt das so
 - sind wir nicht zu stringent unterwegs und verlieren flexibilität (siehe zuordnung files zu notes)
+
+## speichern on change
+Speichere Änderungen wie bei modernen online tools automatisch uns sofort (mit einer leichten Verzögerung, um unendlich viele schreibvoränge zu vermeiden). Stelle sicher, dass der Nutzer es nicht merkt. Also nicht irgendwelche reloads oder verschieben des Fokus o.ä.
+
+
+## Suchfunktion deutlich verbessern
+Wenn ich etwas suche, dann gib mir eine strukturierten output.
+1. Die Suchleiste soll global sichtbar sein auf jeder seite.
+2. Bei der Suche füge einen Schalter für global hinzu (er ist standardmäßig aus)
+3. bei der Suche verwende die aktuelle seite als Filter (z.B. Notes Seite sucht nur in Notes)
+4. Wenn global ausgewählt ist, Suche im ganzen System
+5. wenn die Suche ausgeführt ist, dann zeige alle Ergebnisse (nach relevanz sortiert an) - auf der Linken Seite
+6. Füge eine explizite Suchseite hinzu. Hier muss es dann möglich sein, advanced zu suchen nach gezielten Kriterien (z.B. Categorie, Label, labelhierarchie, etc.)
+7. Speichere Suchverläufe 
+
+## Ertelle eine Seite, die explizit für Dateien gemacht ist
+Erstelle eine Seite, die dafür da ist, durch die Dateien zu navigieren. Dies soll anhand eines Explorerartigen Baumes erfolgen. Die Struktur des Baumes muss auswählbar sein.
+- Category --> label --> Datei (mit Orginalname, nicht wie er abgelegt ist) --> Füge Filter für Labels hinzu, damit nur diese angezeigt werden
+- Beispiel: Category: finance/income --> labels: Jahr 2025 und 2026. Dann werden in dem Baum alle evtl. Unterkategorien für finance/income als root nodes verwendet. Unterordner sind dann alle Labels die gewählt sind (hier 2025 und 2026). darunter werden alle Dateien angezeigt die diese Kriterien erfüllen (am Besten mit dem Orginalnamen). Wenn auf eine Datei geklickt wird, kommt rechts dabenen (oben rechts) eine detailansicht mit dem titel der datei, metadaten soweit vorhanden und die Zusammenfassung (markdown). Zeige die zusammenfassung in einem rich text element an mit passender formatierung.
