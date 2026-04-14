@@ -23,3 +23,18 @@ export function formatFileSize(size) {
   const precision = currentSize >= 10 || unitIndex === 0 ? 0 : 1;
   return `${currentSize.toFixed(precision)} ${units[unitIndex]}`;
 }
+
+export function formatDuration(seconds) {
+  if (!Number.isFinite(seconds) || seconds == null) {
+    return "calculating";
+  }
+
+  const rounded = Math.max(0, Math.ceil(seconds));
+  if (rounded < 60) {
+    return `${rounded}s left`;
+  }
+
+  const minutes = Math.floor(rounded / 60);
+  const restSeconds = rounded % 60;
+  return `${minutes}m ${restSeconds}s left`;
+}

@@ -1,4 +1,4 @@
-import { request } from "../../shared/api/client.js";
+import { request, uploadRequest } from "../../shared/api/client.js";
 
 export async function fetchNotes(query = "", { limit = 100 } = {}) {
   const path = query
@@ -49,7 +49,11 @@ export async function replaceLabels(itemId, labelPaths) {
   });
 }
 
-export async function uploadAttachment(itemId, file, { caption = "", relationshipRole = "attachment" } = {}) {
+export async function uploadAttachment(
+  itemId,
+  file,
+  { caption = "", relationshipRole = "attachment", onProgress } = {},
+) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("link_to_item_id", itemId);
@@ -57,8 +61,9 @@ export async function uploadAttachment(itemId, file, { caption = "", relationshi
   if (caption) {
     formData.append("link_note", caption);
   }
-  return request("/api/file-items/upload", {
+  return uploadRequest("/api/file-items/upload", {
     method: "POST",
     body: formData,
+    onProgress,
   });
 }

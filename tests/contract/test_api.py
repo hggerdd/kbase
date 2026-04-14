@@ -216,3 +216,33 @@ def test_api_can_list_and_import_inbox_file(monkeypatch, tmp_path) -> None:
     listed_after = client.get("/api/inbox/files")
     assert listed_after.status_code == 200
     assert listed_after.json()["files"] == []
+
+
+def test_api_can_upload_file_item_into_project(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+    monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
+
+    project = client.post(
+        "/api/projects",
+        json={"title": "Upload Project"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    uploaded = client.post(
+        "/api/file-items/upload",
+        data={"project_ids": project_id},
+        files={"file": ("scan.txt", b"project upload", "text/plain")},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert uploaded.status_code == 200
+    payload = uploaded.json()
+    assert [entry["id"] for entry in payload["projects"]] == [project_id]
+
+    project_items = client.get(
+        f"/api/projects/{project_id}/items",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert project_items.status_code == 200
+    assert [item["title"] for item in project_items.json()["items"]] == ["scan.txt"]

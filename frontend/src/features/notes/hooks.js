@@ -45,6 +45,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   const [autosaving, setAutosaving] = useState(false);
   const [autosaveState, setAutosaveState] = useState("idle");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [attachmentFile, setAttachmentFile] = useState(null);
@@ -358,16 +359,26 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
       return;
     }
     setUploading(true);
+    setUploadProgress({
+      bytesPerSecond: null,
+      etaSeconds: null,
+      loaded: 0,
+      percent: 0,
+      total: attachmentFile.size ?? null,
+    });
     setError("");
     setNotice("");
     try {
-      await uploadAttachment(selectedId, attachmentFile);
+      await uploadAttachment(selectedId, attachmentFile, {
+        onProgress: setUploadProgress,
+      });
       setAttachmentFile(null);
       setNotice("Attachment uploaded");
       await loadNote(selectedId);
     } catch (err) {
       setError(err.message);
     } finally {
+      setUploadProgress(null);
       setUploading(false);
     }
   }
@@ -401,6 +412,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     toggleDraftLabel,
     toggleEditorLabel,
     uploading,
+    uploadProgress,
   };
 }
 

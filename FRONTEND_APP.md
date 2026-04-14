@@ -118,6 +118,30 @@ Ohne explizite Werte nutzt die App:
 - API: `http://127.0.0.1:8000`
 - Actor: `heiko`
 
+## Lokales Netzwerk
+
+Fuer LAN-Zugriff muessen Frontend-Host, Backend-Host und CORS zusammenpassen.
+
+Beispiel mit einer Rechner-IP `192.168.178.50`:
+
+### Backend im LAN starten
+
+```powershell
+$env:KBASE_CORS_ORIGINS = "http://192.168.178.50:5173,http://127.0.0.1:5173"
+uv run uvicorn kbase.interfaces.api.main:app --host 0.0.0.0 --port 8000
+```
+
+### Frontend im LAN starten
+
+```powershell
+cd frontend
+$env:VITE_DEV_HOST = "0.0.0.0"
+$env:VITE_API_BASE_URL = "http://192.168.178.50:8000"
+npm run dev
+```
+
+Danach ist das Frontend im lokalen Netzwerk unter `http://192.168.178.50:5173` erreichbar.
+
 ## Datenfluss
 
 Der Datenfluss ist einfach gehalten:
@@ -256,14 +280,14 @@ Speichern passiert in zwei Schritten:
 
 ## CORS
 
-Das FastAPI-Backend ist aktuell fuer folgende Entwicklungs-Origins freigegeben:
+Ohne weitere Konfiguration sind diese Entwicklungs-Origins freigegeben:
 
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
 
-Die Freigabe ist in [main.py](/c:/ttt/kbase/src/kbase/interfaces/api/main.py) konfiguriert.
+Fuer LAN-Zugriff kann die Liste ueber `KBASE_CORS_ORIGINS` als komma-separierte Origin-Liste erweitert oder ersetzt werden.
 
 ## Naechste sinnvolle Schritte
 

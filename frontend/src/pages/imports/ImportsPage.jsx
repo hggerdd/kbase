@@ -18,8 +18,8 @@ export function ImportsPage() {
     <ResponsiveContainer>
       <PageHeader
         eyebrow="Imports"
-        title="Turn raw files into first-class knowledge items"
-        description="The inbox flow now has a proper place in the app. Pick a raw file, set its intended role, and import it into the item model instead of leaving files stranded outside the knowledge graph."
+        title="Imports"
+        description="Import raw inbox files into the item model."
         aside={
           <div className="stats-grid">
             <StatCard label="Inbox files" value={workspace.files.length} tone="coral" icon={InboxIcon} />

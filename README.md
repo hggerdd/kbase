@@ -84,6 +84,18 @@ npm install
 npm run dev
 ```
 
+LAN-Zugriff:
+
+```powershell
+$env:KBASE_CORS_ORIGINS = "http://192.168.178.50:5173,http://127.0.0.1:5173"
+uv run uvicorn kbase.interfaces.api.main:app --host 0.0.0.0 --port 8000
+
+cd frontend
+$env:VITE_DEV_HOST = "0.0.0.0"
+$env:VITE_API_BASE_URL = "http://192.168.178.50:8000"
+npm run dev
+```
+
 ## Erster CLI-Workflow
 
 ### 1. Projekt anlegen

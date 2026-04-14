@@ -141,8 +141,8 @@ export function FileViewerPage() {
     <ResponsiveContainer>
       <PageHeader
         eyebrow="Files"
-        title="Navigate imported files as a real explorer"
-        description="Browse file items by category, label, and original filename. Filter the tree down to a working slice, then inspect metadata and the stored markdown summary without leaving the explorer."
+        title="Files"
+        description="Browse imported file items and inspect their metadata."
       />
 
       <StatusBanner error={workspace.error} notice={workspace.notice} />

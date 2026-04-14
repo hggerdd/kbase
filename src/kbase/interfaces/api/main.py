@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -107,16 +108,24 @@ def _infer_file_item_kind(filename: str, mime_type: str | None) -> str:
     return "document"
 
 
+def _cors_origins() -> list[str]:
+    configured = os.getenv("KBASE_CORS_ORIGINS", "").strip()
+    if configured:
+        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+
+    return [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="kbase API", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-        ],
+        allow_origins=_cors_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -415,6 +424,7 @@ def create_app() -> FastAPI:
         link_to_item_id: str | None = Form(default=None),
         link_type: str | None = Form(default=None),
         link_note: str | None = Form(default=None),
+        project_ids: list[str] = Form(default=[]),
         actor: ActorContext = Depends(_actor_context),
     ) -> ItemDetailResult:
         payload = await file.read()
@@ -433,6 +443,7 @@ def create_app() -> FastAPI:
                 link_to_item_id=link_to_item_id,
                 link_type=link_type,
                 link_note=link_note,
+                project_ids=project_ids,
                 actor=actor,
                 provenance=_provenance("api.file_items.upload"),
             )

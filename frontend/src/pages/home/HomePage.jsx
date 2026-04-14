@@ -19,8 +19,8 @@ export function HomePage({ onNavigate, onSeedSearch }) {
     <ResponsiveContainer>
       <PageHeader
         eyebrow="Home"
-        title="A calm launch surface for your knowledge work"
-        description="Jump back into recent notes, watch the inbox, and use the app as a real workspace instead of a single editor page."
+        title="Home"
+        description="Recent notes, imports, and a quick workspace overview."
         actions={
           <>
             <button className="secondary" type="button" onClick={() => onNavigate("notes")}>

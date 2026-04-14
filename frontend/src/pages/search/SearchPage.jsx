@@ -43,8 +43,8 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
     <ResponsiveContainer>
       <PageHeader
         eyebrow="Search"
-        title="Search across your knowledge base with scoped and advanced filters"
-        description="Use the global search in the header for fast entry, then refine here with category, labels, status, history-backed reruns, and route-aware scoping."
+        title="Search"
+        description="Scoped and advanced search across the knowledge base."
       />
 
       <StatusBanner error={workspace.error} />

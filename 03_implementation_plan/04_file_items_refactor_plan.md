@@ -1,5 +1,8 @@
 # File Items Refactor Plan
+## Status
 
+- Abgearbeitet am 2026-04-14
+- umgesetzt in Frontend-Logik und Regressionstests
 ## Ziel
 
 Dateien sollen im Kernmodell keine untergeordneten `assets` eines bestehenden Items mehr sein, sondern selbst vollwertige `items`.

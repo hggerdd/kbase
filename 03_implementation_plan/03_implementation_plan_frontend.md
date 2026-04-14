@@ -1,5 +1,10 @@
 # Frontend Implementation Plan
 
+## Status
+
+- Abgearbeitet am 2026-04-14
+- umgesetzt in Frontend-Logik und Regressionstests
+
 ## Zielbild
 
 Die Web-App soll von Anfang an als grober Produkt-Rahmen gedacht werden und nicht nur als einzelne Notes-Seite.

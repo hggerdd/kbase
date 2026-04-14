@@ -59,43 +59,39 @@ export function AppShell({
               <strong>kbase</strong>
               <span>{activeNav.label}</span>
             </div>
-            <div className="app-breadcrumbs">
-              <span>Workspace</span>
-              <span className="breadcrumb-sep">/</span>
-              <span>{activeNav.label}</span>
-            </div>
           </div>
 
           <form className="global-search" onSubmit={onGlobalSearchSubmit}>
             <span className="input-icon">
               <SearchIcon />
             </span>
-            <input
-              value={globalSearch}
-              onChange={(event) => onGlobalSearchChange(event.target.value)}
-              placeholder="Search notes, docs, decisions, projects"
-              aria-label="Global search"
-            />
-            <label className="search-toggle">
+            <div className="global-search-input-group">
               <input
-                type="checkbox"
-                checked={globalScope}
-                onChange={(event) => onGlobalScopeChange(event.target.checked)}
+                value={globalSearch}
+                onChange={(event) => onGlobalSearchChange(event.target.value)}
+                placeholder="Search notes, docs, decisions, projects"
+                aria-label="Global search"
               />
-              <span>Global</span>
-            </label>
+              <label className="search-toggle global-search-toggle">
+                <input
+                  type="checkbox"
+                  checked={globalScope}
+                  onChange={(event) => onGlobalScopeChange(event.target.checked)}
+                />
+                <span>Global</span>
+              </label>
+            </div>
             <span className="search-scope-pill">{globalScope ? "All content" : searchScope.label}</span>
-            <button type="submit">Search</button>
+            <button className="global-search-submit" type="submit">Search</button>
           </form>
 
           <div className="app-bar-actions">
-            <button className="header-link" type="button">
+            <button className="header-link header-help-button" type="button" aria-label="Help" title="Help">
               <span className="header-link-icon">
                 <HelpIcon />
               </span>
-              <span>Help</span>
+              <span className="header-link-text">Help</span>
             </button>
-            <div className="header-avatar">{activeNav.shortLabel.slice(0, 1)}</div>
           </div>
         </header>
 

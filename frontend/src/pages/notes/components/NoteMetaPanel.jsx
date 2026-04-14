@@ -1,5 +1,5 @@
 import React from "react";
-import { formatDate, formatFileSize } from "../../../shared/utils/format";
+import { formatDate, formatDuration, formatFileSize } from "../../../shared/utils/format";
 
 export function NoteMetaPanel({ workspace }) {
   const labelSuggestions = workspace.availableLabels.slice(0, 18);
@@ -66,6 +66,20 @@ export function NoteMetaPanel({ workspace }) {
             type="file"
             onChange={(event) => workspace.setAttachmentFile(event.target.files?.[0] ?? null)}
           />
+          {workspace.uploading ? (
+            <div className="upload-progress" aria-live="polite">
+              <div className="upload-progress-track">
+                <div className="upload-progress-bar" style={{ width: `${workspace.uploadProgress?.percent ?? 0}%` }} />
+              </div>
+              <span>{workspace.uploadProgress?.percent ?? 0}%</span>
+              <span className="muted">
+                {workspace.uploadProgress?.bytesPerSecond
+                  ? `${formatFileSize(workspace.uploadProgress.bytesPerSecond)}/s`
+                  : "starting"}
+              </span>
+              <span className="muted">{formatDuration(workspace.uploadProgress?.etaSeconds)}</span>
+            </div>
+          ) : null}
           <button className="primary" type="submit" disabled={!workspace.attachmentFile || workspace.uploading}>
             {workspace.uploading ? "Uploading..." : "Attach file item"}
           </button>
