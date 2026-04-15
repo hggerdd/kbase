@@ -32,6 +32,12 @@ function normalizeValue(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function labelMatchesFilter(labelPath, filterPath) {
+  const normalizedLabel = normalizeValue(labelPath);
+  const normalizedFilter = normalizeValue(filterPath);
+  return normalizedLabel === normalizedFilter || normalizedLabel.startsWith(`${normalizedFilter}/`);
+}
+
 export function itemMatchesFileFilters(detail, filters) {
   const query = normalizeValue(filters.query);
   const categoryPrefix = normalizeValue(filters.categoryPrefix);
@@ -53,7 +59,7 @@ export function itemMatchesFileFilters(detail, filters) {
     return false;
   }
 
-  if (labels.length > 0 && !labels.every((label) => itemLabels.includes(normalizeValue(label)))) {
+  if (labels.length > 0 && !labels.every((label) => itemLabels.some((itemLabel) => labelMatchesFilter(itemLabel, label)))) {
     return false;
   }
 
@@ -126,7 +132,10 @@ export function buildFileTree(details, { treeLayout, selectedLabels = [], catego
     const categoryKey = detail.item.category_key ?? "uncategorized";
     const categorySegments = getCategorySegments(categoryKey, categoryPrefix);
     const itemLabels = getItemLabels(detail);
-    const displayLabels = selectedLabels.length > 0 ? itemLabels.filter((label) => selectedLabels.includes(label)) : itemLabels;
+    const displayLabels =
+      selectedLabels.length > 0
+        ? itemLabels.filter((label) => selectedLabels.some((selectedLabel) => labelMatchesFilter(label, selectedLabel)))
+        : itemLabels;
     const labelSegments = displayLabels.length > 0 ? displayLabels : ["unlabeled"];
 
     if (treeLayout === "category-file") {

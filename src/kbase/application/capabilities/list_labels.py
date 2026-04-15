@@ -18,5 +18,11 @@ def list_labels(
     with SqlAlchemyUnitOfWork(session_factory or get_session_factory()) as uow:
         assert uow.session is not None
         repos = build_repositories(uow.session)
-        labels = repos.labels.list_labels(query=data.query, limit=data.limit)
+        labels = repos.labels.list_labels(
+            query=data.query,
+            limit=data.limit,
+            include_inactive=data.include_inactive,
+            parent_id=data.parent_id,
+            full_path_prefix=data.full_path_prefix,
+        )
         return [to_label_data(label) for label in labels]

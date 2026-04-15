@@ -28,9 +28,15 @@ function getAutosaveDelayMs() {
 }
 
 export function useNotesWorkspace({ externalSearch = "", externalSearchVersion = 0 } = {}) {
+  const notesRequestRef = useRef(0);
   const noteRequestRef = useRef(0);
+  const selectionActionRef = useRef(0);
   const autosaveTimerRef = useRef(null);
   const lastPersistedEditorRef = useRef(serializeEditorState(emptyEditor()));
+  const persistedEditorByNoteIdRef = useRef(new Map());
+  const selectedIdRef = useRef(null);
+  const selectedNoteRef = useRef(null);
+  const editorRef = useRef(emptyEditor());
   const [notes, setNotes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedNote, setSelectedNote] = useState(null);
@@ -50,11 +56,52 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   const [notice, setNotice] = useState("");
   const [attachmentFile, setAttachmentFile] = useState(null);
 
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+
+  useEffect(() => {
+    selectedNoteRef.current = selectedNote;
+  }, [selectedNote]);
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
   function clearAutosaveTimer() {
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
     }
+  }
+
+  function commitEditor(nextEditorOrUpdater) {
+    if (typeof nextEditorOrUpdater === "function") {
+      const nextEditor = nextEditorOrUpdater(editorRef.current);
+      editorRef.current = nextEditor;
+      setEditor(nextEditor);
+      return;
+    }
+    editorRef.current = nextEditorOrUpdater;
+    setEditor(nextEditorOrUpdater);
+  }
+
+  function commitSelectedId(nextSelectedId) {
+    selectedIdRef.current = nextSelectedId;
+    setSelectedId(nextSelectedId);
+  }
+
+  function commitSelectedNote(nextSelectedNote) {
+    if (typeof nextSelectedNote === "function") {
+      setSelectedNote((current) => {
+        const nextNote = nextSelectedNote(current);
+        selectedNoteRef.current = nextNote;
+        return nextNote;
+      });
+      return;
+    }
+    selectedNoteRef.current = nextSelectedNote;
+    setSelectedNote(nextSelectedNote);
   }
 
   function buildPersistedEditor(editorSnapshot) {
@@ -73,7 +120,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   function syncLocalNoteState(itemId, persistedEditor) {
     const now = new Date().toISOString();
 
-    setSelectedNote((current) => {
+    commitSelectedNote((current) => {
       if (!current || current.item.id !== itemId) {
         return current;
       }
@@ -116,13 +163,46 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     );
   }
 
+  function syncLocalNoteLabels(itemId, labels) {
+    const labelPaths = labels.map((label) => label.full_path);
+
+    commitSelectedNote((current) => {
+      if (!current || current.item.id !== itemId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        labels,
+      };
+    });
+
+    commitEditor((current) => {
+      if (selectedIdRef.current !== itemId) {
+        return current;
+      }
+      const nextEditor = {
+        ...current,
+        item_id: itemId,
+        label_paths: "",
+        selected_labels: labelPaths,
+      };
+      persistedEditorByNoteIdRef.current.set(itemId, serializeEditorState(nextEditor));
+      lastPersistedEditorRef.current = serializeEditorState(nextEditor);
+      return nextEditor;
+    });
+  }
+
   async function persistEditor(itemId, editorSnapshot, { source }) {
     if (!itemId) {
       return false;
     }
+    if (editorSnapshot.item_id !== itemId) {
+      return false;
+    }
 
     const snapshotKey = serializeEditorState(editorSnapshot);
-    if (snapshotKey === lastPersistedEditorRef.current) {
+    if (snapshotKey === persistedEditorByNoteIdRef.current.get(itemId)) {
       return true;
     }
 
@@ -146,11 +226,16 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
         change_reason: source === "manual" ? "web-edit" : "web-autosave",
       });
       await replaceLabels(itemId, persistedEditor.label_paths);
-      lastPersistedEditorRef.current = snapshotKey;
+      persistedEditorByNoteIdRef.current.set(itemId, snapshotKey);
+      if (selectedIdRef.current === itemId) {
+        lastPersistedEditorRef.current = snapshotKey;
+      }
       syncLocalNoteState(itemId, persistedEditor);
       if (source === "manual") {
-        setNotice("Note saved");
-      } else {
+        if (selectedIdRef.current === itemId) {
+          setNotice("Note saved");
+        }
+      } else if (selectedIdRef.current === itemId) {
         setAutosaveState("saved");
       }
       return true;
@@ -169,25 +254,37 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     }
   }
 
-  async function loadNotes(query = "") {
+  async function loadNotes(query = "", { autoSelect = true } = {}) {
+    const requestId = ++notesRequestRef.current;
     setLoading(true);
     setError("");
     try {
       const items = await fetchNotes(query);
+      if (requestId !== notesRequestRef.current) {
+        return;
+      }
       setNotes(items);
       setSelectedId((currentId) => {
-        if (!currentId && items.length > 0) {
-          return items[0].id;
+        let nextId = currentId;
+        if (!autoSelect && !currentId) {
+          nextId = null;
+        } else if (!currentId && items.length > 0) {
+          nextId = items[0].id;
+        } else if (currentId && !items.some((item) => item.id === currentId)) {
+          nextId = autoSelect ? items[0]?.id ?? null : null;
         }
-        if (currentId && !items.some((item) => item.id === currentId)) {
-          return items[0]?.id ?? null;
-        }
-        return currentId;
+        selectedIdRef.current = nextId;
+        return nextId;
       });
     } catch (err) {
+      if (requestId !== notesRequestRef.current) {
+        return;
+      }
       setError(err.message);
     } finally {
-      setLoading(false);
+      if (requestId === notesRequestRef.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -210,69 +307,77 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     setError("");
     try {
       const [notePayload, historyPayload] = await Promise.all([fetchNote(itemId), fetchHistory(itemId)]);
-      if (requestId !== noteRequestRef.current) {
+      if (requestId !== noteRequestRef.current || selectedIdRef.current !== itemId) {
         return;
       }
       const markdownBody = notePayload.primary_content_part?.content_text ?? "";
       const nextEditor = editorFromItemDetail(notePayload, await marked.parse(markdownBody));
-      setSelectedNote(notePayload);
+      commitSelectedNote(notePayload);
       setHistory(historyPayload.events);
-      setEditor(nextEditor);
-      lastPersistedEditorRef.current = serializeEditorState(nextEditor);
+      commitEditor(nextEditor);
+      const persistedKey = serializeEditorState(nextEditor);
+      persistedEditorByNoteIdRef.current.set(itemId, persistedKey);
+      lastPersistedEditorRef.current = persistedKey;
       setAutosaveState("idle");
     } catch (err) {
-      if (requestId !== noteRequestRef.current) {
+      if (requestId !== noteRequestRef.current || selectedIdRef.current !== itemId) {
         return;
       }
       setError(err.message);
     } finally {
-      if (requestId === noteRequestRef.current) {
+      if (requestId === noteRequestRef.current && selectedIdRef.current === itemId) {
         setSelectedNoteLoading(false);
       }
     }
   }
 
-  function handleSelectNote(note) {
-    const transition = deriveSelectionTransition(selectedId, note, {
-      isDirty: serializeEditorState(editor) !== lastPersistedEditorRef.current,
+  async function handleSelectNote(note, { saveCurrent = false } = {}) {
+    const actionId = ++selectionActionRef.current;
+    const currentSelectedId = selectedIdRef.current;
+    const currentEditor = editorRef.current;
+    const currentSnapshot = serializeEditorState(currentEditor);
+    const currentPersistedSnapshot = currentSelectedId
+      ? persistedEditorByNoteIdRef.current.get(currentSelectedId)
+      : serializeEditorState(emptyEditor());
+    const currentIsDirty = currentSnapshot !== currentPersistedSnapshot;
+
+    if (saveCurrent && currentSelectedId && currentIsDirty) {
+      clearAutosaveTimer();
+      await persistEditor(currentSelectedId, currentEditor, { source: "manual" });
+      if (actionId !== selectionActionRef.current) {
+        return false;
+      }
+    }
+
+    const activeSelectedId = selectedIdRef.current;
+    const activeEditor = editorRef.current;
+    const activeSnapshot = serializeEditorState(activeEditor);
+    const activePersistedSnapshot = activeSelectedId
+      ? persistedEditorByNoteIdRef.current.get(activeSelectedId)
+      : serializeEditorState(emptyEditor());
+    const transition = deriveSelectionTransition(activeSelectedId, note, {
+      isDirty: activeSnapshot !== activePersistedSnapshot,
     });
 
     if (transition.shouldReloadImmediately) {
       void loadNote(note.id);
-      return;
+      return true;
     }
 
     if (transition.isSameSelection) {
-      return;
+      return true;
     }
 
     clearAutosaveTimer();
-    setSelectedId(transition.nextSelectedId);
-    setSelectedNote(transition.nextSelectedNote);
+    commitSelectedId(transition.nextSelectedId);
+    commitSelectedNote(transition.nextSelectedNote);
     setSelectedNoteLoading(true);
     setAutosaveState("idle");
     if (transition.shouldClearHistory) {
       setHistory([]);
     }
-    setEditor(transition.nextEditor);
-  }
-
-  function toggleDraftLabel(labelPath) {
-    setDraft((current) => ({
-      ...current,
-      selected_labels: current.selected_labels.includes(labelPath)
-        ? current.selected_labels.filter((entry) => entry !== labelPath)
-        : [...current.selected_labels, labelPath],
-    }));
-  }
-
-  function toggleEditorLabel(labelPath) {
-    setEditor((current) => ({
-      ...current,
-      selected_labels: current.selected_labels.includes(labelPath)
-        ? current.selected_labels.filter((entry) => entry !== labelPath)
-        : [...current.selected_labels, labelPath],
-    }));
+    commitEditor(transition.nextEditor);
+    return true;
   }
 
   useEffect(() => {
@@ -296,14 +401,16 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     }
 
     const currentSnapshot = serializeEditorState(editor);
-    if (currentSnapshot === lastPersistedEditorRef.current) {
+    if (currentSnapshot === persistedEditorByNoteIdRef.current.get(selectedId)) {
       return;
     }
 
     clearAutosaveTimer();
     setAutosaveState("pending");
+    const autosaveItemId = selectedId;
+    const autosaveEditor = editor;
     autosaveTimerRef.current = setTimeout(() => {
-      void persistEditor(selectedId, editor, { source: "autosave" });
+      void persistEditor(autosaveItemId, autosaveEditor, { source: "autosave" });
     }, getAutosaveDelayMs());
 
     return () => clearAutosaveTimer();
@@ -312,6 +419,10 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   async function handleSearchSubmit(event) {
     event.preventDefault();
     await loadNotes(search);
+  }
+
+  async function runSearch(query) {
+    await loadNotes(query);
   }
 
   async function handleCreateNote(event) {
@@ -332,7 +443,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
       setNotice("Note created");
       await loadNotes(search);
       await loadAvailableLabels();
-      setSelectedId(payload.item.id);
+      commitSelectedId(payload.item.id);
       return true;
     } catch (err) {
       setError(err.message);
@@ -343,14 +454,100 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   }
 
   async function handleSaveSelected() {
-    if (!selectedId) {
+    const itemId = selectedIdRef.current;
+    if (!itemId) {
       return;
     }
+    const editorSnapshot = editorRef.current;
     clearAutosaveTimer();
     setError("");
     setNotice("");
-    await persistEditor(selectedId, editor, { source: "manual" });
+    await persistEditor(itemId, editorSnapshot, { source: "manual" });
     await loadAvailableLabels();
+  }
+
+  function closeSelectedNote() {
+    selectionActionRef.current += 1;
+    noteRequestRef.current += 1;
+    clearAutosaveTimer();
+    commitSelectedId(null);
+    commitSelectedNote(null);
+    setSelectedNoteLoading(false);
+    setHistory([]);
+    const nextEditor = emptyEditor();
+    commitEditor(nextEditor);
+    lastPersistedEditorRef.current = serializeEditorState(nextEditor);
+    setAutosaveState("idle");
+  }
+
+  async function deleteSelectedNote() {
+    if (!selectedId) {
+      return false;
+    }
+
+    clearAutosaveTimer();
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await updateNoteCore(selectedId, { is_archived: true });
+      closeSelectedNote();
+      await loadNotes(search, { autoSelect: false });
+      setNotice("Note deleted");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateSelectedNoteFields(fields) {
+    const itemId = selectedIdRef.current;
+    if (!itemId) {
+      return false;
+    }
+
+    const nextEditor = {
+      ...editorRef.current,
+      ...fields,
+    };
+    commitEditor(nextEditor);
+    clearAutosaveTimer();
+    setError("");
+    setNotice("");
+    const success = await persistEditor(itemId, nextEditor, { source: "autosave" });
+    if (success) {
+      await loadAvailableLabels();
+    }
+    return success;
+  }
+
+  async function updateSelectedNoteLabels(labelPaths) {
+    const itemId = selectedIdRef.current;
+    if (!itemId) {
+      return false;
+    }
+
+    clearAutosaveTimer();
+    setError("");
+    setNotice("");
+    setAutosaving(true);
+    setAutosaveState("saving");
+    try {
+      const labels = await replaceLabels(itemId, labelPaths);
+      syncLocalNoteLabels(itemId, labels);
+      setAutosaveState("saved");
+      await loadAvailableLabels();
+      return true;
+    } catch (err) {
+      setError(err.message);
+      setAutosaveState("error");
+      return false;
+    } finally {
+      setAutosaving(false);
+    }
   }
 
   async function handleUploadAttachment(event) {
@@ -388,6 +585,8 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     autosaveState,
     autosaving,
     availableLabels,
+    closeSelectedNote,
+    deleteSelectedNote,
     draft,
     editor,
     error,
@@ -405,14 +604,18 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     selectedId,
     selectedNote,
     selectedNoteLoading,
+    runSearch,
     setAttachmentFile,
     setDraft,
-    setEditor,
+    setEditor: commitEditor,
     setSearch,
-    toggleDraftLabel,
-    toggleEditorLabel,
+    updateSelectedNoteLabels,
+    updateSelectedNoteFields,
     uploading,
     uploadProgress,
+    refreshAvailableLabels() {
+      void loadAvailableLabels();
+    },
   };
 }
 

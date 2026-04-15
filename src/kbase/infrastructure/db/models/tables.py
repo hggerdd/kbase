@@ -158,6 +158,8 @@ class LabelNodeModel(Base):
     full_path: Mapped[str] = mapped_column(Text, unique=True)
     parent_id: Mapped[str | None] = mapped_column(ForeignKey("label_nodes.id"))
     description: Mapped[str | None] = mapped_column(Text)
+    depth: Mapped[int] = mapped_column(Integer, default=0)
+    meta_json: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[str] = mapped_column(Text)
     updated_at: Mapped[str] = mapped_column(Text)

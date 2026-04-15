@@ -22,6 +22,7 @@ def search_content(
             item_kinds=data.item_kinds,
             category_keys=data.category_keys,
             label_paths=data.label_paths,
+            label_path_prefixes=data.label_path_prefixes,
             statuses=data.statuses,
             created_by_principal_ids=data.created_by_principal_ids,
             project_id=data.project_id,
@@ -34,4 +35,3 @@ def search_content(
             limit=data.limit,
             offset=data.offset,
         )
-

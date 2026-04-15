@@ -4,8 +4,11 @@ from kbase.application.capabilities.add_item_to_project import add_item_to_proje
 from kbase.application.capabilities.assign_labels import assign_labels
 from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
 from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.delete_label import delete_label
+from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
@@ -16,6 +19,8 @@ from kbase.application.capabilities.list_project_items import list_project_items
 from kbase.application.capabilities.list_related_items import list_related_items
 from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
 from kbase.application.capabilities.register_asset import register_asset
+from kbase.application.capabilities.reactivate_label import reactivate_label
+from kbase.application.capabilities.rename_label import rename_label
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
@@ -25,8 +30,11 @@ from kbase.application.dto.capabilities import (
     AssignLabelsInput,
     AttachAssetToItemInput,
     ClassifyItemInput,
+    CreateLabelInput,
     CreateNoteInput,
     CreateProjectInput,
+    DeleteLabelInput,
+    DeactivateLabelInput,
     GetItemInput,
     LinkItemsInput,
     ListLabelsInput,
@@ -35,6 +43,8 @@ from kbase.application.dto.capabilities import (
     ListRelatedItemsInput,
     PatchItemMetadataInput,
     RegisterAssetInput,
+    ReactivateLabelInput,
+    RenameLabelInput,
     ReplaceContentPartInput,
     SearchContentInput,
     UpdateItemCoreInput,
@@ -601,3 +611,156 @@ def test_list_labels_returns_known_labels(session_factory) -> None:
 
     labels = list_labels(ListLabelsInput(actor=actor(), limit=20), session_factory=session_factory)
     assert "finance/investing" in [label.full_path for label in labels]
+
+
+def test_label_lifecycle_supports_create_rename_deactivate_and_reactivate(session_factory) -> None:
+    root = create_label(
+        CreateLabelInput(
+            name="finance",
+            actor=actor(),
+            provenance=provenance("test.create_label"),
+        ),
+        session_factory=session_factory,
+    )
+    child = create_label(
+        CreateLabelInput(
+            name="investing",
+            parent_id=root.id,
+            actor=actor(),
+            provenance=provenance("test.create_label"),
+        ),
+        session_factory=session_factory,
+    )
+    grandchild = create_label(
+        CreateLabelInput(
+            name="etf",
+            parent_id=child.id,
+            actor=actor(),
+            provenance=provenance("test.create_label"),
+        ),
+        session_factory=session_factory,
+    )
+
+    renamed = rename_label(
+        RenameLabelInput(
+            label_id=child.id,
+            name="assets",
+            actor=actor(),
+            provenance=provenance("test.rename_label"),
+        ),
+        session_factory=session_factory,
+    )
+    assert renamed.full_path == "finance/assets"
+
+    listed = list_labels(
+        ListLabelsInput(full_path_prefix="finance/assets", actor=actor(), limit=20),
+        session_factory=session_factory,
+    )
+    assert [label.full_path for label in listed] == ["finance/assets", "finance/assets/etf"]
+
+    deactivated = deactivate_label(
+        DeactivateLabelInput(
+            label_id=child.id,
+            actor=actor(),
+            provenance=provenance("test.deactivate_label"),
+        ),
+        session_factory=session_factory,
+    )
+    assert deactivated.is_active is False
+
+    active_only = list_labels(ListLabelsInput(actor=actor(), limit=20), session_factory=session_factory)
+    assert "finance/assets" not in [label.full_path for label in active_only]
+
+    inactive_visible = list_labels(
+        ListLabelsInput(actor=actor(), limit=20, include_inactive=True),
+        session_factory=session_factory,
+    )
+    assert "finance/assets/etf" in [label.full_path for label in inactive_visible]
+
+    reactivated = reactivate_label(
+        ReactivateLabelInput(
+            label_id=child.id,
+            actor=actor(),
+            provenance=provenance("test.reactivate_label"),
+        ),
+        session_factory=session_factory,
+    )
+    assert reactivated.is_active is True
+
+    final_labels = list_labels(
+        ListLabelsInput(full_path_prefix="finance/assets", actor=actor(), limit=20),
+        session_factory=session_factory,
+    )
+    assert [label.full_path for label in final_labels] == ["finance/assets", "finance/assets/etf"]
+
+
+def test_delete_label_removes_subtree_and_item_assignments(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Delete labels",
+            category_key="research",
+            markdown_body="body",
+            label_paths=["finance/assets/etf", "finance/tax"],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    labels = list_labels(
+        ListLabelsInput(full_path_prefix="finance/assets", actor=actor(), limit=20),
+        session_factory=session_factory,
+    )
+    root = next(label for label in labels if label.full_path == "finance/assets")
+
+    result = delete_label(
+        DeleteLabelInput(
+            label_id=root.id,
+            actor=actor(),
+            provenance=provenance("test.delete_label"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert result.deleted_count == 2
+    remaining_labels = list_labels(
+        ListLabelsInput(actor=actor(), include_inactive=True, limit=20),
+        session_factory=session_factory,
+    )
+    assert "finance/assets" not in [label.full_path for label in remaining_labels]
+    item = get_item(GetItemInput(item_id=created.item.id, actor=actor()), session_factory=session_factory)
+    assert [label.full_path for label in item.labels] == ["finance/tax"]
+
+
+def test_search_content_can_filter_by_label_branch(session_factory) -> None:
+    create_note(
+        CreateNoteInput(
+            title="Depot plan",
+            category_key="research",
+            markdown_body="ETF allocation",
+            label_paths=["finance/bank/depot/data"],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    create_note(
+        CreateNoteInput(
+            title="Salary note",
+            category_key="research",
+            markdown_body="Income tax",
+            label_paths=["finance/income/data"],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    result = search_content(
+        SearchContentInput(
+            label_path_prefixes=["finance/bank"],
+            actor=actor(),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert [item.title for item in result.items] == ["Depot plan"]

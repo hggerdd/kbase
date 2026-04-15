@@ -6,8 +6,6 @@ import { NOTE_CATEGORIES } from "../../../features/notes/constants";
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
 export function CreateNotePanel({ workspace, isOpen, onClose }) {
-  const labelSuggestions = workspace.availableLabels.slice(0, 18);
-
   if (!isOpen) {
     return null;
   }
@@ -58,31 +56,6 @@ export function CreateNotePanel({ workspace, isOpen, onClose }) {
                 ))}
               </select>
             </label>
-          </div>
-
-          <label>
-            <span>New labels</span>
-            <input
-              value={workspace.draft.label_paths}
-              onChange={(event) => workspace.setDraft({ ...workspace.draft, label_paths: event.target.value })}
-              placeholder="research/alpha, docs/contracts"
-            />
-          </label>
-
-          <div className="suggestions-block">
-            <span>Use existing labels</span>
-            <div className="token-list selectable">
-              {labelSuggestions.map((label) => (
-                <button
-                  key={label.id}
-                  type="button"
-                  className={`token ${workspace.draft.selected_labels.includes(label.full_path) ? "active" : ""}`}
-                  onClick={() => workspace.toggleDraftLabel(label.full_path)}
-                >
-                  {label.full_path}
-                </button>
-              ))}
-            </div>
           </div>
 
           <label className="note-modal-editor">

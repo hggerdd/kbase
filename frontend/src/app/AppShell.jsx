@@ -2,7 +2,27 @@ import React, { useEffect, useState } from "react";
 import { BottomNav } from "./navigation/BottomNav";
 import { NAV_ITEMS } from "./navigation/nav-config";
 import { getNavIcon, HelpIcon, PlusIcon, SearchIcon } from "../shared/ui/Icons";
+import { AppBarPageHeader } from "../shared/ui/AppBarPageHeader";
 import { getSearchScopeForRoute } from "../features/search/state.js";
+
+const PAGE_HEADER_CONFIG = {
+  notes: {
+    title: "Notizen",
+    singular: "Notiz",
+    plural: "Notizen",
+    addLabel: "Notiz hinzufügen",
+    createEvent: "kbase:notes-create",
+    statusLabel: "Notes connected",
+  },
+  projects: {
+    title: "Projekt",
+    singular: "Projekt",
+    plural: "Projekte",
+    addLabel: "Projekt hinzufügen",
+    createEvent: "kbase:projects-create",
+    statusLabel: "Projects connected",
+  },
+};
 
 export function AppShell({
   activeRoute,
@@ -17,32 +37,38 @@ export function AppShell({
 }) {
   const activeNav = NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
   const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
-  const showGlobalSearch = activeRoute !== "projects";
-  const [projectHeaderMeta, setProjectHeaderMeta] = useState({ count: 0 });
+  const pageHeaderConfig = PAGE_HEADER_CONFIG[activeRoute] ?? null;
+  const showGlobalSearch = !pageHeaderConfig;
+  const [pageHeaderMeta, setPageHeaderMeta] = useState({
+    notes: { count: 0 },
+    projects: { count: 0 },
+  });
 
   useEffect(() => {
-    function handleProjectHeaderMeta(event) {
-      setProjectHeaderMeta({ count: Number(event.detail?.count ?? 0) });
+    function handlePageHeaderMeta(event) {
+      const route = event.detail?.route;
+      if (!route || !PAGE_HEADER_CONFIG[route]) {
+        return;
+      }
+      setPageHeaderMeta((current) => ({
+        ...current,
+        [route]: { count: Number(event.detail?.count ?? 0) },
+      }));
     }
 
-    window.addEventListener("kbase:projects-header-meta", handleProjectHeaderMeta);
-    return () => window.removeEventListener("kbase:projects-header-meta", handleProjectHeaderMeta);
+    window.addEventListener("kbase:page-header-meta", handlePageHeaderMeta);
+    return () => window.removeEventListener("kbase:page-header-meta", handlePageHeaderMeta);
   }, []);
 
-  const projectMeta = activeRoute === "projects" ? (
-    <div className="app-bar-project-meta">
-      <strong>Projekt</strong>
-      <span className="projects-header-count">
-        {projectHeaderMeta.count} {projectHeaderMeta.count === 1 ? "Projekt" : "Projekte"}
-      </span>
-      <span className="projects-header-status" aria-label="Projects connected" title="Projects connected">
-        <span className="pulse-dot" />
-      </span>
-    </div>
-  ) : null;
+  const activePageMeta = pageHeaderMeta[activeRoute] ?? { count: 0 };
+  const activeCountLabel = pageHeaderConfig
+    ? `${activePageMeta.count} ${activePageMeta.count === 1 ? pageHeaderConfig.singular : pageHeaderConfig.plural}`
+    : "";
 
-  const handleProjectCreateClick = () => {
-    window.dispatchEvent(new CustomEvent("kbase:projects-create"));
+  const handlePageCreateClick = () => {
+    if (pageHeaderConfig?.createEvent) {
+      window.dispatchEvent(new CustomEvent(pageHeaderConfig.createEvent));
+    }
   };
 
   return (
@@ -80,13 +106,15 @@ export function AppShell({
       </aside>
 
       <section className="app-content">
-        <header className={`app-bar ${showGlobalSearch ? "" : "app-bar-projects"}`.trim()}>
-          <div className="app-bar-left">
-            <div className="app-bar-brand">
-              <strong>kbase</strong>
-              {showGlobalSearch ? <span>{activeNav.label}</span> : null}
+        <header className={`app-bar ${showGlobalSearch ? "" : "app-bar-page"}`.trim()}>
+          {showGlobalSearch ? (
+            <div className="app-bar-left">
+              <div className="app-bar-brand">
+                <strong>kbase</strong>
+                <span>{activeNav.label}</span>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           {showGlobalSearch ? (
             <form className="global-search" onSubmit={onGlobalSearchSubmit}>
@@ -113,7 +141,13 @@ export function AppShell({
               <button className="global-search-submit" type="submit">Search</button>
             </form>
           ) : (
-            <div className="app-bar-project-slot">{projectMeta}</div>
+            <div className="app-bar-page-slot">
+              <AppBarPageHeader
+                title={pageHeaderConfig.title}
+                countLabel={activeCountLabel}
+                status={{ label: pageHeaderConfig.statusLabel }}
+              />
+            </div>
           )}
 
           <div className="app-bar-actions">
@@ -121,9 +155,9 @@ export function AppShell({
               <button
                 className="header-link header-icon-button"
                 type="button"
-                aria-label="Add project"
-                title="Add project"
-                onClick={handleProjectCreateClick}
+                aria-label={pageHeaderConfig.addLabel}
+                title={pageHeaderConfig.addLabel}
+                onClick={handlePageCreateClick}
               >
                 <span className="header-link-icon">
                   <PlusIcon />
@@ -134,7 +168,6 @@ export function AppShell({
               <span className="header-link-icon">
                 <HelpIcon />
               </span>
-              <span className="header-link-text">Help</span>
             </button>
           </div>
         </header>

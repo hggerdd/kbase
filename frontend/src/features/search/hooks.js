@@ -142,9 +142,7 @@ export function useSearchWorkspace({ searchRequest, onSearchStateChange }) {
   }
 
   useEffect(() => {
-    void fetchSearchLabels()
-      .then(setAvailableLabels)
-      .catch(() => setAvailableLabels([]));
+    void refreshAvailableLabels();
   }, []);
 
   useEffect(() => {
@@ -230,5 +228,15 @@ export function useSearchWorkspace({ searchRequest, onSearchStateChange }) {
     updateFilter,
     applyHistoryEntry,
     detailLoading,
+    refreshAvailableLabels,
   };
+
+  async function refreshAvailableLabels() {
+    try {
+      const labels = await fetchSearchLabels();
+      setAvailableLabels(labels);
+    } catch {
+      setAvailableLabels([]);
+    }
+  }
 }

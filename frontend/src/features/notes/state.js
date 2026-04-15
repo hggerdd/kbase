@@ -1,5 +1,6 @@
 export function emptyEditor() {
   return {
+    item_id: null,
     title: "",
     category_key: "research",
     status: "",
@@ -38,6 +39,7 @@ export function provisionalNoteFromSummary(note) {
 
 export function editorFromItemSummary(note) {
   return {
+    item_id: note.id,
     title: note.title,
     category_key: note.category_key ?? "research",
     status: note.status ?? "",
@@ -50,6 +52,7 @@ export function editorFromItemSummary(note) {
 
 export function editorFromItemDetail(notePayload, htmlBody) {
   return {
+    item_id: notePayload.item.id,
     title: notePayload.item.title,
     category_key: notePayload.item.category_key ?? "research",
     status: notePayload.item.status ?? "",
@@ -62,6 +65,7 @@ export function editorFromItemDetail(notePayload, htmlBody) {
 
 export function serializeEditorState(editor) {
   return JSON.stringify({
+    item_id: editor.item_id ?? null,
     title: editor.title,
     category_key: editor.category_key ?? "research",
     status: editor.status ?? "",

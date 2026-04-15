@@ -11,20 +11,25 @@ from kbase.application.capabilities.add_item_to_project import add_item_to_proje
 from kbase.application.capabilities.assign_labels import assign_labels
 from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
 from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
 from kbase.application.capabilities.import_file_as_item import import_file_as_item
 from kbase.application.capabilities.import_inbox_file import import_inbox_file
 from kbase.application.capabilities.link_items import link_items
+from kbase.application.capabilities.list_labels import list_labels
 from kbase.application.capabilities.list_items import list_items
 from kbase.application.capabilities.list_inbox_files import list_inbox_files
 from kbase.application.capabilities.list_project_items import list_project_items
 from kbase.application.capabilities.list_related_items import list_related_items
 from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
 from kbase.application.capabilities.register_asset import register_asset
+from kbase.application.capabilities.reactivate_label import reactivate_label
+from kbase.application.capabilities.rename_label import rename_label
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
 from kbase.application.capabilities.update_item_core import update_item_core
@@ -33,17 +38,22 @@ from kbase.application.dto.capabilities import (
     AssignLabelsInput,
     AttachAssetToItemInput,
     ClassifyItemInput,
+    CreateLabelInput,
     CreateFileItemInput,
     CreateNoteInput,
     CreateProjectInput,
+    DeactivateLabelInput,
     GetItemInput,
     ImportInboxFileInput,
     LinkItemsInput,
     ListItemsInput,
+    ListLabelsInput,
     ListProjectItemsInput,
     ListRelatedItemsInput,
     PatchItemMetadataInput,
     RegisterAssetInput,
+    ReactivateLabelInput,
+    RenameLabelInput,
     ReplaceContentPartInput,
     SearchContentInput,
     UpdateItemCoreInput,
@@ -302,6 +312,100 @@ def assign_labels_command(
         )
     )
     typer.echo(json.dumps([entry.model_dump(mode="json") for entry in result], indent=2))
+
+
+@label_app.command("list")
+def list_labels_command(
+    query: str | None = typer.Option(None, "--query"),
+    include_inactive: bool = typer.Option(False, "--include-inactive"),
+    parent_id: str | None = typer.Option(None, "--parent-id"),
+    full_path_prefix: str | None = typer.Option(None, "--prefix"),
+    limit: int = typer.Option(100, "--limit"),
+    actor: str = typer.Option("heiko", "--actor"),
+) -> None:
+    result = list_labels(
+        ListLabelsInput(
+            query=query,
+            include_inactive=include_inactive,
+            parent_id=parent_id,
+            full_path_prefix=full_path_prefix,
+            limit=limit,
+            actor=_actor_context(actor),
+        )
+    )
+    typer.echo(json.dumps([entry.model_dump(mode="json") for entry in result], indent=2))
+
+
+@label_app.command("create")
+def create_label_command(
+    name: str = typer.Option(..., "--name"),
+    parent_id: str | None = typer.Option(None, "--parent-id"),
+    description: str | None = typer.Option(None, "--description"),
+    meta_json: str | None = typer.Option(None, "--meta-json"),
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = create_label(
+        CreateLabelInput(
+            name=name,
+            parent_id=parent_id,
+            description=description,
+            meta=_parse_json_map(meta_json),
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.create_label"),
+        )
+    )
+    _emit(result, as_json)
+
+
+@label_app.command("rename")
+def rename_label_command(
+    label_id: str,
+    name: str = typer.Option(..., "--name"),
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = rename_label(
+        RenameLabelInput(
+            label_id=label_id,
+            name=name,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.rename_label"),
+        )
+    )
+    _emit(result, as_json)
+
+
+@label_app.command("deactivate")
+def deactivate_label_command(
+    label_id: str,
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = deactivate_label(
+        DeactivateLabelInput(
+            label_id=label_id,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.deactivate_label"),
+        )
+    )
+    _emit(result, as_json)
+
+
+@label_app.command("reactivate")
+def reactivate_label_command(
+    label_id: str,
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = reactivate_label(
+        ReactivateLabelInput(
+            label_id=label_id,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.reactivate_label"),
+        )
+    )
+    _emit(result, as_json)
 
 
 @classify_app.command("set")

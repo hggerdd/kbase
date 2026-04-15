@@ -94,10 +94,18 @@ export function HistoryIcon() {
   );
 }
 
+export function PencilIcon() {
+  return (
+    <IconBase>
+      <path d="m4.5 19.5 4.2-1 9.8-9.8a2.1 2.1 0 0 0-3-3L5.7 15.5z" />
+      <path d="m13.8 7.4 2.8 2.8" />
+    </IconBase>
+  );
+}
+
 export function HelpIcon() {
   return (
     <IconBase>
-      <circle cx="12" cy="12" r="8.5" />
       <path d="M9.75 9.25a2.75 2.75 0 1 1 4.1 2.4c-.95.52-1.35 1-1.35 2.1" />
       <path d="M12 17.2h.01" />
     </IconBase>
@@ -224,12 +232,35 @@ export function PlusIcon() {
   );
 }
 
+export function XIcon() {
+  return (
+    <IconBase>
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
+    </IconBase>
+  );
+}
+
+export function TrashIcon() {
+  return (
+    <IconBase>
+      <path d="M4.5 6.5h15" />
+      <path d="M9.5 6.5V4.5h5v2" />
+      <path d="M7 9l.8 10.5h8.4L17 9" />
+      <path d="M10.5 11.5v5" />
+      <path d="M13.5 11.5v5" />
+    </IconBase>
+  );
+}
+
 export function getNavIcon(routeId) {
   switch (routeId) {
     case "home":
       return HomeIcon;
     case "search":
       return SearchIcon;
+    case "labels":
+      return TagIcon;
     case "files":
       return ExplorerTreeIcon;
     case "notes":

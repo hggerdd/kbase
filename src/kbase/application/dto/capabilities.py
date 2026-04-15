@@ -78,6 +78,7 @@ class SearchContentInput(PaginationInput):
     item_kinds: list[str] = Field(default_factory=list)
     category_keys: list[str] = Field(default_factory=list)
     label_paths: list[str] = Field(default_factory=list)
+    label_path_prefixes: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
     created_by_principal_ids: list[str] = Field(default_factory=list)
     project_id: str | None = None
@@ -196,7 +197,73 @@ class ListLabelsInput(PaginationInput):
     model_config = ConfigDict(extra="forbid")
 
     query: str | None = None
+    include_inactive: bool = False
+    parent_id: str | None = None
+    full_path_prefix: str | None = None
     actor: ActorContext
+
+
+class CreateLabelInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    parent_id: str | None = None
+    description: str | None = None
+    meta: dict[str, Any] = Field(default_factory=dict)
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class RenameLabelInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_id: str
+    name: str
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class UpdateLabelInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_id: str
+    name: str | None = None
+    description: str | None = None
+    description_provided: bool = False
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class DeactivateLabelInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_id: str
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class DeleteLabelInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_id: str
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class DeleteLabelResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    deleted_label_ids: list[str]
+    deleted_count: int
+    deleted_paths: list[str]
+
+
+class ReactivateLabelInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_id: str
+    actor: ActorContext
+    provenance: ProvenanceInput
 
 
 class CreateProjectInput(BaseModel):

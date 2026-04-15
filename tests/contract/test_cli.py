@@ -184,3 +184,40 @@ def test_cli_inbox_list_and_import(monkeypatch, tmp_path) -> None:
     imported_payload = json.loads(imported.stdout)
     assert imported_payload["item"]["item_kind"] == "document"
     assert imported_payload["files"][0]["original_filename"] == "incoming.txt"
+
+
+def test_cli_label_lifecycle(monkeypatch, tmp_path) -> None:
+    _configure_cli_db(monkeypatch, tmp_path)
+
+    created = RUNNER.invoke(
+        app,
+        ["label", "create", "--name", "finance", "--json"],
+    )
+    assert created.exit_code == 0
+    root = json.loads(created.stdout)
+
+    child_created = RUNNER.invoke(
+        app,
+        ["label", "create", "--name", "investing", "--parent-id", root["id"], "--json"],
+    )
+    assert child_created.exit_code == 0
+    child = json.loads(child_created.stdout)
+
+    renamed = RUNNER.invoke(
+        app,
+        ["label", "rename", child["id"], "--name", "assets", "--json"],
+    )
+    assert renamed.exit_code == 0
+    renamed_payload = json.loads(renamed.stdout)
+    assert renamed_payload["full_path"] == "finance/assets"
+
+    deactivated = RUNNER.invoke(
+        app,
+        ["label", "deactivate", child["id"], "--json"],
+    )
+    assert deactivated.exit_code == 0
+    assert json.loads(deactivated.stdout)["is_active"] is False
+
+    listed = RUNNER.invoke(app, ["label", "list"])
+    assert listed.exit_code == 0
+    assert "finance/assets" not in listed.stdout

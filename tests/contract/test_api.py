@@ -150,6 +150,129 @@ def test_api_can_list_and_replace_labels(monkeypatch, tmp_path) -> None:
     assert [label["full_path"] for label in item.json()["labels"]] == ["beta/two", "gamma/three"]
 
 
+def test_api_label_lifecycle(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    root = client.post(
+        "/api/labels",
+        json={"name": "finance"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert root.status_code == 200
+    root_id = root.json()["id"]
+
+    child = client.post(
+        "/api/labels",
+        json={"name": "investing", "parent_id": root_id},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert child.status_code == 200
+    child_id = child.json()["id"]
+
+    renamed = client.patch(
+        f"/api/labels/{child_id}",
+        json={"name": "assets"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["full_path"] == "finance/assets"
+
+    deactivated = client.post(
+        f"/api/labels/{child_id}/deactivate",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert deactivated.status_code == 200
+    assert deactivated.json()["is_active"] is False
+
+    listed_active = client.get("/api/labels", headers={"x-kbase-actor": "heiko"})
+    assert "finance/assets" not in [label["full_path"] for label in listed_active.json()]
+
+    listed_all = client.get(
+        "/api/labels",
+        params={"include_inactive": "true"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert "finance/assets" in [label["full_path"] for label in listed_all.json()]
+
+    reactivated = client.post(
+        f"/api/labels/{child_id}/reactivate",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert reactivated.status_code == 200
+    assert reactivated.json()["is_active"] is True
+
+
+def test_api_delete_label_removes_subtree_and_item_assignments(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Label delete",
+            "category_key": "research",
+            "markdown_body": "Body",
+            "label_paths": ["finance/assets/etf", "finance/tax"],
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    item_id = created.json()["item"]["id"]
+
+    labels = client.get(
+        "/api/labels",
+        params={"full_path_prefix": "finance/assets"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    root_id = next(label["id"] for label in labels.json() if label["full_path"] == "finance/assets")
+
+    deleted = client.delete(f"/api/labels/{root_id}", headers={"x-kbase-actor": "heiko"})
+
+    assert deleted.status_code == 200
+    assert deleted.json()["deleted_count"] == 2
+    remaining = client.get(
+        "/api/labels",
+        params={"include_inactive": "true"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert "finance/assets" not in [label["full_path"] for label in remaining.json()]
+    item = client.get(f"/api/items/{item_id}", headers={"x-kbase-actor": "heiko"})
+    assert [label["full_path"] for label in item.json()["labels"]] == ["finance/tax"]
+
+
+def test_api_search_supports_label_path_prefixes(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Depot export",
+            "category_key": "research",
+            "markdown_body": "CSV from broker",
+            "label_paths": ["finance/bank/depot/data"],
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created.status_code == 200
+
+    other = client.post(
+        "/api/notes",
+        json={
+            "title": "Income report",
+            "category_key": "research",
+            "markdown_body": "Payroll export",
+            "label_paths": ["finance/income/data"],
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert other.status_code == 200
+
+    search = client.get(
+        "/api/search/content",
+        params={"label_path_prefixes": "finance/bank"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert search.status_code == 200
+    assert [item["title"] for item in search.json()["items"]] == ["Depot export"]
+
+
 def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
     monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))

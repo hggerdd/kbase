@@ -36,6 +36,7 @@ test("switching to another note creates a clean placeholder transition", () => {
   assert.equal(transition.nextSelectedId, "note-2");
   assert.equal(transition.nextSelectedNote.item.id, "note-2");
   assert.deepEqual(transition.nextEditor, {
+    item_id: "note-2",
     title: "Bravo",
     category_key: "decision",
     status: "active",
@@ -63,6 +64,7 @@ test("detail payload builds a complete editor state", () => {
   const editor = editorFromItemDetail(payload, "<h1>Title</h1><p>Body</p>");
 
   assert.deepEqual(editor, {
+    item_id: "note-3",
     title: "Charlie",
     category_key: "reference",
     status: "archived",

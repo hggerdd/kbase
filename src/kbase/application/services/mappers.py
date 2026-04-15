@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from kbase.application.dto.common import (
     AssetData,
     AuditEventData,
@@ -89,7 +91,16 @@ def to_item_file_data(item_file) -> ItemFileData:  # type: ignore[no-untyped-def
 
 
 def to_label_data(label) -> LabelData:  # type: ignore[no-untyped-def]
-    return LabelData(id=label.id, name=label.name, full_path=label.full_path)
+    return LabelData(
+        id=label.id,
+        name=label.name,
+        full_path=label.full_path,
+        parent_id=label.parent_id,
+        description=label.description,
+        depth=label.depth,
+        is_active=bool(label.is_active),
+        meta=json.loads(label.meta_json) if label.meta_json else {},
+    )
 
 
 def to_link_data(link) -> LinkData:  # type: ignore[no-untyped-def]

@@ -116,6 +116,17 @@ function createWorkspaceHarness(onWorkspace) {
         },
         "other",
       ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "set-labels",
+          onClick: () => {
+            void workspace.updateSelectedNoteLabels(["work/alpha", "private/home"]);
+          },
+        },
+        "set-labels",
+      ),
     );
   };
 }
@@ -468,6 +479,285 @@ test("workspace ends with the last selected note when note requests resolve out 
   assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-b");
   assert.equal(container.querySelector('[data-testid="title"]').textContent, "Beta");
   assert.match(container.querySelector('[data-testid="body"]').textContent, /Body B/);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("rapid note selection cannot let an older save select the wrong note", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+
+  globalThis.__KBASE_AUTOSAVE_DELAY_MS__ = 5000;
+  const patchCalls = [];
+  let resolveFirstPatch;
+
+  function noteDetail(id, title, body, category = "research", status = "draft") {
+    return {
+      item: { id, title, category_key: category, status },
+      primary_content_part: { content_text: `# ${title}\n${body}` },
+      labels: [],
+      files: [],
+      related_items: [],
+    };
+  }
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+          { id: "note-b", title: "Beta", category_key: "decision", status: "active", updated_at: "2026-04-14T11:00:00Z" },
+          { id: "note-c", title: "Charlie", category_key: "learning", status: "draft", updated_at: "2026-04-14T12:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/history")) {
+      return createResponse({ events: [] });
+    }
+    if (method === "PATCH") {
+      patchCalls.push({ url: value, body: JSON.parse(options.body) });
+      if (patchCalls.length === 1) {
+        return new Promise((resolve) => {
+          resolveFirstPatch = () => resolve(createResponse({}));
+        });
+      }
+      return createResponse({});
+    }
+    if (value.endsWith("/content") || value.endsWith("/labels")) {
+      return createResponse({});
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse(noteDetail("note-a", "Alpha", "Body A"));
+    }
+    if (value.endsWith("/api/items/note-b")) {
+      return createResponse(noteDetail("note-b", "Beta", "Body B", "decision", "active"));
+    }
+    if (value.endsWith("/api/items/note-c")) {
+      return createResponse(noteDetail("note-c", "Charlie", "Body C", "learning"));
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Alpha");
+  });
+
+  await act(async () => {
+    latestWorkspace.setEditor((current) => ({
+      ...current,
+      title: "Alpha edited",
+      html_body: "<p>Alpha edited body</p>",
+      markdown_body: "Alpha edited body",
+    }));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="autosave-state"]').textContent, "pending");
+  });
+
+  let firstSelection;
+  await act(async () => {
+    firstSelection = latestWorkspace.handleSelectNote(latestWorkspace.notes[1], { saveCurrent: true });
+  });
+  await waitFor(() => {
+    assert.equal(patchCalls.length, 1);
+    assert.match(patchCalls[0].url, /\/api\/items\/note-a$/);
+    assert.equal(patchCalls[0].body.title, "Alpha edited");
+  });
+
+  await act(async () => {
+    void latestWorkspace.handleSelectNote(latestWorkspace.notes[2], { saveCurrent: true });
+  });
+  await flush();
+  resolveFirstPatch();
+  await act(async () => {
+    await firstSelection;
+  });
+
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-c");
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Charlie");
+    assert.match(container.querySelector('[data-testid="body"]').textContent, /Body C/);
+  });
+
+  assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-c");
+  assert.equal(container.querySelector('[data-testid="title"]').textContent, "Charlie");
+  assert.equal(patchCalls.every((call) => !call.url.endsWith("/api/items/note-b") || call.body.title !== "Alpha edited"), true);
+
+  delete globalThis.__KBASE_AUTOSAVE_DELAY_MS__;
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace persists note labels through the labels capability only", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  let replaceLabelsCount = 0;
+  let updateCoreCount = 0;
+  let replaceContentCount = 0;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([{ id: "label-1", full_path: "work/alpha", is_active: true }]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      if (method === "PATCH") {
+        updateCoreCount += 1;
+        return createResponse({});
+      }
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/content")) {
+      replaceContentCount += 1;
+      return createResponse({});
+    }
+    if (value.endsWith("/api/items/note-a/labels")) {
+      replaceLabelsCount += 1;
+      assert.equal(method, "PUT");
+      assert.deepEqual(JSON.parse(options.body), { label_paths: ["work/alpha", "private/home"] });
+      return createResponse([
+        { id: "label-1", full_path: "work/alpha", is_active: true },
+        { id: "label-2", full_path: "private/home", is_active: true },
+      ]);
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  });
+
+  await act(async () => {
+    await latestWorkspace.updateSelectedNoteLabels(["work/alpha", "private/home"]);
+  });
+  await waitFor(() => {
+    assert.equal(replaceLabelsCount, 1);
+  });
+
+  assert.equal(updateCoreCount, 0);
+  assert.equal(replaceContentCount, 0);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace refuses to save an editor snapshot that belongs to another note", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  let updateCoreCount = 0;
+  let replaceContentCount = 0;
+  let replaceLabelsCount = 0;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      if (method === "PATCH") {
+        updateCoreCount += 1;
+        return createResponse({});
+      }
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/content")) {
+      replaceContentCount += 1;
+      return createResponse({});
+    }
+    if (value.endsWith("/api/items/note-a/labels")) {
+      replaceLabelsCount += 1;
+      return createResponse([]);
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  });
+
+  await act(async () => {
+    latestWorkspace.setEditor({
+      item_id: "note-b",
+      title: "Beta should not overwrite Alpha",
+      category_key: "decision",
+      status: "active",
+      markdown_body: "Wrong body",
+      html_body: "<p>Wrong body</p>",
+      label_paths: "",
+      selected_labels: [],
+    });
+    await latestWorkspace.handleSaveSelected();
+  });
+  await flush();
+
+  assert.equal(updateCoreCount, 0);
+  assert.equal(replaceContentCount, 0);
+  assert.equal(replaceLabelsCount, 0);
 
   await act(async () => {
     root.unmount();
