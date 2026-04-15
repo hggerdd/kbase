@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNotesWorkspace } from "../../features/notes/hooks";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
@@ -8,36 +8,39 @@ import { NotesList } from "./components/NotesList";
 
 export function NotesPage({ externalSearch, externalSearchVersion }) {
   const workspace = useNotesWorkspace({ externalSearch, externalSearchVersion });
-  const activeNote = workspace.selectedNote?.item;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("kbase:page-header-meta", {
+        detail: { route: "notes", count: workspace.notes.length },
+      }),
+    );
+  }, [workspace.notes.length]);
+
+  useEffect(() => {
+    const handleOpenCreate = () => setIsCreateOpen(true);
+    window.addEventListener("kbase:notes-create", handleOpenCreate);
+    return () => window.removeEventListener("kbase:notes-create", handleOpenCreate);
+  }, []);
+
+  async function handleSelectNote(note) {
+    const selected = await workspace.handleSelectNote(note, { saveCurrent: true });
+    if (selected) {
+      setIsMobileEditorOpen(true);
+    }
+  }
 
   return (
     <ResponsiveContainer>
-      <section className="notes-workspace-header">
-        <div>
-          <h2>{activeNote?.title ?? "Notes"}</h2>
-          <p>
-            {activeNote
-              ? `${activeNote.category_key ?? "note"} · ${activeNote.status ?? "draft"}`
-              : "Browse notes on the left and edit the selected note here."}
-          </p>
-        </div>
-        <div className="notes-workspace-actions">
-          <div className="notes-workspace-stat">
-            <span>Total notes</span>
-            <strong>{workspace.notes.length}</strong>
-          </div>
-          <button className="primary" type="button" onClick={() => setIsCreateOpen(true)}>
-            Add note
-          </button>
-        </div>
-      </section>
-
       <StatusBanner error={workspace.error} notice={workspace.notice} />
 
       <div className="notes-layout">
-        <NotesList workspace={workspace} onCreateNote={() => setIsCreateOpen(true)} />
-        <NoteEditor workspace={workspace} />
+        <NotesList workspace={workspace} onSelectNote={handleSelectNote} />
+        <div className={`notes-editor-shell ${isMobileEditorOpen ? "open" : ""}`.trim()}>
+          <NoteEditor workspace={workspace} onClose={() => setIsMobileEditorOpen(false)} />
+        </div>
       </div>
 
       <CreateNotePanel

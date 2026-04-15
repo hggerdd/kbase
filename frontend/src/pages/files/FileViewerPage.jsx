@@ -3,6 +3,7 @@ import ReactQuill from "react-quill";
 import { getFileContentUrl } from "../../features/files/api.js";
 import { useFileViewerWorkspace } from "../../features/files/hooks.js";
 import { FILE_TREE_LAYOUTS } from "../../features/files/state.js";
+import { LabelManagerLauncher } from "../../shared/labels/LabelManagerLauncher.jsx";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { formatDate, formatFileSize } from "../../shared/utils/format";
 import { EmptyState } from "../../shared/ui/EmptyState";
@@ -153,9 +154,16 @@ export function FileViewerPage() {
           eyebrow="Filters"
           title="File filters"
           action={
-            <button className="secondary compact-button" type="button" onClick={workspace.refresh}>
-              Reload
-            </button>
+            <div className="header-actions compact-actions">
+              <button className="secondary compact-button" type="button" onClick={workspace.refresh}>
+                Reload
+              </button>
+              <LabelManagerLauncher
+                buttonLabel="Manage labels"
+                buttonClassName="secondary compact-button"
+                onLabelsChanged={workspace.refreshLabels}
+              />
+            </div>
           }
         >
           <div className="file-controls">
@@ -190,6 +198,7 @@ export function FileViewerPage() {
 
             <div className="search-field">
               <span>Label filters</span>
+              <p className="muted">Selecting a label also matches its child labels.</p>
               <div className="token-list">
                 {workspace.availableLabels.length === 0 ? <span className="muted">No labels loaded.</span> : null}
                 {workspace.availableLabels.map((label) => (

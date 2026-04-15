@@ -245,6 +245,8 @@ CREATE TABLE IF NOT EXISTS label_nodes (
     full_path TEXT NOT NULL UNIQUE,
     parent_id TEXT,
     description TEXT,
+    depth INTEGER NOT NULL DEFAULT 0,
+    meta_json TEXT,
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -423,6 +425,8 @@ CREATE INDEX IF NOT EXISTS idx_item_links_to_item_id ON item_links(to_item_id);
 CREATE INDEX IF NOT EXISTS idx_item_links_link_type ON item_links(link_type);
 
 CREATE INDEX IF NOT EXISTS idx_item_labels_label_id ON item_labels(label_id);
+CREATE INDEX IF NOT EXISTS idx_label_nodes_parent_id ON label_nodes(parent_id);
+CREATE INDEX IF NOT EXISTS idx_label_nodes_is_active ON label_nodes(is_active);
 
 CREATE INDEX IF NOT EXISTS idx_item_metadata_item_id ON item_metadata(item_id);
 CREATE INDEX IF NOT EXISTS idx_item_metadata_field_key ON item_metadata(field_key);

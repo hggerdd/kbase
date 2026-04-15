@@ -150,8 +150,8 @@ export function ProjectsPage() {
 
   useEffect(() => {
     window.dispatchEvent(
-      new CustomEvent("kbase:projects-header-meta", {
-        detail: { count: workspace.projects.length },
+      new CustomEvent("kbase:page-header-meta", {
+        detail: { route: "projects", count: workspace.projects.length },
       }),
     );
   }, [workspace.projects.length]);

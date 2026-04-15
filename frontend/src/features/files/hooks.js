@@ -186,5 +186,8 @@ export function useFileViewerWorkspace() {
     toggleLabelFilter,
     tree,
     treeLayout,
+    refreshLabels() {
+      void loadItems();
+    },
   };
 }

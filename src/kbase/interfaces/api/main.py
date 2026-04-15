@@ -12,8 +12,11 @@ from kbase.application.capabilities.add_item_to_project import add_item_to_proje
 from kbase.application.capabilities.assign_labels import assign_labels
 from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
 from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.delete_label import delete_label
+from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
@@ -27,19 +30,25 @@ from kbase.application.capabilities.list_project_items import list_project_items
 from kbase.application.capabilities.list_related_items import list_related_items
 from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
 from kbase.application.capabilities.register_asset import register_asset
+from kbase.application.capabilities.reactivate_label import reactivate_label
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
+from kbase.application.capabilities.update_label import update_label
 from kbase.application.capabilities.update_item_core import update_item_core
 from kbase.application.dto.capabilities import (
     AddItemToProjectInput,
     AssignLabelsInput,
     AttachAssetToItemInput,
     ClassifyItemInput,
+    CreateLabelInput,
     CreateNoteInput,
     CreateNoteResult,
     CreateProjectInput,
     CreateFileItemInput,
+    DeleteLabelInput,
+    DeleteLabelResult,
+    DeactivateLabelInput,
     GetItemHistoryResult,
     GetItemInput,
     GetItemProvenanceResult,
@@ -54,10 +63,12 @@ from kbase.application.dto.capabilities import (
     ListRelatedItemsInput,
     ListRelatedItemsResult,
     PatchItemMetadataInput,
+    ReactivateLabelInput,
     RegisterAssetInput,
     ReplaceContentPartInput,
     SearchContentInput,
     SearchContentResult,
+    UpdateLabelInput,
     UpdateItemCoreInput,
 )
 from kbase.application.dto.common import AssetData, ItemSummary, LabelData, MetadataEntryData
@@ -69,6 +80,7 @@ from kbase.interfaces.api.schemas import (
     AssignLabelsRequest,
     AttachAssetRequest,
     ClassifyItemRequest,
+    CreateLabelRequest,
     CreateNoteRequest,
     CreateProjectRequest,
     ImportInboxFileRequest,
@@ -76,6 +88,7 @@ from kbase.interfaces.api.schemas import (
     PatchMetadataRequest,
     RegisterAssetRequest,
     ReplaceContentRequest,
+    UpdateLabelRequest,
     UpdateItemRequest,
 )
 
@@ -255,6 +268,7 @@ def create_app() -> FastAPI:
         item_kinds: list[str] = Query(default=[]),
         category_keys: list[str] = Query(default=[]),
         label_paths: list[str] = Query(default=[]),
+        label_path_prefixes: list[str] = Query(default=[]),
         statuses: list[str] = Query(default=[]),
         created_by_principal_ids: list[str] = Query(default=[]),
         project_id: str | None = Query(default=None),
@@ -269,6 +283,7 @@ def create_app() -> FastAPI:
                 item_kinds=item_kinds,
                 category_keys=category_keys,
                 label_paths=label_paths,
+                label_path_prefixes=label_path_prefixes,
                 statuses=statuses,
                 created_by_principal_ids=created_by_principal_ids,
                 project_id=project_id,
@@ -312,10 +327,96 @@ def create_app() -> FastAPI:
     @app.get("/api/labels", response_model=list[LabelData])
     def list_labels_endpoint(
         query: str | None = Query(default=None),
+        include_inactive: bool = Query(default=False),
+        parent_id: str | None = Query(default=None),
+        full_path_prefix: str | None = Query(default=None),
         limit: int = Query(default=100, ge=1, le=500),
         actor: ActorContext = Depends(_actor_context),
     ) -> list[LabelData]:
-        return list_labels(ListLabelsInput(query=query, limit=limit, actor=actor))
+        return list_labels(
+            ListLabelsInput(
+                query=query,
+                include_inactive=include_inactive,
+                parent_id=parent_id,
+                full_path_prefix=full_path_prefix,
+                limit=limit,
+                actor=actor,
+            )
+        )
+
+    @app.post("/api/labels", response_model=LabelData)
+    def create_label_endpoint(
+        payload: CreateLabelRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> LabelData:
+        return create_label(
+            CreateLabelInput(
+                name=payload.name,
+                parent_id=payload.parent_id,
+                description=payload.description,
+                meta=payload.meta,
+                actor=actor,
+                provenance=_provenance("api.create_label"),
+            )
+        )
+
+    @app.patch("/api/labels/{label_id}", response_model=LabelData)
+    def update_label_endpoint(
+        label_id: str,
+        payload: UpdateLabelRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> LabelData:
+        if payload.name is None and "description" not in payload.model_fields_set:
+            raise ValueError("At least one updatable field is required")
+        return update_label(
+            UpdateLabelInput(
+                label_id=label_id,
+                name=payload.name,
+                description=payload.description,
+                description_provided="description" in payload.model_fields_set,
+                actor=actor,
+                provenance=_provenance("api.update_label"),
+            )
+        )
+
+    @app.delete("/api/labels/{label_id}", response_model=DeleteLabelResult)
+    def delete_label_endpoint(
+        label_id: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> DeleteLabelResult:
+        return delete_label(
+            DeleteLabelInput(
+                label_id=label_id,
+                actor=actor,
+                provenance=_provenance("api.delete_label"),
+            )
+        )
+
+    @app.post("/api/labels/{label_id}/deactivate", response_model=LabelData)
+    def deactivate_label_endpoint(
+        label_id: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> LabelData:
+        return deactivate_label(
+            DeactivateLabelInput(
+                label_id=label_id,
+                actor=actor,
+                provenance=_provenance("api.deactivate_label"),
+            )
+        )
+
+    @app.post("/api/labels/{label_id}/reactivate", response_model=LabelData)
+    def reactivate_label_endpoint(
+        label_id: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> LabelData:
+        return reactivate_label(
+            ReactivateLabelInput(
+                label_id=label_id,
+                actor=actor,
+                provenance=_provenance("api.reactivate_label"),
+            )
+        )
 
     @app.post("/api/items/{item_id}/classification", response_model=ItemSummary)
     def classify_item_endpoint(

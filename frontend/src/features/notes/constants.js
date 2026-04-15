@@ -7,6 +7,8 @@ export const NOTE_CATEGORIES = [
   "comparison_note",
 ];
 
+export const NOTE_STATUSES = ["draft", "active", "done", "archived"];
+
 export const EMPTY_DRAFT = {
   title: "",
   category_key: "research",

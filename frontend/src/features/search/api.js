@@ -14,6 +14,9 @@ export async function searchContent(input) {
   for (const labelPath of input.labelPaths ?? []) {
     params.append("label_paths", labelPath);
   }
+  for (const labelPathPrefix of input.labelPathPrefixes ?? []) {
+    params.append("label_path_prefixes", labelPathPrefix);
+  }
   for (const status of input.statuses ?? []) {
     params.append("statuses", status);
   }

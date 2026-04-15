@@ -113,6 +113,11 @@ class LabelData(BaseModel):
     id: str
     name: str
     full_path: str
+    parent_id: str | None = None
+    description: str | None = None
+    depth: int = 0
+    is_active: bool = True
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class MetadataEntryData(BaseModel):

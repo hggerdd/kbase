@@ -1,6 +1,7 @@
 import React from "react";
 import { useSearchWorkspace } from "../../features/search/hooks.js";
 import { SEARCH_SCOPE_OPTIONS } from "../../features/search/state.js";
+import { LabelManagerLauncher } from "../../shared/labels/LabelManagerLauncher.jsx";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { EmptyState } from "../../shared/ui/EmptyState";
 import { ClockIcon, FilterIcon, HistoryIcon, TagIcon } from "../../shared/ui/Icons.jsx";
@@ -75,7 +76,17 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
         </Panel>
 
         <div className="search-main-stack">
-          <Panel eyebrow="Advanced" title="Refine search">
+          <Panel
+            eyebrow="Advanced"
+            title="Refine search"
+            action={
+              <LabelManagerLauncher
+                buttonLabel="Manage labels"
+                buttonClassName="secondary compact-button"
+                onLabelsChanged={workspace.refreshAvailableLabels}
+              />
+            }
+          >
             <form className="search-advanced-form" onSubmit={workspace.handleSubmit}>
               <label className="search-field search-field-wide">
                 <span>Query</span>
@@ -140,11 +151,20 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
               </label>
 
               <label className="search-field">
-                <span>Labels / hierarchy</span>
+                <span>Exact labels</span>
                 <input
                   value={workspace.filters.labelPathsText}
                   onChange={(event) => workspace.updateFilter("labelPathsText", event.target.value)}
                   placeholder="finance/investing, product/docs"
+                />
+              </label>
+
+              <label className="search-field">
+                <span>Label branches</span>
+                <input
+                  value={workspace.filters.labelPathPrefixesText}
+                  onChange={(event) => workspace.updateFilter("labelPathPrefixesText", event.target.value)}
+                  placeholder="finance, household/appliances"
                 />
               </label>
 
@@ -200,6 +220,7 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
             {workspace.availableLabels.length > 0 ? (
               <div className="search-label-suggestions">
                 <div className="sidebar-section-title">Known labels</div>
+                <p className="muted search-label-hint">Tap to add a hierarchy branch filter.</p>
                 <div className="token-list">
                   {workspace.availableLabels.slice(0, 12).map((label) => (
                     <button
@@ -208,9 +229,9 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
                       className="token-button"
                       onClick={() =>
                         workspace.updateFilter(
-                          "labelPathsText",
-                          workspace.filters.labelPathsText
-                            ? `${workspace.filters.labelPathsText}, ${label.full_path}`
+                          "labelPathPrefixesText",
+                          workspace.filters.labelPathPrefixesText
+                            ? `${workspace.filters.labelPathPrefixesText}, ${label.full_path}`
                             : label.full_path,
                         )
                       }

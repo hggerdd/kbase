@@ -44,6 +44,22 @@ class AssignLabelsRequest(BaseModel):
     label_paths: list[str]
 
 
+class CreateLabelRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    parent_id: str | None = None
+    description: str | None = None
+    meta: dict[str, Any] = Field(default_factory=dict)
+
+
+class UpdateLabelRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+
+
 class ClassifyItemRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
