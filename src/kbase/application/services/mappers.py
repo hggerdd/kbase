@@ -10,6 +10,7 @@ from kbase.application.dto.common import (
     ItemFileData,
     ItemRef,
     ItemSummary,
+    CategoryData,
     LabelData,
     LinkData,
     MetadataEntryData,
@@ -100,6 +101,16 @@ def to_label_data(label) -> LabelData:  # type: ignore[no-untyped-def]
         depth=label.depth,
         is_active=bool(label.is_active),
         meta=json.loads(label.meta_json) if label.meta_json else {},
+    )
+
+
+def to_category_data(category) -> CategoryData:  # type: ignore[no-untyped-def]
+    return CategoryData(
+        key=category.key,
+        label=category.label,
+        description=category.description,
+        applies_to_kind=category.applies_to_kind,
+        is_active=bool(category.is_active),
     )
 
 

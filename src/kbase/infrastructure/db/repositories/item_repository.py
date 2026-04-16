@@ -93,6 +93,69 @@ class ItemRepository:
     def get_category(self, category_key: str) -> ItemCategoryModel | None:
         return self.session.get(ItemCategoryModel, category_key)
 
+    def list_categories(
+        self,
+        *,
+        query: str | None = None,
+        applies_to_kind: str | None = None,
+        include_inactive: bool = False,
+    ) -> list[ItemCategoryModel]:
+        stmt = select(ItemCategoryModel)
+        if query:
+            like_query = f"%{query}%"
+            stmt = stmt.where(
+                (ItemCategoryModel.key.ilike(like_query))
+                | (ItemCategoryModel.label.ilike(like_query))
+                | (ItemCategoryModel.description.ilike(like_query))
+            )
+        if applies_to_kind:
+            stmt = stmt.where(ItemCategoryModel.applies_to_kind == applies_to_kind)
+        if not include_inactive:
+            stmt = stmt.where(ItemCategoryModel.is_active == 1)
+        stmt = stmt.order_by(ItemCategoryModel.applies_to_kind.asc(), ItemCategoryModel.label.asc())
+        return list(self.session.scalars(stmt))
+
+    def create_category(
+        self,
+        *,
+        key: str,
+        label: str,
+        description: str | None,
+        applies_to_kind: str | None,
+    ) -> ItemCategoryModel:
+        category = ItemCategoryModel(
+            key=key,
+            label=label,
+            description=description,
+            applies_to_kind=applies_to_kind,
+            is_active=1,
+        )
+        self.session.add(category)
+        self.session.flush()
+        return category
+
+    def update_category(
+        self,
+        category: ItemCategoryModel,
+        *,
+        label: str | None,
+        description: str | None,
+        description_provided: bool,
+        applies_to_kind: str | None,
+        applies_to_kind_provided: bool,
+        is_active: bool | None,
+    ) -> ItemCategoryModel:
+        if label is not None:
+            category.label = label
+        if description_provided:
+            category.description = description
+        if applies_to_kind_provided:
+            category.applies_to_kind = applies_to_kind
+        if is_active is not None:
+            category.is_active = 1 if is_active else 0
+        self.session.flush()
+        return category
+
     def set_classifications(
         self,
         *,
@@ -121,4 +184,3 @@ class ItemRepository:
             ItemClassificationModel.item_id == item_id
         )
         return list(self.session.scalars(stmt))
-

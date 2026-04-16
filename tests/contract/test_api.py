@@ -202,6 +202,54 @@ def test_api_label_lifecycle(monkeypatch, tmp_path) -> None:
     assert reactivated.json()["is_active"] is True
 
 
+def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    created = client.post(
+        "/api/categories",
+        json={
+            "key": "meeting_note",
+            "label": "Meeting note",
+            "description": "Notes captured from meetings",
+            "applies_to_kind": "note",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created.status_code == 200
+    assert created.json()["key"] == "meeting_note"
+
+    listed = client.get(
+        "/api/categories",
+        params={"applies_to_kind": "note"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert listed.status_code == 200
+    assert "meeting_note" in [category["key"] for category in listed.json()["categories"]]
+
+    updated = client.patch(
+        "/api/categories/meeting_note",
+        json={"label": "Meeting notes", "is_active": False},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["label"] == "Meeting notes"
+    assert updated.json()["is_active"] is False
+
+    active_only = client.get(
+        "/api/categories",
+        params={"applies_to_kind": "note"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert "meeting_note" not in [category["key"] for category in active_only.json()["categories"]]
+
+    include_inactive = client.get(
+        "/api/categories",
+        params={"applies_to_kind": "note", "include_inactive": "true"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert "meeting_note" in [category["key"] for category in include_inactive.json()["categories"]]
+
+
 def test_api_delete_label_removes_subtree_and_item_assignments(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
     created = client.post(

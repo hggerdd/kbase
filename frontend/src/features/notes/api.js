@@ -42,6 +42,11 @@ export async function fetchLabels(query = "") {
   return request(path);
 }
 
+export async function fetchNoteCategories() {
+  const payload = await request("/api/categories?applies_to_kind=note&limit=200");
+  return payload.categories ?? [];
+}
+
 export async function replaceLabels(itemId, labelPaths) {
   return request(`/api/items/${itemId}/labels`, {
     method: "PUT",

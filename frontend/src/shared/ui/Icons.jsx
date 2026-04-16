@@ -223,6 +223,15 @@ export function TagIcon() {
   );
 }
 
+export function SettingsIcon() {
+  return (
+    <IconBase>
+      <path d="M12 8.3a3.7 3.7 0 1 1 0 7.4 3.7 3.7 0 0 1 0-7.4Z" />
+      <path d="M19.2 13.3a7.7 7.7 0 0 0 .1-1.3 7.7 7.7 0 0 0-.1-1.3l2-1.5-2-3.4-2.4 1a7.7 7.7 0 0 0-2.2-1.3L14.3 3h-4.6l-.4 2.5a7.7 7.7 0 0 0-2.2 1.3l-2.4-1-2 3.4 2 1.5a7.7 7.7 0 0 0-.1 1.3 7.7 7.7 0 0 0 .1 1.3l-2 1.5 2 3.4 2.4-1a7.7 7.7 0 0 0 2.2 1.3l.4 2.5h4.6l.4-2.5a7.7 7.7 0 0 0 2.2-1.3l2.4 1 2-3.4Z" />
+    </IconBase>
+  );
+}
+
 export function PlusIcon() {
   return (
     <IconBase>
@@ -259,8 +268,8 @@ export function getNavIcon(routeId) {
       return HomeIcon;
     case "search":
       return SearchIcon;
-    case "labels":
-      return TagIcon;
+    case "settings":
+      return SettingsIcon;
     case "files":
       return ExplorerTreeIcon;
     case "notes":

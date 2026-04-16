@@ -70,6 +70,213 @@ Diese Datei ist die strukturierte ToDo-Liste für dieses Repository. Aufgaben si
 - [ ] Aufwandsschätzung (T-Shirt / Story Points)
 - [ ] Aufteilen in Arbeitspakete & Priorisierung (MVP vs Phase 2)
 
+## Architekturreview 2026-04-16: konkrete Umsetzungs-ToDos
+
+Diese ToDos leiten sich direkt aus dem Architektur- und Sicherheitsreview ab. Sie sind absichtlich so formuliert, dass ein neuer Thread ohne weiteren Kontext damit weiterarbeiten kann.
+
+### Security / Trust Boundary
+
+- [ ] `SEC-001` Authentifizierungskonzept fuer API und Frontend festlegen
+	- Ziel: Die API darf den Actor nicht mehr implizit oder ungeprueft aus einem frei setzbaren Header uebernehmen.
+	- Ist-Zustand: `x-kbase-actor` kann vom Client frei gesetzt werden; ohne Header wird aktuell `heiko` verwendet.
+	- Aufgabe:
+		- Definiere ein minimales Auth-Konzept fuer die aktuelle lokale/LAN-Nutzung.
+		- Entscheide, ob API-Key, Session, Reverse-Proxy-Auth oder ein anderer Mechanismus verwendet wird.
+		- Dokumentiere die Vertrauensgrenzen zwischen Browser, LAN und Backend.
+	- Acceptance:
+		- Es gibt ein kurzes Spec-Dokument fuer Authentifizierung.
+		- Der Fallback auf `heiko` ist entfernt.
+		- Requests ohne gueltige Authentifizierung werden abgewiesen.
+		- Frontend, README und API-Doku verwenden dieselbe Auth-Annahme.
+
+- [ ] `SEC-002` Autorisierung / ACL-Durchsetzung fuer Reads und Writes aktivieren
+	- Ziel: Vorhandene ACL-Strukturen im Schema sollen fachlich wirksam werden.
+	- Ist-Zustand: `item_acl` existiert im Datenmodell, wird zur Laufzeit aber nicht ausgewertet.
+	- Aufgabe:
+		- Definiere, welche Operationen Lese- bzw. Schreibrechte benoetigen.
+		- Fuehre zentrale Berechtigungspruefungen im Capability-Layer oder in einer gemeinsamen Serviceschicht ein.
+		- Ziehe die Pruefungen in die kritischen Endpunkte ein: Items, Notes, Uploads, Labels, Categories, Projects, Datei-Downloads.
+	- Acceptance:
+		- Es gibt eine dokumentierte ACL-Regelbasis.
+		- Unerlaubte Zugriffe liefern einen klaren Fehlerstatus.
+		- Tests decken erlaubte und verbotene Zugriffe ab.
+
+- [ ] `SEC-003` Stored-XSS-Schutz fuer Notes und File-Summaries einfuehren
+	- Ziel: Persistierte Inhalte duerfen beim Anzeigen im Browser keine aktiven Skripte oder unsicheres HTML ausfuehren.
+	- Ist-Zustand: Markdown/HTML wird im Frontend in HTML umgewandelt und in Rich-Text-Komponenten uebernommen; eine explizite Sanitization ist nicht ersichtlich.
+	- Aufgabe:
+		- Definiere eine einheitliche Sanitization-Strategie fuer Notes, File-Summaries und andere Rich-Text-Flaechen.
+		- Implementiere diese Strategie an allen relevanten Rendering-Pfaden.
+		- Erstelle reproduzierbare Tests oder Sicherheitsbeispiele fuer typische XSS-Payloads.
+	- Acceptance:
+		- Notes und File-Summaries nutzen dieselbe sichere Rendering-Pipeline.
+		- Schadhafte HTML-/Script-Payloads werden neutralisiert.
+		- Die Sanitization-Strategie ist dokumentiert.
+
+- [ ] `SEC-004` CORS- und Client-Trust-Modell haerten und dokumentieren
+	- Ziel: Die Freigabe fuer lokale und LAN-Clients soll explizit und nachvollziehbar sein.
+	- Ist-Zustand: CORS ist fuer Development/LAN pragmatisch offen genug, die Sicherheitsannahmen sind aber nicht sauber dokumentiert.
+	- Aufgabe:
+		- Dokumentiere erlaubte Origins und den Umgang mit Credentials.
+		- Trenne lokale Entwicklung, LAN-Zugriff und einen moeglichen spaeteren produktiven Modus klar.
+		- Pruefe, welche Defaults fuer lokale Entwicklung in Ordnung sind und welche explizit als unsicher markiert werden muessen.
+	- Acceptance:
+		- README/API-Doku enthalten einen klaren Abschnitt zu CORS und Trust Boundary.
+		- Unsichere Defaults sind minimiert oder klar als Entwicklungsmodus gekennzeichnet.
+
+- [ ] `SEC-005` Sicherheitsreview fuer Datei-Upload und Datei-Auslieferung vervollstaendigen
+	- Ziel: Pfadschutz, Dateigroessen, MIME-Vertrauen und Download-Sicherheit sollen nachvollziehbar bewertet werden.
+	- Ist-Zustand: Es gibt bereits Pfadpruefungen, aber kein dokumentiertes Bedrohungsmodell.
+	- Aufgabe:
+		- Dokumentiere Schutzmechanismen gegen Path Traversal fuer Inbox, Storage und Download.
+		- Ergaenze offene Themen wie Dateigroessenlimits, MIME-Spoofing, Malware-Scan und Rate-Limits.
+		- Entscheide, welche Themen sofort umgesetzt werden und welche bewusst spaeter folgen.
+	- Acceptance:
+		- Ein kompaktes Sicherheitsdokument fuer Upload/Download liegt vor.
+		- Vorhandene Schutzmechanismen sind durch Tests abgesichert.
+		- Offene Restrisiken sind als Folge-ToDos erfasst.
+
+### Architektur-Konsistenz
+
+- [ ] `ARCH-001` README, API-Doku und realen Systemstand synchronisieren
+	- Ziel: Dokumentation und Implementierung duerfen sich nicht widersprechen.
+	- Ist-Zustand: README und API-Doku beschreiben Teile des aktuellen Stands nicht mehr korrekt.
+	- Aufgabe:
+		- Aktualisiere README auf den tatsaechlichen Stand von API, Frontend und offenen Themen.
+		- Ergaenze die aktuellen Endpunkte fuer Labels und Categories in der API-Doku.
+		- Entferne oder korrigiere Aussagen, die nicht mehr zutreffen.
+	- Acceptance:
+		- README, API_DOKU.md und `todo.md` beschreiben denselben Systemstand.
+		- Die neuen Category-Endpunkte sind dokumentiert.
+		- Veraltete Aussagen wie "FastAPI-Endpoints noch offen" sind bereinigt.
+
+- [ ] `ARCH-002` Capability-Matrix fuer API, CLI, Frontend und Tests erstellen
+	- Ziel: Neue Fachfunktionen sollen nicht versehentlich nur in einer Schnittstelle existieren.
+	- Ist-Zustand: Categories existieren bereits in Capability-Layer und API, aber noch nicht in der CLI.
+	- Aufgabe:
+		- Erstelle eine Tabelle: Capability -> API -> CLI -> Frontend -> Tests.
+		- Trage vorhandene Capabilities systematisch ein.
+		- Markiere sichtbare Luecken als Folgearbeiten.
+	- Acceptance:
+		- Es gibt ein Artefakt mit der vollstaendigen Capability-Abdeckung.
+		- Categories sind dort als Beispiel vollstaendig eingeordnet.
+		- Ein neuer Thread kann daraus fehlende Spiegelungen direkt ableiten.
+
+- [ ] `ARCH-003` Category-Management vollstaendig in die Systemarchitektur einhaengen
+	- Ziel: Categories sollen keine halbfertige API/Frontend-Erweiterung bleiben.
+	- Ist-Zustand: Categories sind im Backend und Frontend vorhanden, aber noch nicht in der CLI und noch nicht vollstaendig dokumentiert.
+	- Aufgabe:
+		- Spiegele Category-Capabilities in die CLI.
+		- Ergaenze Tests fuer CLI und ggf. Integration.
+		- Dokumentiere, wie Categories fachlich genutzt werden sollen.
+	- Acceptance:
+		- Categories sind in Capability-Layer, API, CLI, Frontend und Tests sichtbar.
+		- README/API-Doku enthalten die Bedienwege.
+
+### Labels / Taxonomie
+
+- [ ] `ARCH-004` Label-Lifecycle final fachlich festlegen
+	- Ziel: Es muss verbindlich entschieden werden, ob physisches Loeschen erlaubt ist oder `deactivate/reactivate` der Standard bleibt.
+	- Ist-Zustand: Konzept bevorzugt `deactivate`, Implementierung bietet trotzdem bereits physisches Loeschen.
+	- Aufgabe:
+		- Dokumentiere die Zielentscheidung fuer `create`, `rename`, `deactivate`, `reactivate` und `delete`.
+		- Beschreibe Auswirkungen auf Subtrees, Item-Zuordnungen und Suche.
+	- Acceptance:
+		- Ein kurzes Spec-Dokument zum Label-Lifecycle liegt vor.
+		- Die Entscheidung ist in `todo.md` klar referenziert.
+
+- [ ] `ARCH-005` Label-Delete an die Lifecycle-Entscheidung anpassen
+	- Ziel: Implementierung und Konzept muessen identisch sein.
+	- Ist-Zustand: Label-Subtrees koennen physisch geloescht werden; Item-Label-Zuordnungen werden dabei entfernt.
+	- Aufgabe:
+		- Entferne, schuetze oder bestaetige `DELETE /api/labels/{id}` gemaess `ARCH-004`.
+		- Passe Capability, API, CLI, Frontend und Tests konsistent an.
+	- Acceptance:
+		- Es gibt keinen Widerspruch mehr zwischen Konzept, Doku und Implementierung.
+		- Tests decken das gewollte Delete-/Deactivate-Verhalten ab.
+
+- [ ] `ARCH-006` Label-Management gegen das bestehende Konzept sauber abgleichen
+	- Ziel: Ein neuer Thread soll sofort erkennen, welche Teile des urspruenglichen Label-Konzepts bereits umgesetzt sind und welche nicht.
+	- Aufgabe:
+		- Aktualisiere den Label-Abschnitt in `todo.md`.
+		- Markiere explizit: umgesetzt, teilweise umgesetzt, offen.
+		- Halte offene Entscheidungen getrennt von bereits fixierten Regeln.
+	- Acceptance:
+		- Der Label-Abschnitt dient als belastbares Arbeitsdokument.
+		- Ein neuer Thread kann daraus direkt die naechsten Schritte ableiten.
+
+### Search / Saved Queries
+
+- [ ] `ARCH-007` Search History und Saved Queries fachlich sauber entscheiden
+	- Ziel: Search History soll entweder bewusst lokal bleiben oder als echte serverseitige Capability umgesetzt werden.
+	- Ist-Zustand: Das Schema enthaelt `saved_queries`, das Frontend speichert die Historie aber nur in `localStorage`.
+	- Aufgabe:
+		- Entscheide, ob Suchverlaeufe/Saved Queries actor-bezogen serverseitig gespeichert werden sollen.
+		- Wenn ja: definiere Capability, API, UI und Datenmodellnutzung.
+		- Wenn nein: dokumentiere bewusst, dass `saved_queries` noch ungenutzt ist.
+	- Acceptance:
+		- Die Zielentscheidung ist dokumentiert.
+		- Es gibt keinen impliziten Widerspruch mehr zwischen DB-Schema und Frontend-Verhalten.
+
+- [ ] `ARCH-008` Suchmodell fuer Labels, Label-Unterbaeume und Categories dokumentieren
+	- Ziel: Die Bedeutung von `label_paths`, `label_path_prefixes`, `category_keys` und UI-Filtern muss eindeutig sein.
+	- Aufgabe:
+		- Beschreibe die Suchsemantik mit Beispielen.
+		- Gleiche API-Parameter, Frontend-Wording und Tests darauf ab.
+	- Acceptance:
+		- Die Suchsemantik ist in einem kurzen Dokument eindeutig beschrieben.
+		- Tests fuer Exact Match und Prefix-/Subtree-Match existieren.
+
+### Categories / Dateimodell
+
+- [ ] `ARCH-009` Entscheiden, ob Categories flach oder hierarchisch sind
+	- Ziel: Das Fachmodell soll dieselbe Sprache sprechen wie die UI.
+	- Ist-Zustand: Das Datenmodell ist flach, Teile des Frontends behandeln Categories aber bereits wie Pfade/Hierarchien.
+	- Aufgabe:
+		- Entscheide, ob Categories echte Hierarchien bekommen oder strikt flache Schluessel bleiben.
+		- Wenn flach: entferne implizite Hierarchie-Annahmen aus UI und Doku.
+		- Wenn hierarchisch: definiere DB-, API- und UI-Anpassungen.
+	- Acceptance:
+		- Die Architekturentscheidung ist dokumentiert.
+		- Datenmodell, API und UI folgen derselben Definition.
+
+- [ ] `ARCH-010` File-Explorer auf serverseitige Filterung und skalierbares Laden umbauen
+	- Ziel: Der File-Viewer soll nicht dauerhaft alle Detailobjekte clientseitig laden und filtern.
+	- Ist-Zustand: Erst werden Summaries geladen, danach fuer alle Files die Detailobjekte.
+	- Aufgabe:
+		- Definiere einen Backend-Datenvertrag fuer gefilterte/paginierte File-Listen.
+		- Passe Frontend und API darauf an.
+		- Lege fest, welche Daten fuer Baum und Detailansicht wirklich sofort benoetigt werden.
+	- Acceptance:
+		- File-Filter laufen primaer serverseitig.
+		- Der Explorer laedt nicht mehr pauschal alle Details.
+		- Performance-Zielbild ist dokumentiert.
+
+### Concurrency / Autosave
+
+- [ ] `ARCH-011` Konfliktstrategie fuer gleichzeitige Bearbeitung definieren
+	- Ziel: Die bereits robuste lokale Notes-Auswahl soll um ein echtes Concurrent-Edit-Modell ergaenzt werden.
+	- Ist-Zustand: Schnellklick-/Autosave-Rennen innerhalb des Frontends sind adressiert, Multi-Client-Konflikte aber noch nicht.
+	- Aufgabe:
+		- Entscheide zwischen `last-write-wins`, Versionsnummern, optimistic locking oder einem anderen Verfahren.
+		- Beschreibe die Auswirkungen auf API, Frontend und Fehlermeldungen.
+	- Acceptance:
+		- Es gibt ein dokumentiertes Konfliktmodell.
+		- Mindestens ein echter Concurrent-Edit-Fall ist getestet.
+
+### Tests / Verifikation
+
+- [ ] `ARCH-012` Architektur- und Security-Risiken mit gezielten Tests absichern
+	- Ziel: Die aus dem Review abgeleiteten Risiken sollen nicht nur dokumentiert, sondern verifizierbar abgesichert sein.
+	- Aufgabe:
+		- Ergaenze Tests fuer Auth/ACL.
+		- Ergaenze Tests fuer XSS-Sanitization.
+		- Ergaenze Tests fuer Label-Lifecycle-Entscheidung.
+		- Ergaenze Tests fuer Search History / Saved Queries.
+		- Ergaenze Tests fuer skalierbares File-Filtering soweit die Architektur umgesetzt wird.
+	- Acceptance:
+		- Zu jedem Review-Block gibt es mindestens einen passenden Test oder ein bewusst dokumentiertes Test-Gap.
+
 ## Kurzfristige UI-Fixes (Status)
 - [ ] Linke Navigationsleiste fixieren (UX)
 - [ ] File viewer: Stored path → Zeilenumbruch aktivieren

@@ -120,6 +120,16 @@ class LabelData(BaseModel):
     meta: dict[str, Any] = Field(default_factory=dict)
 
 
+class CategoryData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label: str
+    description: str | None = None
+    applies_to_kind: str | None = None
+    is_active: bool = True
+
+
 class MetadataEntryData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

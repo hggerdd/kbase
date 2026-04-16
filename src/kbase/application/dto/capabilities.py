@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from kbase.application.dto.common import (
     AssetData,
     AuditEventData,
+    CategoryData,
     ContentPartData,
     InboxFileData,
     ItemFileData,
@@ -201,6 +202,48 @@ class ListLabelsInput(PaginationInput):
     parent_id: str | None = None
     full_path_prefix: str | None = None
     actor: ActorContext
+
+
+class ListCategoriesInput(PaginationInput):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str | None = None
+    applies_to_kind: str | None = None
+    include_inactive: bool = False
+    actor: ActorContext
+
+
+class ListCategoriesResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    categories: list[CategoryData]
+    limit: int
+    offset: int
+
+
+class CreateCategoryInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label: str
+    description: str | None = None
+    applies_to_kind: str | None = None
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class UpdateCategoryInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label: str | None = None
+    description: str | None = None
+    description_provided: bool = False
+    applies_to_kind: str | None = None
+    applies_to_kind_provided: bool = False
+    is_active: bool | None = None
+    actor: ActorContext
+    provenance: ProvenanceInput
 
 
 class CreateLabelInput(BaseModel):

@@ -9,6 +9,12 @@ export function CreateNotePanel({ workspace, isOpen, onClose }) {
   if (!isOpen) {
     return null;
   }
+  const categoryOptions = workspace.availableCategories.length > 0
+    ? workspace.availableCategories.map((category) => ({
+        value: category.key,
+        label: category.label || category.key,
+      }))
+    : NOTE_CATEGORIES.map((category) => ({ value: category, label: category }));
 
   async function handleSubmit(event) {
     const success = await workspace.handleCreateNote(event);
@@ -49,9 +55,9 @@ export function CreateNotePanel({ workspace, isOpen, onClose }) {
                   workspace.setDraft({ ...workspace.draft, category_key: event.target.value })
                 }
               >
-                {NOTE_CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {categoryOptions.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
                   </option>
                 ))}
               </select>
