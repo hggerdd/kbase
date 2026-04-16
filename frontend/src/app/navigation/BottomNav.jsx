@@ -13,11 +13,12 @@ export function BottomNav({ activeRoute, onNavigate }) {
             type="button"
             className={`nav-pill ${activeRoute === item.id ? "active" : ""}`}
             onClick={() => onNavigate(item.id)}
+            aria-label={item.label}
+            title={item.label}
           >
             <span className="nav-pill-glyph" aria-hidden="true">
               <Icon />
             </span>
-            <span>{item.label}</span>
           </button>
         );
       })}

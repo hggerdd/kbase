@@ -12,6 +12,7 @@ from kbase.application.capabilities.add_item_to_project import add_item_to_proje
 from kbase.application.capabilities.assign_labels import assign_labels
 from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
 from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_category import create_category
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
@@ -23,6 +24,7 @@ from kbase.application.capabilities.get_item_provenance import get_item_provenan
 from kbase.application.capabilities.import_file_as_item import import_file_as_item
 from kbase.application.capabilities.import_inbox_file import import_inbox_file
 from kbase.application.capabilities.link_items import link_items
+from kbase.application.capabilities.list_categories import list_categories
 from kbase.application.capabilities.list_labels import list_labels
 from kbase.application.capabilities.list_inbox_files import list_inbox_files
 from kbase.application.capabilities.list_items import list_items
@@ -35,12 +37,14 @@ from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
 from kbase.application.capabilities.update_label import update_label
+from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.update_item_core import update_item_core
 from kbase.application.dto.capabilities import (
     AddItemToProjectInput,
     AssignLabelsInput,
     AttachAssetToItemInput,
     ClassifyItemInput,
+    CreateCategoryInput,
     CreateLabelInput,
     CreateNoteInput,
     CreateNoteResult,
@@ -54,6 +58,8 @@ from kbase.application.dto.capabilities import (
     GetItemProvenanceResult,
     ImportInboxFileInput,
     ItemDetailResult,
+    ListCategoriesInput,
+    ListCategoriesResult,
     ListLabelsInput,
     ListInboxFilesResult,
     ListItemsInput,
@@ -68,10 +74,11 @@ from kbase.application.dto.capabilities import (
     ReplaceContentPartInput,
     SearchContentInput,
     SearchContentResult,
+    UpdateCategoryInput,
     UpdateLabelInput,
     UpdateItemCoreInput,
 )
-from kbase.application.dto.common import AssetData, ItemSummary, LabelData, MetadataEntryData
+from kbase.application.dto.common import AssetData, CategoryData, ItemSummary, LabelData, MetadataEntryData
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
 from kbase.infrastructure.files.item_file_store import ItemFileStore
@@ -80,6 +87,7 @@ from kbase.interfaces.api.schemas import (
     AssignLabelsRequest,
     AttachAssetRequest,
     ClassifyItemRequest,
+    CreateCategoryRequest,
     CreateLabelRequest,
     CreateNoteRequest,
     CreateProjectRequest,
@@ -88,6 +96,7 @@ from kbase.interfaces.api.schemas import (
     PatchMetadataRequest,
     RegisterAssetRequest,
     ReplaceContentRequest,
+    UpdateCategoryRequest,
     UpdateLabelRequest,
     UpdateItemRequest,
 )
@@ -415,6 +424,69 @@ def create_app() -> FastAPI:
                 label_id=label_id,
                 actor=actor,
                 provenance=_provenance("api.reactivate_label"),
+            )
+        )
+
+    @app.get("/api/categories", response_model=ListCategoriesResult)
+    def list_categories_endpoint(
+        query: str | None = Query(default=None),
+        applies_to_kind: str | None = Query(default=None),
+        include_inactive: bool = Query(default=False),
+        limit: int = Query(default=100, ge=1, le=500),
+        offset: int = Query(default=0, ge=0),
+        actor: ActorContext = Depends(_actor_context),
+    ) -> ListCategoriesResult:
+        return list_categories(
+            ListCategoriesInput(
+                query=query,
+                applies_to_kind=applies_to_kind,
+                include_inactive=include_inactive,
+                limit=limit,
+                offset=offset,
+                actor=actor,
+            )
+        )
+
+    @app.post("/api/categories", response_model=CategoryData)
+    def create_category_endpoint(
+        payload: CreateCategoryRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> CategoryData:
+        return create_category(
+            CreateCategoryInput(
+                key=payload.key,
+                label=payload.label,
+                description=payload.description,
+                applies_to_kind=payload.applies_to_kind,
+                actor=actor,
+                provenance=_provenance("api.create_category"),
+            )
+        )
+
+    @app.patch("/api/categories/{category_key}", response_model=CategoryData)
+    def update_category_endpoint(
+        category_key: str,
+        payload: UpdateCategoryRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> CategoryData:
+        if (
+            payload.label is None
+            and "description" not in payload.model_fields_set
+            and "applies_to_kind" not in payload.model_fields_set
+            and payload.is_active is None
+        ):
+            raise ValueError("At least one updatable field is required")
+        return update_category(
+            UpdateCategoryInput(
+                key=category_key,
+                label=payload.label,
+                description=payload.description,
+                description_provided="description" in payload.model_fields_set,
+                applies_to_kind=payload.applies_to_kind,
+                applies_to_kind_provided="applies_to_kind" in payload.model_fields_set,
+                is_active=payload.is_active,
+                actor=actor,
+                provenance=_provenance("api.update_category"),
             )
         )
 

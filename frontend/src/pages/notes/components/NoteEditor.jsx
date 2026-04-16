@@ -23,9 +23,19 @@ export function NoteEditor({ workspace, onClose }) {
   const currentStatus = workspace.editor.status || activeNote?.status || "draft";
   const currentCategory = workspace.editor.category_key || activeNote?.category_key || "research";
   const statusOptions = NOTE_STATUSES.includes(currentStatus) ? NOTE_STATUSES : [currentStatus, ...NOTE_STATUSES];
-  const categoryOptions = NOTE_CATEGORIES.includes(currentCategory)
-    ? NOTE_CATEGORIES
-    : [currentCategory, ...NOTE_CATEGORIES];
+  const managedCategoryOptions = workspace.availableCategories.map((category) => ({
+    value: category.key,
+    label: category.label || formatLabel(category.key),
+  }));
+  const fallbackCategoryOptions = NOTE_CATEGORIES.map((category) => ({
+    value: category,
+    label: formatLabel(category),
+  }));
+  const categoryOptions = managedCategoryOptions.length > 0 ? managedCategoryOptions : fallbackCategoryOptions;
+  const hasCurrentCategoryOption = categoryOptions.some((option) => option.value === currentCategory);
+  const visibleCategoryOptions = hasCurrentCategoryOption
+    ? categoryOptions
+    : [{ value: currentCategory, label: formatLabel(currentCategory) }, ...categoryOptions];
   const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -268,7 +278,7 @@ export function NoteEditor({ workspace, onClose }) {
           {isCategoryModalOpen ? (
             <OptionSelectModal
               title="Set category"
-              options={categoryOptions}
+              options={visibleCategoryOptions}
               selectedValue={currentCategory}
               onSelect={handleCategorySelect}
               onClose={() => setIsCategoryModalOpen(false)}

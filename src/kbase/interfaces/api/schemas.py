@@ -60,6 +60,24 @@ class UpdateLabelRequest(BaseModel):
     description: str | None = None
 
 
+class CreateCategoryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label: str
+    description: str | None = None
+    applies_to_kind: str | None = None
+
+
+class UpdateCategoryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str | None = None
+    description: str | None = None
+    applies_to_kind: str | None = None
+    is_active: bool | None = None
+
+
 class ClassifyItemRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

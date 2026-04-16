@@ -6,6 +6,7 @@ import {
   fetchHistory,
   fetchLabels,
   fetchNote,
+  fetchNoteCategories,
   fetchNotes,
   replaceLabels,
   replaceNoteContent,
@@ -43,6 +44,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   const [selectedNoteLoading, setSelectedNoteLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [availableLabels, setAvailableLabels] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const [search, setSearch] = useState(externalSearch);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [editor, setEditor] = useState(emptyEditor);
@@ -297,6 +299,15 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     }
   }
 
+  async function loadAvailableCategories() {
+    try {
+      const categories = await fetchNoteCategories();
+      setAvailableCategories(categories);
+    } catch {
+      // Category management is optional for keeping existing notes editable.
+    }
+  }
+
   async function loadNote(itemId) {
     if (!itemId) {
       setSelectedNoteLoading(false);
@@ -383,6 +394,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   useEffect(() => {
     void loadNotes(externalSearch);
     void loadAvailableLabels();
+    void loadAvailableCategories();
     return () => clearAutosaveTimer();
   }, []);
 
@@ -443,6 +455,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
       setNotice("Note created");
       await loadNotes(search);
       await loadAvailableLabels();
+      await loadAvailableCategories();
       commitSelectedId(payload.item.id);
       return true;
     } catch (err) {
@@ -520,6 +533,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     const success = await persistEditor(itemId, nextEditor, { source: "autosave" });
     if (success) {
       await loadAvailableLabels();
+      await loadAvailableCategories();
     }
     return success;
   }
@@ -584,6 +598,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     attachmentFile,
     autosaveState,
     autosaving,
+    availableCategories,
     availableLabels,
     closeSelectedNote,
     deleteSelectedNote,

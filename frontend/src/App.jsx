@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AppShell } from "./app/AppShell";
-import { NAV_ITEMS, getRouteFromHash, routeToHash } from "./app/navigation/nav-config";
+import { NAV_ITEMS, getRouteFromHash, getRouteRoot, routeToHash } from "./app/navigation/nav-config";
 import { HomePage } from "./pages/home/HomePage";
-import { LabelsPage } from "./pages/labels/LabelsPage";
 import { FileViewerPage } from "./pages/files/FileViewerPage";
 import { ImportsPage } from "./pages/imports/ImportsPage";
 import { NotesPage } from "./pages/notes/NotesPage";
 import { ProjectsPage } from "./pages/projects/ProjectsPage";
 import { SearchPage } from "./pages/search/SearchPage";
+import { SettingsPage } from "./pages/settings/SettingsPage";
 
 function useHashRoute() {
   const [route, setRoute] = useState(() => getRouteFromHash(window.location.hash));
@@ -22,7 +22,8 @@ function useHashRoute() {
   }, []);
 
   function navigate(nextRoute) {
-    const normalizedRoute = NAV_ITEMS.some((item) => item.id === nextRoute) ? nextRoute : "home";
+    const root = getRouteRoot(nextRoute);
+    const normalizedRoute = NAV_ITEMS.some((item) => item.id === root) ? nextRoute : "home";
     const nextHash = routeToHash(normalizedRoute);
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;
@@ -36,6 +37,7 @@ function useHashRoute() {
 
 export default function App() {
   const [route, navigate] = useHashRoute();
+  const routeRoot = getRouteRoot(route);
   const [searchState, setSearchState] = useState({
     query: "",
     globalScope: false,
@@ -49,7 +51,7 @@ export default function App() {
     setSearchState((current) => ({
       ...current,
       query: current.query.trim(),
-      scopeRoute: route === "search" ? current.scopeRoute : route,
+      scopeRoute: routeRoot === "search" ? current.scopeRoute : routeRoot,
       version: current.version + 1,
     }));
   }
@@ -61,7 +63,7 @@ export default function App() {
     }));
   }
 
-  function seedGlobalSearch(query, { navigateTo = false, scopeRoute = route } = {}) {
+  function seedGlobalSearch(query, { navigateTo = false, scopeRoute = routeRoot } = {}) {
     setSearchState((current) => ({
       ...current,
       query,
@@ -76,30 +78,30 @@ export default function App() {
   }
 
   const activePage = useMemo(() => {
-    switch (route) {
+    switch (routeRoot) {
       case "search":
         return <SearchPage searchRequest={searchState} onSearchStateChange={handleSearchStateChange} />;
       case "files":
         return <FileViewerPage />;
-      case "labels":
-        return <LabelsPage />;
       case "notes":
         return <NotesPage />;
       case "projects":
         return <ProjectsPage />;
       case "imports":
         return <ImportsPage />;
+      case "settings":
+        return <SettingsPage route={route} onNavigate={navigate} />;
       case "home":
       default:
         return <HomePage onNavigate={navigate} onSeedSearch={seedGlobalSearch} />;
     }
-  }, [navigate, route, searchState]);
+  }, [navigate, route, routeRoot, searchState]);
 
-  const searchContextRoute = route === "search" ? searchState.scopeRoute : route;
+  const searchContextRoute = routeRoot === "search" ? searchState.scopeRoute : routeRoot;
 
   return (
     <AppShell
-      activeRoute={route}
+      activeRoute={routeRoot}
       globalScope={searchState.globalScope}
       globalSearch={searchState.query}
       onGlobalScopeChange={(value) => handleSearchStateChange({ globalScope: value })}
