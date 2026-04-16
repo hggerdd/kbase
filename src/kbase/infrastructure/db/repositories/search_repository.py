@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, and_, exists, literal, or_, select
 from sqlalchemy.orm import Session
 
 from kbase.infrastructure.db.models.tables import (
     ContentPartModel,
+    ItemAclModel,
     ItemLabelModel,
     ItemModel,
     LabelNodeModel,
@@ -30,8 +31,22 @@ class SearchRepository:
         include_archived: bool,
         limit: int,
         offset: int,
+        accessible_principal_ids: list[str] | None = None,
+        permission_keys: list[str] | None = None,
     ) -> list[tuple[ItemModel, str | None]]:
         stmt: Select[tuple[ItemModel]] = select(ItemModel).distinct()
+        if accessible_principal_ids and permission_keys:
+            any_acl = exists(select(literal(1)).where(ItemAclModel.item_id == ItemModel.id))
+            matching_acl = exists(
+                select(literal(1)).where(
+                    and_(
+                        ItemAclModel.item_id == ItemModel.id,
+                        ItemAclModel.principal_id.in_(accessible_principal_ids),
+                        ItemAclModel.permission_key.in_(permission_keys),
+                    )
+                )
+            )
+            stmt = stmt.where(or_(~any_acl, matching_acl))
         labels_joined_for_query = False
         if query:
             like_query = f"%{query}%"

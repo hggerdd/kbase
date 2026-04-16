@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 
 from kbase.application.dto.common import (
+    AclEntryData,
+    ApiTokenData,
     AssetData,
     AuditEventData,
     ContentPartData,
@@ -15,6 +17,7 @@ from kbase.application.dto.common import (
     LinkData,
     MetadataEntryData,
     ProvenanceRecordData,
+    SessionData,
 )
 from kbase.infrastructure.db.repositories.helpers import metadata_value_from_row
 
@@ -111,6 +114,41 @@ def to_category_data(category) -> CategoryData:  # type: ignore[no-untyped-def]
         description=category.description,
         applies_to_kind=category.applies_to_kind,
         is_active=bool(category.is_active),
+    )
+
+
+def to_acl_entry_data(entry) -> AclEntryData:  # type: ignore[no-untyped-def]
+    return AclEntryData(
+        principal_id=entry.principal_id,
+        permission_key=entry.permission_key,
+        granted_by_principal_id=entry.granted_by_principal_id,
+        created_at=entry.created_at,
+    )
+
+
+def to_session_data(
+    *,
+    user,
+    principal,
+    principal_ids: list[str],
+    auth_method: str,
+) -> SessionData:
+    return SessionData(
+        user_id=user.id,
+        username=user.username,
+        principal_id=principal.id,
+        principal_type=principal.principal_type,
+        principal_ids=principal_ids,
+        auth_method=auth_method,
+    )
+
+
+def to_api_token_data(token) -> ApiTokenData:  # type: ignore[no-untyped-def]
+    return ApiTokenData(
+        id=token.id,
+        token_label=token.token_label,
+        created_at=token.created_at,
+        last_used_at=token.last_used_at,
     )
 
 

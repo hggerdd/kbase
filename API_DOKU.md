@@ -20,9 +20,14 @@ http://127.0.0.1:8000
 ## Grundprinzip
 
 - Alle Requests laufen gegen dieselben Application-Capabilities wie die CLI.
-- Der Actor wird über HTTP-Header übergeben.
+- Der aktuelle Ist-Zustand uebergibt den Actor noch ueber HTTP-Header.
+- Das Zielbild fuer `SEC-001` ersetzt diesen Header durch Benutzer, Session-Cookie und Bearer-Token.
 - Fehler aus den Capabilities werden als `400 Bad Request` zurückgegeben.
 - Antworten sind JSON.
+
+Konzept-Referenz:
+
+- [11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
 
 ## Header
 
@@ -37,6 +42,11 @@ Optional:
 ```text
 x-kbase-request-id: req-123
 ```
+
+Hinweis:
+
+- `x-kbase-actor` dokumentiert den aktuellen technischen Stand.
+- Er ist als Uebergangsmechanismus zu verstehen und soll durch das in [11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md) beschriebene Nutzer-/Session-Modell ersetzt werden.
 
 ## Schnellstart
 
@@ -413,13 +423,23 @@ Request:
 
 ## Actor-Kontext
 
-Der wichtigste Header ist:
+Aktuell ist der wichtigste Header:
 
 ```text
 x-kbase-actor: heiko
 ```
 
 Ohne expliziten Header nutzt die API derzeit standardmaessig `heiko`.
+
+Fuer `SEC-001` ist dieses Verhalten nicht mehr das Zielbild.
+
+Geplant ist stattdessen:
+
+- Browser authentifizieren sich als Benutzer und erhalten eine Session
+- CLI/API-Clients nutzen persoenliche Bearer-Tokens
+- das Backend leitet daraus den `principal_id` fuer den Capability-Layer ab
+- fehlende Authentifizierung liefert `401`
+- fehlende Berechtigung liefert `403`
 
 ## Fehlerverhalten
 

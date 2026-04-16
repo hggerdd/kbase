@@ -5,6 +5,9 @@ from pathlib import Path
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from kbase.infrastructure.auth.security import hash_password
+from kbase.infrastructure.db.repositories.helpers import new_id, utc_now
+
 
 ROOT = Path(__file__).resolve().parents[4]
 SQL_DIR = ROOT / "src" / "kbase" / "infrastructure" / "db" / "sql"
@@ -23,6 +26,7 @@ def initialize_database(connection: Connection) -> None:
         connection.execute(text(statement))
     for statement in _split_sql_statements(seed_sql):
         connection.execute(text(statement))
+    _ensure_default_users(connection)
 
 
 def _normalize_schema_sql(sql_text: str, dialect: str) -> str:
@@ -67,3 +71,37 @@ def _split_sql_statements(sql_text: str) -> list[str]:
     if tail:
         statements.append(tail)
     return statements
+
+
+def _ensure_default_users(connection: Connection) -> None:
+    defaults = [
+        ("heiko", "heiko", "heiko-local-dev"),
+        ("wife", "wife", "wife-local-dev"),
+    ]
+    for username, principal_id, password in defaults:
+        existing = connection.execute(
+            text("SELECT id FROM users WHERE username = :username"),
+            {"username": username},
+        ).scalar_one_or_none()
+        if existing is not None:
+            continue
+        now = utc_now()
+        connection.execute(
+            text(
+                """
+                INSERT INTO users (
+                    id, username, password_hash, principal_id, is_active, created_at, updated_at
+                ) VALUES (
+                    :id, :username, :password_hash, :principal_id, 1, :created_at, :updated_at
+                )
+                """
+            ),
+            {
+                "id": new_id(),
+                "username": username,
+                "password_hash": hash_password(password),
+                "principal_id": principal_id,
+                "created_at": now,
+                "updated_at": now,
+            },
+        )

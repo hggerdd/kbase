@@ -4,7 +4,12 @@ from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import ClassifyItemInput
 from kbase.application.dto.common import ItemSummary
-from kbase.application.services.capability_support import build_repositories, record_write, require_item
+from kbase.application.services.capability_support import (
+    build_repositories,
+    record_write,
+    require_item,
+    require_item_write,
+)
 from kbase.application.services.mappers import to_item_summary
 from kbase.core.policies.classification_policy import (
     ensure_secondary_categories_do_not_repeat_primary,
@@ -23,6 +28,7 @@ def classify_item(
         assert uow.session is not None
         repos = build_repositories(uow.session)
         item = require_item(repos.items, data.item_id)
+        require_item_write(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
         category = repos.items.get_category(data.primary_category_key)
         if category is None:
             raise ValueError(f"Unknown category '{data.primary_category_key}'")
@@ -61,4 +67,3 @@ def classify_item(
             provenance=data.provenance,
         )
         return to_item_summary(item)
-

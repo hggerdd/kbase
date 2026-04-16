@@ -39,6 +39,13 @@ Noch nicht umgesetzt:
 - Asset-Upload
 - Authentifizierung / Session-Konzept
 
+Zielbild fuer die naechste Security-Stufe:
+
+- Benutzer melden sich an der App an
+- das Backend fuehrt die Session
+- ACL basiert auf `principals` und Gruppen, nicht auf einem frei waehlenbaren Actor im Browser
+- Referenz: [11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
+
 ## Ordnerstruktur
 
 ```text
@@ -98,7 +105,9 @@ http://127.0.0.1:5173
 
 ## Konfiguration
 
-Die API-Basisadresse und der Standard-Actor koennen ueber Umgebungsvariablen gesetzt werden.
+Die API-Basisadresse kann ueber Umgebungsvariablen gesetzt werden.
+
+Der aktuell noch vorhandene Standard-Actor ist nur ein Uebergangsmechanismus vor `SEC-001`.
 
 In [api.js](/c:/ttt/kbase/frontend/src/api.js):
 
@@ -117,6 +126,12 @@ Ohne explizite Werte nutzt die App:
 
 - API: `http://127.0.0.1:8000`
 - Actor: `heiko`
+
+Geplante Richtung:
+
+- `VITE_KBASE_ACTOR` faellt spaeter weg
+- die App liest stattdessen `GET /api/auth/session`
+- der angemeldete Benutzer bestimmt den Principal serverseitig
 
 ## Lokales Netzwerk
 
@@ -273,10 +288,17 @@ Speichern passiert in zwei Schritten:
 ## Wichtige Annahmen
 
 - Es gibt aktuell keinen Login.
-- Der Actor wird ueber `x-kbase-actor` fest gesetzt.
+- Der Actor wird aktuell ueber `x-kbase-actor` fest gesetzt.
 - Nur `note`-Items sind aktuell im Frontend sichtbar.
 - Die App arbeitet noch ohne Router.
 - Die App ist ein MVP und kein vollstaendiger PKM-Client.
+
+Fuer `SEC-001` wird diese Annahme ersetzt durch:
+
+- Benutzer-Login im Frontend
+- Session-Cookie oder spaeter Token fuer nicht-browserbasierte Clients
+- keine freie Actor-Wahl mehr im Browser
+- dieselbe Principal-Ableitung fuer Frontend, API und spaetere ACL-Pruefungen
 
 ## CORS
 
@@ -298,7 +320,7 @@ Fuer LAN-Zugriff kann die Liste ueber `KBASE_CORS_ORIGINS` als komma-separierte 
 5. Asset-Upload
 6. sauberer API-Statusbereich fuer Lade- und Fehlerzustaende
 7. Routing fuer Listen-, Detail- und Projektansichten
-8. spaeter Authentifizierung und Multiuser-Kontext
+8. Authentifizierung und Multiuser-Kontext gemaess [11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
 
 ## Gesamtbewertung
 

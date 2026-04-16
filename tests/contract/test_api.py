@@ -21,7 +21,10 @@ def _client(monkeypatch, tmp_path) -> TestClient:
     _init_db(db_path)
     session_module._session_factory = None
     monkeypatch.setenv("KBASE_DB_URL", f"sqlite:///{db_path}")
-    return TestClient(app)
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"username": "heiko", "password": "heiko-local-dev"})
+    assert login.status_code == 200
+    return client
 
 
 def test_api_health(monkeypatch, tmp_path) -> None:

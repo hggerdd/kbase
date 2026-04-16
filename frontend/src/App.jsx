@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AppShell } from "./app/AppShell";
 import { NAV_ITEMS, getRouteFromHash, getRouteRoot, routeToHash } from "./app/navigation/nav-config";
+import { fetchSession, login, logout } from "./features/auth/session";
 import { HomePage } from "./pages/home/HomePage";
 import { FileViewerPage } from "./pages/files/FileViewerPage";
 import { ImportsPage } from "./pages/imports/ImportsPage";
@@ -36,6 +37,9 @@ function useHashRoute() {
 }
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [loginState, setLoginState] = useState({ username: "heiko", password: "heiko-local-dev", error: "", loading: false });
   const [route, navigate] = useHashRoute();
   const routeRoot = getRouteRoot(route);
   const [searchState, setSearchState] = useState({
@@ -44,6 +48,16 @@ export default function App() {
     scopeRoute: "home",
     version: 0,
   });
+
+  useEffect(() => {
+    fetchSession()
+      .then((nextSession) => {
+        setSession(nextSession);
+      })
+      .finally(() => {
+        setSessionLoading(false);
+      });
+  }, []);
 
   function handleGlobalSearchSubmit(event) {
     event.preventDefault();
@@ -99,6 +113,56 @@ export default function App() {
 
   const searchContextRoute = routeRoot === "search" ? searchState.scopeRoute : routeRoot;
 
+  async function handleLoginSubmit(event) {
+    event.preventDefault();
+    setLoginState((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const nextSession = await login(loginState.username, loginState.password);
+      setSession(nextSession);
+    } catch (error) {
+      setLoginState((current) => ({ ...current, error: error.message || "Login failed" }));
+    } finally {
+      setLoginState((current) => ({ ...current, loading: false }));
+    }
+  }
+
+  async function handleLogout() {
+    await logout();
+    setSession(null);
+  }
+
+  if (sessionLoading) {
+    return <div className="app-main">Session wird geladen…</div>;
+  }
+
+  if (!session) {
+    return (
+      <main className="app-main" style={{ maxWidth: 440, margin: "12vh auto", padding: "2rem" }}>
+        <div className="panel">
+          <h1 style={{ marginTop: 0 }}>kbase Login</h1>
+          <p>Bitte melde dich an, um auf die Knowledge Base zuzugreifen.</p>
+          <form onSubmit={handleLoginSubmit} style={{ display: "grid", gap: "0.85rem" }}>
+            <input
+              value={loginState.username}
+              onChange={(event) => setLoginState((current) => ({ ...current, username: event.target.value }))}
+              placeholder="Benutzername"
+            />
+            <input
+              type="password"
+              value={loginState.password}
+              onChange={(event) => setLoginState((current) => ({ ...current, password: event.target.value }))}
+              placeholder="Passwort"
+            />
+            {loginState.error ? <div className="status-banner error">{loginState.error}</div> : null}
+            <button type="submit" disabled={loginState.loading}>
+              {loginState.loading ? "Anmeldung läuft…" : "Anmelden"}
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <AppShell
       activeRoute={routeRoot}
@@ -107,8 +171,10 @@ export default function App() {
       onGlobalScopeChange={(value) => handleSearchStateChange({ globalScope: value })}
       onGlobalSearchChange={(value) => handleSearchStateChange({ query: value })}
       onGlobalSearchSubmit={handleGlobalSearchSubmit}
+      onLogout={handleLogout}
       onNavigate={navigate}
       searchContextRoute={searchContextRoute}
+      session={session}
     >
       {activePage}
     </AppShell>

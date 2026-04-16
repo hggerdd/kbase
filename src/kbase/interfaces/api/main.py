@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi import File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -12,13 +12,16 @@ from kbase.application.capabilities.add_item_to_project import add_item_to_proje
 from kbase.application.capabilities.assign_labels import assign_labels
 from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
 from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_api_token import create_api_token
 from kbase.application.capabilities.create_category import create_category
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
 from kbase.application.capabilities.delete_label import delete_label
 from kbase.application.capabilities.deactivate_label import deactivate_label
+from kbase.application.capabilities.get_current_session import get_current_session
 from kbase.application.capabilities.get_item import get_item
+from kbase.application.capabilities.get_item_acl import get_item_acl
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
 from kbase.application.capabilities.import_file_as_item import import_file_as_item
@@ -33,29 +36,36 @@ from kbase.application.capabilities.list_related_items import list_related_items
 from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
 from kbase.application.capabilities.register_asset import register_asset
 from kbase.application.capabilities.reactivate_label import reactivate_label
+from kbase.application.capabilities.replace_item_acl import replace_item_acl
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
 from kbase.application.capabilities.update_label import update_label
 from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.update_item_core import update_item_core
+from kbase.application.capabilities.login_user import login_user
+from kbase.application.capabilities.logout_user import logout_user
 from kbase.application.dto.capabilities import (
     AddItemToProjectInput,
     AssignLabelsInput,
     AttachAssetToItemInput,
+    CreateApiTokenInput,
     ClassifyItemInput,
     CreateCategoryInput,
     CreateLabelInput,
     CreateNoteInput,
     CreateNoteResult,
+    CreateApiTokenResult,
     CreateProjectInput,
     CreateFileItemInput,
     DeleteLabelInput,
     DeleteLabelResult,
     DeactivateLabelInput,
+    GetItemAclInput,
     GetItemHistoryResult,
     GetItemInput,
     GetItemProvenanceResult,
+    GetSessionInput,
     ImportInboxFileInput,
     ItemDetailResult,
     ListCategoriesInput,
@@ -68,17 +78,22 @@ from kbase.application.dto.capabilities import (
     ListProjectItemsResult,
     ListRelatedItemsInput,
     ListRelatedItemsResult,
+    LoginInput,
+    LoginResult,
+    LogoutInput,
     PatchItemMetadataInput,
     ReactivateLabelInput,
     RegisterAssetInput,
     ReplaceContentPartInput,
+    ReplaceItemAclInput,
     SearchContentInput,
     SearchContentResult,
     UpdateCategoryInput,
     UpdateLabelInput,
     UpdateItemCoreInput,
 )
-from kbase.application.dto.common import AssetData, CategoryData, ItemSummary, LabelData, MetadataEntryData
+from kbase.application.dto.common import AclEntryData, AssetData, CategoryData, ItemSummary, LabelData, MetadataEntryData, SessionData
+from kbase.application.services.security import AuthenticationError, AuthorizationError, build_authenticated_actor
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
 from kbase.infrastructure.files.item_file_store import ItemFileStore
@@ -86,14 +101,17 @@ from kbase.interfaces.api.schemas import (
     AddProjectItemRequest,
     AssignLabelsRequest,
     AttachAssetRequest,
+    CreateApiTokenRequest,
     ClassifyItemRequest,
     CreateCategoryRequest,
     CreateLabelRequest,
+    LoginRequest,
     CreateNoteRequest,
     CreateProjectRequest,
     ImportInboxFileRequest,
     LinkItemsRequest,
     PatchMetadataRequest,
+    ReplaceItemAclRequest,
     RegisterAssetRequest,
     ReplaceContentRequest,
     UpdateCategoryRequest,
@@ -101,12 +119,38 @@ from kbase.interfaces.api.schemas import (
     UpdateItemRequest,
 )
 
+SESSION_COOKIE_NAME = "kbase_session"
+
+
+def _extract_bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    prefix = "bearer "
+    if not authorization.lower().startswith(prefix):
+        return None
+    token = authorization[len(prefix) :].strip()
+    return token or None
+
+
+def _authenticated_session(
+    authorization: str | None = Header(default=None),
+    session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    x_kbase_request_id: str | None = Header(default=None),
+) -> SessionData:
+    return get_current_session(
+        GetSessionInput(
+            session_token=session_cookie,
+            api_token=_extract_bearer_token(authorization),
+            request_id=x_kbase_request_id,
+        )
+    )
+
 
 def _actor_context(
-    x_kbase_actor: str = Header(default="heiko"),
+    session: SessionData = Depends(_authenticated_session),
     x_kbase_request_id: str | None = Header(default=None),
 ) -> ActorContext:
-    return ActorContext(principal_id=x_kbase_actor, request_id=x_kbase_request_id)
+    return build_authenticated_actor(session, request_id=x_kbase_request_id)
 
 
 def _provenance(method_key: str) -> ProvenanceInput:
@@ -157,9 +201,62 @@ def create_app() -> FastAPI:
     async def handle_value_error(_request: Request, exc: ValueError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
+    @app.exception_handler(AuthenticationError)
+    async def handle_authentication_error(_request: Request, exc: AuthenticationError) -> JSONResponse:
+        return JSONResponse(status_code=401, content={"detail": str(exc)})
+
+    @app.exception_handler(AuthorizationError)
+    async def handle_authorization_error(_request: Request, exc: AuthorizationError) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.post("/api/auth/login", response_model=SessionData)
+    def login_endpoint(
+        payload: LoginRequest,
+        response: Response,
+        x_kbase_request_id: str | None = Header(default=None),
+    ) -> SessionData:
+        result = login_user(
+            LoginInput(
+                username=payload.username,
+                password=payload.password,
+                request_id=x_kbase_request_id,
+            )
+        )
+        response.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value=result.session_token,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+        )
+        return result.session
+
+    @app.post("/api/auth/logout", status_code=204)
+    def logout_endpoint(
+        response: Response,
+        session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    ) -> Response:
+        if session_cookie:
+            logout_user(LogoutInput(session_token=session_cookie))
+        response.delete_cookie(SESSION_COOKIE_NAME)
+        return response
+
+    @app.get("/api/auth/session", response_model=SessionData)
+    def current_session_endpoint(
+        session: SessionData = Depends(_authenticated_session),
+    ) -> SessionData:
+        return session
+
+    @app.post("/api/auth/tokens", response_model=CreateApiTokenResult)
+    def create_api_token_endpoint(
+        payload: CreateApiTokenRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> CreateApiTokenResult:
+        return create_api_token(CreateApiTokenInput(token_label=payload.token_label, actor=actor))
 
     @app.post("/api/notes", response_model=CreateNoteResult)
     def create_note_endpoint(
@@ -211,6 +308,31 @@ def create_app() -> FastAPI:
             path=target,
             media_type=item_file.mime_type or "application/octet-stream",
             filename=item_file.original_filename or target.name,
+        )
+
+    @app.get("/api/items/{item_id}/acl", response_model=list[AclEntryData])
+    def get_item_acl_endpoint(
+        item_id: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> list[AclEntryData]:
+        return get_item_acl(GetItemAclInput(item_id=item_id, actor=actor))
+
+    @app.put("/api/items/{item_id}/acl", response_model=list[AclEntryData])
+    def replace_item_acl_endpoint(
+        item_id: str,
+        payload: ReplaceItemAclRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> list[AclEntryData]:
+        return replace_item_acl(
+            ReplaceItemAclInput(
+                item_id=item_id,
+                grants=[
+                    {"principal_id": grant["principal_id"], "permission_key": grant["permission_key"]}
+                    for grant in payload.grants
+                ],
+                actor=actor,
+                provenance=_provenance("api.replace_item_acl"),
+            )
         )
 
     @app.get("/api/items", response_model=ListItemsResult)
@@ -623,7 +745,9 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/api/inbox/files", response_model=ListInboxFilesResult)
-    def list_inbox_files_endpoint() -> ListInboxFilesResult:
+    def list_inbox_files_endpoint(
+        _actor: ActorContext = Depends(_actor_context),
+    ) -> ListInboxFilesResult:
         return list_inbox_files()
 
     @app.post("/api/inbox/import", response_model=ItemDetailResult)

@@ -112,6 +112,39 @@ CREATE TABLE IF NOT EXISTS principal_memberships (
     FOREIGN KEY (member_principal_id) REFERENCES principals(id)
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    principal_id TEXT NOT NULL UNIQUE,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (principal_id) REFERENCES principals(id)
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    session_token_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    revoked_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS api_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    token_label TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL,
+    last_used_at TEXT,
+    revoked_at TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- =========================================================
 -- CORE ITEMS
 -- =========================================================
@@ -436,6 +469,12 @@ CREATE INDEX IF NOT EXISTS idx_item_metadata_created_by ON item_metadata(created
 
 CREATE INDEX IF NOT EXISTS idx_project_items_item_id ON project_items(item_id);
 CREATE INDEX IF NOT EXISTS idx_project_items_added_by ON project_items(added_by_principal_id);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_principal_id ON users(principal_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_api_tokens_user_id ON api_tokens(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_item_acl_principal_id ON item_acl(principal_id);
 CREATE INDEX IF NOT EXISTS idx_item_acl_permission_key ON item_acl(permission_key);

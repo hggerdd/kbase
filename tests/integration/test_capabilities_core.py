@@ -21,6 +21,7 @@ from kbase.application.capabilities.patch_item_metadata import patch_item_metada
 from kbase.application.capabilities.register_asset import register_asset
 from kbase.application.capabilities.reactivate_label import reactivate_label
 from kbase.application.capabilities.rename_label import rename_label
+from kbase.application.capabilities.replace_item_acl import replace_item_acl
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
@@ -46,6 +47,7 @@ from kbase.application.dto.capabilities import (
     ReactivateLabelInput,
     RenameLabelInput,
     ReplaceContentPartInput,
+    ReplaceItemAclInput,
     SearchContentInput,
     UpdateItemCoreInput,
 )
@@ -518,7 +520,7 @@ def test_create_note_can_attach_project_during_create(session_factory) -> None:
 
 def test_search_content_filters_by_status_and_creator(session_factory) -> None:
     wife_actor = ActorContext(principal_id="wife")
-    create_note(
+    shared = create_note(
         CreateNoteInput(
             title="Shared note",
             category_key="reference",
@@ -526,6 +528,20 @@ def test_search_content_filters_by_status_and_creator(session_factory) -> None:
             markdown_body="family context",
             actor=wife_actor,
             provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    replace_item_acl(
+        ReplaceItemAclInput(
+            item_id=shared.item.id,
+            grants=[
+                {"principal_id": "wife", "permission_key": "view"},
+                {"principal_id": "wife", "permission_key": "edit"},
+                {"principal_id": "wife", "permission_key": "manage"},
+                {"principal_id": "heiko", "permission_key": "view"},
+            ],
+            actor=wife_actor,
+            provenance=provenance("test.replace_item_acl"),
         ),
         session_factory=session_factory,
     )

@@ -3,7 +3,12 @@ from __future__ import annotations
 from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import CreateNoteInput, CreateNoteResult
-from kbase.application.services.capability_support import build_repositories, record_write
+from kbase.application.services.capability_support import (
+    build_repositories,
+    ensure_owner_acl,
+    record_write,
+    require_item_write,
+)
 from kbase.application.services.mappers import to_content_part_data, to_item_summary
 from kbase.core.policies.metadata_policy import (
     build_typed_metadata_payload,
@@ -39,6 +44,7 @@ def create_note(
             created_by_principal_id=data.actor.principal_id,
             parent_item_id=data.parent_item_id,
         )
+        ensure_owner_acl(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
         content_part = repos.content.create_content_part(
             item_id=item.id,
             part_kind=PRIMARY_CONTENT_PART_KIND,
@@ -57,6 +63,7 @@ def create_note(
             )
 
         for project_id in data.project_ids:
+            require_item_write(repos, item_id=project_id, actor_principal_id=data.actor.principal_id)
             repos.projects.add_item_to_project(
                 project_id=project_id,
                 item_id=item.id,
@@ -100,4 +107,3 @@ def create_note(
             primary_content_part=to_content_part_data(content_part),
             audit_event_id=audit_event.id,
         )
-

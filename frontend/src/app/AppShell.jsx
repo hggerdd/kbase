@@ -29,11 +29,13 @@ export function AppShell({
   children,
   globalScope,
   globalSearch,
+  onLogout,
   onGlobalScopeChange,
   onGlobalSearchChange,
   onGlobalSearchSubmit,
   onNavigate,
   searchContextRoute,
+  session,
 }) {
   const activeNav = NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
   const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
@@ -101,6 +103,7 @@ export function AppShell({
         <div className="sidebar-footer">
           <div className="session-chip session-chip-rail">
             <span className="session-dot" />
+            <span>{session?.username ?? "guest"}</span>
           </div>
         </div>
       </aside>
@@ -168,6 +171,9 @@ export function AppShell({
               <span className="header-link-icon">
                 <HelpIcon />
               </span>
+            </button>
+            <button className="header-link" type="button" onClick={onLogout}>
+              Logout
             </button>
           </div>
         </header>
