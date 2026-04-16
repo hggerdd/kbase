@@ -43,6 +43,36 @@ Optional fuer lokale Testausfuehrung ohne Container:
 - Python 3.12+
 - Node.js 20+
 
+## Git-Workflow
+
+Branching-Regeln:
+- Neue Entwicklung startet immer von `dev`.
+- Feature-Branches werden zur laufenden Integration nach `dev` gemergt.
+- `main` wird nur aus `dev` aktualisiert, wenn ein Stand freigegeben oder release-faehig ist.
+- Hotfixes direkt auf `main` nur wenn noetig; danach wieder nach `dev` zurueckmergen.
+
+Neues Feature starten:
+
+```powershell
+git checkout dev
+git pull
+git checkout -b feature/<name>
+```
+
+Feature nach `dev` mergen:
+
+```powershell
+git checkout dev
+git merge --no-ff feature/<name>
+```
+
+Freigegebenen Stand nach `main` bringen:
+
+```powershell
+git checkout main
+git merge --no-ff dev
+```
+
 ## Docker Dev
 
 Startet PostgreSQL, API mit Hot Reload und Vite-Dev-Server:
