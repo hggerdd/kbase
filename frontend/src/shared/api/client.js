@@ -2,14 +2,12 @@ import { getSession } from "../../features/auth/session.js";
 
 function resolveApiBase() {
   const explicitBase = import.meta?.env?.VITE_API_BASE_URL;
-  if (explicitBase) {
-    return explicitBase;
+  if (explicitBase !== undefined) {
+    return explicitBase.replace(/\/$/, "");
   }
 
   if (typeof window !== "undefined" && window.location?.hostname) {
-    const protocol = window.location.protocol || "http:";
-    const hostname = window.location.hostname;
-    return `${protocol}//${hostname}:8000`;
+    return window.location.origin;
   }
 
   return "http://127.0.0.1:8000";
@@ -18,6 +16,9 @@ function resolveApiBase() {
 const API_BASE = resolveApiBase();
 
 export function buildApiUrl(path) {
+  if (!API_BASE) {
+    return path;
+  }
   return `${API_BASE}${path}`;
 }
 

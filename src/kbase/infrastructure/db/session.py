@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
@@ -14,9 +13,7 @@ def _default_db_url() -> str:
     env_db_url = os.getenv("KBASE_DB_URL")
     if env_db_url:
         return env_db_url
-    root = Path(__file__).resolve().parents[4]
-    db_path = root / "kb" / "db" / "kbase.sqlite"
-    return f"sqlite:///{db_path.as_posix()}"
+    return "postgresql+psycopg://kbase:kbase@127.0.0.1:5432/kbase"
 
 
 def _configure_sqlite(engine: Engine) -> None:
@@ -31,7 +28,7 @@ def _configure_sqlite(engine: Engine) -> None:
 
 
 def create_session_factory(db_url: str | None = None) -> sessionmaker[Session]:
-    engine = create_engine(db_url or _default_db_url(), future=True)
+    engine = create_engine(db_url or _default_db_url(), future=True, pool_pre_ping=True)
     if engine.dialect.name == "sqlite":
         _configure_sqlite(engine)
     return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, class_=Session)

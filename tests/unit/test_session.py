@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from kbase.infrastructure.db.session import _default_db_url
 
 
-def test_default_db_url_points_to_repo_kb_db(monkeypatch) -> None:
+def test_default_db_url_points_to_local_postgres(monkeypatch) -> None:
     monkeypatch.delenv("KBASE_DB_URL", raising=False)
-    expected = (Path(__file__).resolve().parents[2] / "kb" / "db" / "kbase.sqlite").as_posix()
-    assert _default_db_url() == f"sqlite:///{expected}"
+    assert _default_db_url() == "postgresql+psycopg://kbase:kbase@127.0.0.1:5432/kbase"

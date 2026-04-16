@@ -1,0 +1,24 @@
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+COPY scripts ./scripts
+
+RUN uv sync --locked --no-dev
+
+
+FROM base AS dev
+
+RUN uv sync --locked --extra dev
+
+
+FROM base AS prod
