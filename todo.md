@@ -2,6 +2,7 @@
 
 Diese Datei ist die strukturierte ToDo-Liste für dieses Repository. Aufgaben sind nach Epics gegliedert; bitte bei Änderungen Owner, Priority und Estimate ergänzen. Jede Aufgabe sollte eine kurze, prüfbare Akzeptanzbedingung bekommen.
 
+
 ## Hinweise zur Nutzung
 - Owner: @name
 - Priority: high | medium | low
