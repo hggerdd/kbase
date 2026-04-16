@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS link_types (
     key TEXT PRIMARY KEY,
     label TEXT NOT NULL,
     description TEXT,
-    symmetric INTEGER NOT NULL DEFAULT 0,
+    is_symmetric INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1
 );
 

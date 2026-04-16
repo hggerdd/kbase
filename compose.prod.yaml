@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: kbase
+      POSTGRES_USER: kbase
+      POSTGRES_PASSWORD: kbase
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kbase -d kbase"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: prod
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      KBASE_DB_URL: postgresql+psycopg://kbase:kbase@db:5432/kbase
+      KBASE_STORAGE_ROOT: /app/kb/items
+      KBASE_INBOX_ROOT: /app/kb/inbox
+    command: >
+      sh -c "python scripts/init_db.py &&
+      uvicorn kbase.interfaces.api.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./kb:/app/kb
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: prod
+      args:
+        VITE_API_BASE_URL: ""
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_prod_data:

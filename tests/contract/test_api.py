@@ -1,28 +1,19 @@
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
 
 from kbase.infrastructure.db import session as session_module
+from kbase.infrastructure.db.bootstrap import initialize_database
 from kbase.interfaces.api.main import app
 
 
-ROOT = Path(__file__).resolve().parents[2]
-
-
-def _read_sql(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
-
-
 def _init_db(path: Path) -> None:
-    schema_path = ROOT / "src" / "kbase" / "infrastructure" / "db" / "sql" / "001_schema.sql"
-    seed_path = ROOT / "src" / "kbase" / "infrastructure" / "db" / "sql" / "002_seed_reference_data.sql"
-    with sqlite3.connect(path) as connection:
-        connection.executescript(_read_sql(schema_path))
-        connection.executescript(_read_sql(seed_path))
-        connection.commit()
+    engine = create_engine(f"sqlite:///{path.as_posix()}", future=True)
+    with engine.begin() as connection:
+        initialize_database(connection)
 
 
 def _client(monkeypatch, tmp_path) -> TestClient:

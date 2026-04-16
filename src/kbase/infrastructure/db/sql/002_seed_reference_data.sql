@@ -62,7 +62,7 @@ INSERT OR IGNORE INTO asset_kinds (key, label, description) VALUES
 ('thumbnail', 'Thumbnail', 'Thumbnail image'),
 ('ocr_output', 'OCR Output', 'OCR-derived output');
 
-INSERT OR IGNORE INTO link_types (key, label, description, symmetric) VALUES
+INSERT OR IGNORE INTO link_types (key, label, description, is_symmetric) VALUES
 ('related', 'Related', 'General relation between items', 1),
 ('references', 'References', 'Item references another item', 0),
 ('attachment', 'Attachment', 'Supporting attachment relation', 0),

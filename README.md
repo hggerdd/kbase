@@ -1,20 +1,20 @@
 # kbase
 
-Capability-first Knowledge Base auf Basis von Python, `uv` und SQLite.  
-Der aktuelle Stand ist ein erster `Notes Core` mit persistenter Datenbank, Audit/Provenance, Projekten, Labels, Metadaten, Assets, Links und einer CLI als erstem Client.
+Capability-first Knowledge Base auf Basis von Python, React, Docker Compose und PostgreSQL.  
+Der aktuelle Stand ist ein erster `Notes Core` mit persistenter Datenbank, Audit/Provenance, Projekten, Labels, Metadaten, Assets, Links, API und Web-UI.
 
 ## Status
 
 Umgesetzt:
-- relationales SQLite-Schema mit Foreign Keys und Indizes
-- Seeds fuer Referenzdaten, Principals und Memberships
+- relationales Schema mit Foreign Keys und Indizes
+- idempotentes DB-Bootstrap fuer PostgreSQL und SQLite-Testdatenbanken
 - Capability Layer fuer den ersten Core
-- CLI fuer die wichtigsten Flows
+- CLI, FastAPI und React-Frontend
+- Docker-Compose-Setups fuer `dev` und `prod`
 - Unit-, Integrations- und CLI-Tests
 
 Noch bewusst offen:
 - harte ACL-Durchsetzung zur Laufzeit
-- FastAPI-Endpoints
 - OCR, Derivate, Bulk-Import
 - Tasks, Events, Measurements
 - MCP-/Agent-Adapter
@@ -24,138 +24,112 @@ Noch bewusst offen:
 ```text
 src/kbase/core/                  Domainregeln, Policies, Value Objects
 src/kbase/application/           DTOs, Capabilities, Mapper
-src/kbase/infrastructure/db/     Session, UoW, Repositories, SQL
+src/kbase/infrastructure/db/     Session, Bootstrap, UoW, Repositories, SQL
 src/kbase/interfaces/cli/        CLI
-scripts/init_db.py               Erstellt die SQLite-Datenbank
-kb/db/kbase.sqlite               Standard-Datenbank
+src/kbase/interfaces/api/        FastAPI
+frontend/                        React/Vite-App
+scripts/init_db.py               Initialisiert Schema und Seed-Daten
+compose.dev.yaml                 Docker-Compose fuer Entwicklung
+compose.prod.yaml                Docker-Compose fuer Produktion
+kb/                              Host-Verzeichnis fuer Dateien, Inbox, Logs
 tests/                           Unit-, Integration- und CLI-Tests
-02_ideas/                        Architektur- und Modellierungsdokumente
 ```
 
 ## Voraussetzungen
 
-- Python 3.12+
-- `uv`
+- Docker Desktop oder Docker Engine mit Compose
 
-## Setup
+Optional fuer lokale Testausfuehrung ohne Container:
+- Python 3.12+
+- Node.js 20+
+
+## Docker Dev
+
+Startet PostgreSQL, API mit Hot Reload und Vite-Dev-Server:
+
+```powershell
+docker compose -f compose.dev.yaml up --build
+```
+
+Aufrufe:
+
+```text
+Frontend: http://127.0.0.1:5173
+API:      http://127.0.0.1:8000
+Postgres: 127.0.0.1:5432
+```
+
+Der Ordner `kb/` bleibt dabei auf dem Host und wird in den API-Container gemountet.  
+Dateien unter `kb/items`, `kb/inbox` und `kb/logs` bleiben also lokal erhalten.
+
+Alternativ unter Windows:
+
+```powershell
+.\start-lan-dev.bat
+```
+
+## Docker Prod
+
+Startet PostgreSQL, API ohne Reload und das gebaute Frontend hinter Nginx:
+
+```powershell
+docker compose -f compose.prod.yaml up --build -d
+```
+
+Aufrufe:
+
+```text
+Frontend: http://127.0.0.1:8080
+API:      http://127.0.0.1:8000
+Postgres: 127.0.0.1:5432
+```
+
+Stoppen:
+
+```powershell
+docker compose -f compose.prod.yaml down
+```
+
+## Datenbank
+
+Standard-URL ausserhalb von Docker:
+
+```text
+postgresql+psycopg://kbase:kbase@127.0.0.1:5432/kbase
+```
+
+Schema und Seed-Daten lassen sich auch manuell initialisieren:
+
+```powershell
+uv run python scripts/init_db.py
+```
+
+Oder explizit mit anderer URL:
+
+```powershell
+$env:KBASE_DB_URL = "postgresql+psycopg://kbase:kbase@127.0.0.1:5432/kbase"
+uv run python scripts/init_db.py
+```
+
+Die Option `--db-path` bleibt nur fuer Legacy-/Testfaelle mit SQLite erhalten.
+
+## Lokale Tests Ohne Docker
 
 ```powershell
 uv sync --extra dev
-uv run python scripts/init_db.py
-```
-
-Optional kann eine andere DB-Datei fuer die CLI oder Tests genutzt werden:
-
-```powershell
-$env:KBASE_DB_URL = "sqlite:///C:/ttt/kbase/kb/db/kbase.sqlite"
-```
-
-## Wichtige Befehle
-
-Hilfe:
-
-```powershell
-uv run python -m kbase.interfaces.cli.main --help
-```
-
-Datenbank initialisieren:
-
-```powershell
-uv run python scripts/init_db.py
-```
-
-Tests:
-
-```powershell
 uv run --extra dev pytest -q
 ```
 
-API starten:
+Das Test-Setup verwendet weiterhin temporaere SQLite-Datenbanken, damit die Tests schnell und isoliert bleiben.
 
-```powershell
-uv run uvicorn kbase.interfaces.api.main:app --reload
-```
+## API und Frontend
 
-Frontend starten:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-LAN-Zugriff:
-
-```powershell
-$env:KBASE_CORS_ORIGINS = "http://192.168.178.50:5173,http://127.0.0.1:5173"
-uv run uvicorn kbase.interfaces.api.main:app --host 0.0.0.0 --port 8000
-
-cd frontend
-$env:VITE_DEV_HOST = "0.0.0.0"
-$env:VITE_API_BASE_URL = "http://192.168.178.50:8000"
-npm run dev
-```
+Im Dev-Setup laufen Frontend und Backend ueber denselben Browser-Origin:
+- Vite proxied `/api` und `/health` auf die API.
+- In `prod` uebernimmt Nginx dasselbe Routing.
+- Das Frontend braucht deshalb keinen fest verdrahteten `:8000`-Host mehr.
 
 ## Erster CLI-Workflow
-
-### 1. Projekt anlegen
-
-```powershell
-uv run python -m kbase.interfaces.cli.main project create `
-  --title "Haushalt 2026" `
-  --description "Kontext fuer Haushaltsentscheidungen" `
-  --json
-```
-
-### 2. Note anlegen
-
-```powershell
-uv run python -m kbase.interfaces.cli.main note create `
-  --title "Waschmaschine vergleichen" `
-  --category research `
-  --body "Bosch vs Siemens" `
-  --label household/appliances `
-  --metadata-json "{\"research_subject\":\"washing machine\"}" `
-  --json
-```
-
-### 3. Note in Projekt aufnehmen
-
-```powershell
-uv run python -m kbase.interfaces.cli.main project add-item `
-  --project-id <PROJECT_ID> `
-  --item-id <ITEM_ID> `
-  --json
-```
-
-### 4. Inhalt ersetzen
-
-```powershell
-uv run python -m kbase.interfaces.cli.main content replace `
-  <ITEM_ID> `
-  --body "# Vergleich`n- Bosch`n- Siemens" `
-  --json
-```
-
-### 5. Note abrufen
-
-```powershell
-uv run python -m kbase.interfaces.cli.main item get <ITEM_ID> --json
-```
-
-### 6. Inhalt suchen
-
-```powershell
-uv run python -m kbase.interfaces.cli.main search content `
-  --query Bosch `
-  --label household/appliances `
-  --json
-```
-
-## Workflow-Kurzform
-
-Der erste zusammengesetzte Workflow ist bereits als eigener CLI-Befehl vorhanden.  
-Er legt optional ein Projekt an und erstellt danach direkt eine Note darin.
 
 ```powershell
 uv run python -m kbase.interfaces.cli.main workflow notes-core `
@@ -169,90 +143,12 @@ uv run python -m kbase.interfaces.cli.main workflow notes-core `
 
 ## API-Schnellstart
 
-Health:
-
 ```powershell
 curl http://127.0.0.1:8000/health
-```
-
-Note anlegen:
-
-```powershell
 curl -X POST http://127.0.0.1:8000/api/notes `
   -H "Content-Type: application/json" `
   -H "x-kbase-actor: heiko" `
   -d "{\"title\":\"Waschmaschine vergleichen\",\"category_key\":\"research\",\"markdown_body\":\"Bosch vs Siemens\"}"
-```
-
-Item abrufen:
-
-```powershell
-curl -H "x-kbase-actor: heiko" http://127.0.0.1:8000/api/items/<ITEM_ID>
-```
-
-Suche:
-
-```powershell
-curl -G http://127.0.0.1:8000/api/search/content `
-  -H "x-kbase-actor: heiko" `
-  --data-urlencode "query=Bosch"
-```
-
-## Web App
-
-Es gibt jetzt eine einfache React-App unter [frontend](frontend).
-
-Merkmale:
-- crypto-inspiriertes Dashboard-Design
-- Notizliste mit Suche
-- Detailansicht mit Historie und Labels
-- Note erstellen
-- bestehende Note aktualisieren
-- direkter Zugriff auf dieselben FastAPI-Capabilities
-
-Lokale Entwicklungsumgebung:
-
-1. Backend starten:
-
-```powershell
-uv run uvicorn kbase.interfaces.api.main:app --reload
-```
-
-2. Frontend starten:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-3. Browser:
-
-```text
-http://127.0.0.1:5173
-```
-
-## Wichtigste CLI-Befehle
-
-```powershell
-uv run python -m kbase.interfaces.cli.main note create --title "..." --category research --body "..." --json
-uv run python -m kbase.interfaces.cli.main item get <ITEM_ID> --json
-uv run python -m kbase.interfaces.cli.main item list --item-kind note --json
-uv run python -m kbase.interfaces.cli.main item update <ITEM_ID> --title "..." --status active --json
-uv run python -m kbase.interfaces.cli.main content replace <ITEM_ID> --body "..." --json
-uv run python -m kbase.interfaces.cli.main search content --query "..." --json
-uv run python -m kbase.interfaces.cli.main label assign <ITEM_ID> --label a/b --label c/d
-uv run python -m kbase.interfaces.cli.main classify set <ITEM_ID> --category decision --secondary learning --json
-uv run python -m kbase.interfaces.cli.main metadata patch <ITEM_ID> --set-json "{\"description\":\"...\"}"
-uv run python -m kbase.interfaces.cli.main asset register --storage-path kb/items/files/demo.pdf --asset-kind source_file --json
-uv run python -m kbase.interfaces.cli.main asset attach <ITEM_ID> <ASSET_ID> --role attachment --json
-uv run python -m kbase.interfaces.cli.main link add --from-item-id <A> --to-item-id <B> --link-type related --json
-uv run python -m kbase.interfaces.cli.main project create --title "..." --json
-uv run python -m kbase.interfaces.cli.main project add-item --project-id <PROJECT_ID> --item-id <ITEM_ID> --json
-uv run python -m kbase.interfaces.cli.main project list-items <PROJECT_ID> --json
-uv run python -m kbase.interfaces.cli.main history show <ITEM_ID> --json
-uv run python -m kbase.interfaces.cli.main provenance show <ITEM_ID> --json
-uv run python -m kbase.interfaces.cli.main workflow notes-core --title "..." --category research --body "..." --json
 ```
 
 ## Relevante Architekturdateien
