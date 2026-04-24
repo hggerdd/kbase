@@ -4,6 +4,13 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from kbase.application.services.security import (
+    MANAGE_PERMISSIONS,
+    READ_PERMISSIONS,
+    WRITE_PERMISSIONS,
+    AuthorizationError,
+    grant_owner_permissions,
+)
 from kbase.infrastructure.db.repositories.asset_repository import AssetRepository
 from kbase.infrastructure.db.repositories.audit_repository import AuditRepository
 from kbase.infrastructure.db.repositories.content_repository import ContentRepository
@@ -15,6 +22,7 @@ from kbase.infrastructure.db.repositories.metadata_repository import MetadataRep
 from kbase.infrastructure.db.repositories.project_repository import ProjectRepository
 from kbase.infrastructure.db.repositories.provenance_repository import ProvenanceRepository
 from kbase.infrastructure.db.repositories.search_repository import SearchRepository
+from kbase.infrastructure.db.repositories.security_repository import SecurityRepository
 
 
 @dataclass(slots=True)
@@ -30,6 +38,7 @@ class RepositoryBundle:
     audit: AuditRepository
     provenance: ProvenanceRepository
     search: SearchRepository
+    security: SecurityRepository
 
 
 def build_repositories(session: Session) -> RepositoryBundle:
@@ -45,6 +54,7 @@ def build_repositories(session: Session) -> RepositoryBundle:
         audit=AuditRepository(session),
         provenance=ProvenanceRepository(session),
         search=SearchRepository(session),
+        security=SecurityRepository(session),
     )
 
 
@@ -53,6 +63,60 @@ def require_item(repo: ItemRepository, item_id: str):
     if item is None:
         raise ValueError(f"Item '{item_id}' not found")
     return item
+
+
+def principal_scope(repos: RepositoryBundle, principal_id: str) -> list[str]:
+    return repos.security.list_membership_principal_ids(principal_id)
+
+
+def require_item_permission(
+    repos: RepositoryBundle,
+    *,
+    item_id: str,
+    actor_principal_id: str,
+    permission_keys: list[str],
+) -> None:
+    if not repos.security.user_can_access_item(
+        item_id=item_id,
+        principal_ids=principal_scope(repos, actor_principal_id),
+        permission_keys=permission_keys,
+    ):
+        raise AuthorizationError("Access to item is forbidden")
+
+
+def require_item_read(repos: RepositoryBundle, *, item_id: str, actor_principal_id: str) -> None:
+    require_item_permission(
+        repos,
+        item_id=item_id,
+        actor_principal_id=actor_principal_id,
+        permission_keys=READ_PERMISSIONS,
+    )
+
+
+def require_item_write(repos: RepositoryBundle, *, item_id: str, actor_principal_id: str) -> None:
+    require_item_permission(
+        repos,
+        item_id=item_id,
+        actor_principal_id=actor_principal_id,
+        permission_keys=WRITE_PERMISSIONS,
+    )
+
+
+def require_item_manage(repos: RepositoryBundle, *, item_id: str, actor_principal_id: str) -> None:
+    require_item_permission(
+        repos,
+        item_id=item_id,
+        actor_principal_id=actor_principal_id,
+        permission_keys=MANAGE_PERMISSIONS,
+    )
+
+
+def ensure_owner_acl(repos: RepositoryBundle, *, item_id: str, actor_principal_id: str) -> None:
+    grant_owner_permissions(
+        repos=repos,
+        item_id=item_id,
+        actor_principal_id=actor_principal_id,
+    )
 
 
 def record_write(

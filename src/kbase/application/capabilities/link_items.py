@@ -4,7 +4,13 @@ from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import LinkItemsInput
 from kbase.application.dto.common import ItemRef
-from kbase.application.services.capability_support import build_repositories, record_write, require_item
+from kbase.application.services.capability_support import (
+    build_repositories,
+    record_write,
+    require_item,
+    require_item_read,
+    require_item_write,
+)
 from kbase.application.services.mappers import to_item_ref
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -19,7 +25,9 @@ def link_items(
         assert uow.session is not None
         repos = build_repositories(uow.session)
         require_item(repos.items, data.from_item_id)
+        require_item_write(repos, item_id=data.from_item_id, actor_principal_id=data.actor.principal_id)
         target = require_item(repos.items, data.to_item_id)
+        require_item_read(repos, item_id=target.id, actor_principal_id=data.actor.principal_id)
         repos.links.create_link(
             from_item_id=data.from_item_id,
             to_item_id=data.to_item_id,
@@ -41,4 +49,3 @@ def link_items(
             provenance=data.provenance,
         )
         return to_item_ref(target)
-

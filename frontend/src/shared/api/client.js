@@ -1,5 +1,3 @@
-import { getSession } from "../../features/auth/session.js";
-
 function resolveApiBase() {
   const explicitBase = import.meta?.env?.VITE_API_BASE_URL;
   if (explicitBase !== undefined) {
@@ -24,10 +22,9 @@ export function buildApiUrl(path) {
 
 export async function request(path, options = {}) {
   const isFormData = options.body instanceof FormData;
-  const session = getSession();
   const response = await fetch(buildApiUrl(path), {
+    credentials: "include",
     headers: {
-      "x-kbase-actor": session.actorId,
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers ?? {}),
     },
@@ -47,13 +44,11 @@ export async function request(path, options = {}) {
 }
 
 export function uploadRequest(path, { body, headers = {}, method = "POST", onProgress } = {}) {
-  const session = getSession();
-
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
     const xhr = new XMLHttpRequest();
     xhr.open(method, buildApiUrl(path), true);
-    xhr.setRequestHeader("x-kbase-actor", session.actorId);
+    xhr.withCredentials = true;
 
     for (const [key, value] of Object.entries(headers)) {
       xhr.setRequestHeader(key, value);

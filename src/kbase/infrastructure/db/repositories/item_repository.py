@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, and_, exists, literal, or_, select
 from sqlalchemy.orm import Session
 
-from kbase.infrastructure.db.models.tables import ItemCategoryModel, ItemClassificationModel, ItemModel
+from kbase.infrastructure.db.models.tables import (
+    ItemAclModel,
+    ItemCategoryModel,
+    ItemClassificationModel,
+    ItemModel,
+)
 from kbase.infrastructure.db.repositories.helpers import new_id, utc_now
 
 
@@ -54,8 +59,22 @@ class ItemRepository:
         include_archived: bool = False,
         limit: int = 50,
         offset: int = 0,
+        accessible_principal_ids: list[str] | None = None,
+        permission_keys: list[str] | None = None,
     ) -> list[ItemModel]:
         stmt: Select[tuple[ItemModel]] = select(ItemModel)
+        if accessible_principal_ids and permission_keys:
+            any_acl = exists(select(literal(1)).where(ItemAclModel.item_id == ItemModel.id))
+            matching_acl = exists(
+                select(literal(1)).where(
+                    and_(
+                        ItemAclModel.item_id == ItemModel.id,
+                        ItemAclModel.principal_id.in_(accessible_principal_ids),
+                        ItemAclModel.permission_key.in_(permission_keys),
+                    )
+                )
+            )
+            stmt = stmt.where(or_(~any_acl, matching_acl))
         if item_kind:
             stmt = stmt.where(ItemModel.item_kind == item_kind)
         if category_key:

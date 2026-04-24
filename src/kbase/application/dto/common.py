@@ -130,6 +130,42 @@ class CategoryData(BaseModel):
     is_active: bool = True
 
 
+class AclEntryData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    principal_id: str
+    permission_key: str
+    granted_by_principal_id: str | None = None
+    created_at: str
+
+
+class AclGrantData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    principal_id: str
+    permission_key: str
+
+
+class SessionData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: str
+    username: str
+    principal_id: str
+    principal_type: str
+    principal_ids: list[str] = Field(default_factory=list)
+    auth_method: str
+
+
+class ApiTokenData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    token_label: str
+    created_at: str
+    last_used_at: str | None = None
+
+
 class MetadataEntryData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -41,6 +41,51 @@ class PrincipalModel(Base):
     updated_at: Mapped[str] = mapped_column(Text)
 
 
+class PrincipalMembershipModel(Base):
+    __tablename__ = "principal_memberships"
+
+    principal_id: Mapped[str] = mapped_column(ForeignKey("principals.id"), primary_key=True)
+    member_principal_id: Mapped[str] = mapped_column(ForeignKey("principals.id"), primary_key=True)
+    role: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text)
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    username: Mapped[str] = mapped_column(Text, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text)
+    principal_id: Mapped[str] = mapped_column(ForeignKey("principals.id"), unique=True)
+    is_active: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(Text)
+
+
+class UserSessionModel(Base):
+    __tablename__ = "user_sessions"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    session_token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    created_at: Mapped[str] = mapped_column(Text)
+    expires_at: Mapped[str] = mapped_column(Text)
+    last_seen_at: Mapped[str] = mapped_column(Text)
+    revoked_at: Mapped[str | None] = mapped_column(Text)
+
+
+class ApiTokenModel(Base):
+    __tablename__ = "api_tokens"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    token_label: Mapped[str] = mapped_column(Text)
+    token_hash: Mapped[str] = mapped_column(Text, unique=True)
+    created_at: Mapped[str] = mapped_column(Text)
+    last_used_at: Mapped[str | None] = mapped_column(Text)
+    revoked_at: Mapped[str | None] = mapped_column(Text)
+
+
 class ItemModel(Base):
     __tablename__ = "items"
 
@@ -218,6 +263,16 @@ class ProjectItemModel(Base):
     role: Mapped[str | None] = mapped_column(Text)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     added_by_principal_id: Mapped[str | None] = mapped_column(ForeignKey("principals.id"))
+    created_at: Mapped[str] = mapped_column(Text)
+
+
+class ItemAclModel(Base):
+    __tablename__ = "item_acl"
+
+    item_id: Mapped[str] = mapped_column(ForeignKey("items.id"), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(ForeignKey("principals.id"), primary_key=True)
+    permission_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    granted_by_principal_id: Mapped[str | None] = mapped_column(ForeignKey("principals.id"))
     created_at: Mapped[str] = mapped_column(Text)
 
 

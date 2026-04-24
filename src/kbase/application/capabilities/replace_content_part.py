@@ -4,7 +4,12 @@ from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import ReplaceContentPartInput
 from kbase.application.dto.common import ContentPartData
-from kbase.application.services.capability_support import build_repositories, record_write, require_item
+from kbase.application.services.capability_support import (
+    build_repositories,
+    record_write,
+    require_item,
+    require_item_write,
+)
 from kbase.application.services.mappers import to_content_part_data
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -19,6 +24,7 @@ def replace_content_part(
         assert uow.session is not None
         repos = build_repositories(uow.session)
         require_item(repos.items, data.item_id)
+        require_item_write(repos, item_id=data.item_id, actor_principal_id=data.actor.principal_id)
         content_part = repos.content.replace_content_part(
             item_id=data.item_id,
             part_kind=data.part_kind,
@@ -41,4 +47,3 @@ def replace_content_part(
             provenance=data.provenance,
         )
         return to_content_part_data(content_part)
-

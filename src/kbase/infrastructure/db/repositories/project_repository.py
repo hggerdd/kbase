@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import and_, exists, literal, or_, select
 from sqlalchemy.orm import Session
 
-from kbase.infrastructure.db.models.tables import ItemModel, ProjectItemModel
+from kbase.infrastructure.db.models.tables import ItemAclModel, ItemModel, ProjectItemModel
 from kbase.infrastructure.db.repositories.helpers import utc_now
 
 
@@ -41,7 +41,14 @@ class ProjectRepository:
         self.session.flush()
         return row
 
-    def list_project_items(self, project_id: str, limit: int, offset: int) -> list[ItemModel]:
+    def list_project_items(
+        self,
+        project_id: str,
+        limit: int,
+        offset: int,
+        accessible_principal_ids: list[str] | None = None,
+        permission_keys: list[str] | None = None,
+    ) -> list[ItemModel]:
         stmt = (
             select(ItemModel)
             .join(ProjectItemModel, ProjectItemModel.item_id == ItemModel.id)
@@ -50,6 +57,18 @@ class ProjectRepository:
             .limit(limit)
             .offset(offset)
         )
+        if accessible_principal_ids and permission_keys:
+            any_acl = exists(select(literal(1)).where(ItemAclModel.item_id == ItemModel.id))
+            matching_acl = exists(
+                select(literal(1)).where(
+                    and_(
+                        ItemAclModel.item_id == ItemModel.id,
+                        ItemAclModel.principal_id.in_(accessible_principal_ids),
+                        ItemAclModel.permission_key.in_(permission_keys),
+                    )
+                )
+            )
+            stmt = stmt.where(or_(~any_acl, matching_acl))
         return list(self.session.scalars(stmt))
 
     def list_projects_for_item(self, item_id: str) -> list[ItemModel]:
@@ -60,4 +79,3 @@ class ProjectRepository:
             .order_by(ItemModel.updated_at.desc())
         )
         return list(self.session.scalars(stmt))
-

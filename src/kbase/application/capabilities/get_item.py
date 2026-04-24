@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import GetItemInput, ItemDetailResult
-from kbase.application.services.capability_support import build_repositories, require_item
+from kbase.application.services.capability_support import build_repositories, require_item, require_item_read
 from kbase.application.services.mappers import (
     to_asset_data,
     to_content_part_data,
@@ -29,6 +29,7 @@ def get_item(
         assert uow.session is not None
         repos = build_repositories(uow.session)
         item = require_item(repos.items, data.item_id)
+        require_item_read(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
         primary = repos.content.get_primary_content_part(item_id=item.id)
         content_parts = repos.content.list_content_parts(item.id)
         item_files = repos.item_files.list_files_for_item(item.id)

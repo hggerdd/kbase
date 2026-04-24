@@ -5,6 +5,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from kbase.application.dto.common import (
+    AclEntryData,
+    AclGrantData,
+    ApiTokenData,
     AssetData,
     AuditEventData,
     CategoryData,
@@ -18,6 +21,7 @@ from kbase.application.dto.common import (
     MetadataEntryData,
     PaginationInput,
     ProvenanceRecordData,
+    SessionData,
 )
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
@@ -320,6 +324,49 @@ class CreateProjectInput(BaseModel):
     provenance: ProvenanceInput
 
 
+class LoginInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str
+    password: str
+    request_id: str | None = None
+
+
+class LoginResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session: SessionData
+    session_token: str
+
+
+class GetSessionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_token: str | None = None
+    api_token: str | None = None
+    request_id: str | None = None
+
+
+class LogoutInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_token: str
+
+
+class CreateApiTokenInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token_label: str
+    actor: ActorContext
+
+
+class CreateApiTokenResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token: ApiTokenData
+    secret: str
+
+
 class AddItemToProjectInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -413,6 +460,22 @@ class ListProjectItemsResult(BaseModel):
     items: list[ItemSummary]
     limit: int
     offset: int
+
+
+class GetItemAclInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    actor: ActorContext
+
+
+class ReplaceItemAclInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    grants: list[AclGrantData]
+    actor: ActorContext
+    provenance: ProvenanceInput
 
 
 class GetItemHistoryResult(BaseModel):

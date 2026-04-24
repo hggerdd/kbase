@@ -4,7 +4,12 @@ from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import AttachAssetToItemInput
 from kbase.application.dto.common import AssetData
-from kbase.application.services.capability_support import build_repositories, record_write, require_item
+from kbase.application.services.capability_support import (
+    build_repositories,
+    record_write,
+    require_item,
+    require_item_write,
+)
 from kbase.application.services.mappers import to_asset_data
 from kbase.infrastructure.db.models.tables import AssetModel
 from kbase.infrastructure.db.session import get_session_factory
@@ -20,6 +25,7 @@ def attach_asset_to_item(
         assert uow.session is not None
         repos = build_repositories(uow.session)
         require_item(repos.items, data.item_id)
+        require_item_write(repos, item_id=data.item_id, actor_principal_id=data.actor.principal_id)
         asset = uow.session.get(AssetModel, data.asset_id)
         if asset is None:
             raise ValueError(f"Asset '{data.asset_id}' not found")
@@ -45,4 +51,3 @@ def attach_asset_to_item(
             provenance=data.provenance,
         )
         return to_asset_data(asset)
-

@@ -6,7 +6,13 @@ from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import CreateFileItemInput, ItemDetailResult
-from kbase.application.services.capability_support import build_repositories, record_write, require_item
+from kbase.application.services.capability_support import (
+    build_repositories,
+    ensure_owner_acl,
+    record_write,
+    require_item,
+    require_item_write,
+)
 from kbase.application.services.mappers import (
     to_item_file_data,
     to_item_ref,
@@ -54,6 +60,11 @@ def import_file_as_item(
 
         if data.link_to_item_id is not None:
             require_item(repos.items, data.link_to_item_id)
+            require_item_write(
+                repos,
+                item_id=data.link_to_item_id,
+                actor_principal_id=data.actor.principal_id,
+            )
 
         item = repos.items.create(
             title=title,
@@ -64,6 +75,7 @@ def import_file_as_item(
             language_code=data.language_code,
             created_by_principal_id=data.actor.principal_id,
         )
+        ensure_owner_acl(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
 
         relative_path = file_store.build_relative_path(
             item_kind=data.item_kind,
@@ -93,6 +105,7 @@ def import_file_as_item(
             )
 
         for project_id in data.project_ids:
+            require_item_write(repos, item_id=project_id, actor_principal_id=data.actor.principal_id)
             repos.projects.add_item_to_project(
                 project_id=project_id,
                 item_id=item.id,

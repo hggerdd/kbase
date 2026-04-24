@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import CreateProjectInput
 from kbase.application.dto.common import ItemSummary
-from kbase.application.services.capability_support import build_repositories, record_write
+from kbase.application.services.capability_support import build_repositories, ensure_owner_acl, record_write
 from kbase.application.services.mappers import to_item_summary
 from kbase.core.policies.metadata_policy import build_typed_metadata_payload
 from kbase.core.rules.modelling_rules import PROJECT_ITEM_KIND
@@ -34,6 +34,7 @@ def create_project(
             language_code=None,
             created_by_principal_id=data.actor.principal_id,
         )
+        ensure_owner_acl(repos, item_id=project.id, actor_principal_id=data.actor.principal_id)
         if data.description:
             field = repos.metadata.get_field_definition("description")
             assert field is not None
@@ -60,4 +61,3 @@ def create_project(
             provenance=data.provenance,
         )
         return to_item_summary(project)
-

@@ -4,7 +4,12 @@ from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import PatchItemMetadataInput
 from kbase.application.dto.common import MetadataEntryData
-from kbase.application.services.capability_support import build_repositories, record_write, require_item
+from kbase.application.services.capability_support import (
+    build_repositories,
+    record_write,
+    require_item,
+    require_item_write,
+)
 from kbase.core.policies.metadata_policy import (
     build_typed_metadata_payload,
     ensure_metadata_field_matches_item_kind,
@@ -23,6 +28,7 @@ def patch_item_metadata(
         assert uow.session is not None
         repos = build_repositories(uow.session)
         item = require_item(repos.items, data.item_id)
+        require_item_write(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
         for field_key, value in data.set_fields.items():
             ensure_metadata_key_allowed(field_key)
             field = repos.metadata.get_field_definition(field_key)
@@ -63,4 +69,3 @@ def patch_item_metadata(
             )
             for field_key, value_type, value, source, confidence in rows
         ]
-

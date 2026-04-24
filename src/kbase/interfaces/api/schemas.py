@@ -173,3 +173,22 @@ class AddProjectItemRequest(BaseModel):
     item_id: str
     role: str | None = None
     sort_order: int | None = None
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str
+    password: str
+
+
+class CreateApiTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    token_label: str
+
+
+class ReplaceItemAclRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    grants: list[dict[str, str]] = Field(default_factory=list)

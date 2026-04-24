@@ -77,13 +77,15 @@ Diese ToDos leiten sich direkt aus dem Architektur- und Sicherheitsreview ab. Si
 
 ### Security / Trust Boundary
 
-- [ ] `SEC-001` Authentifizierungskonzept fuer API und Frontend festlegen
+- [ ] `SEC-001` Authentifizierungskonzept fuer Capability, API und Frontend festlegen
 	- Ziel: Die API darf den Actor nicht mehr implizit oder ungeprueft aus einem frei setzbaren Header uebernehmen.
 	- Ist-Zustand: `x-kbase-actor` kann vom Client frei gesetzt werden; ohne Header wird aktuell `heiko` verwendet.
 	- Aufgabe:
 		- Definiere ein minimales Auth-Konzept fuer die aktuelle lokale/LAN-Nutzung.
+		- Definiere Benutzer als Login-Subjekt und mappe sie serverseitig auf `principals` fuer Audit und ACL.
 		- Entscheide, ob API-Key, Session, Reverse-Proxy-Auth oder ein anderer Mechanismus verwendet wird.
 		- Dokumentiere die Vertrauensgrenzen zwischen Browser, LAN und Backend.
+		- Spec: siehe [03_implementation_plan/11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
 	- Acceptance:
 		- Es gibt ein kurzes Spec-Dokument fuer Authentifizierung.
 		- Der Fallback auf `heiko` ist entfernt.

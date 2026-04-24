@@ -19,6 +19,10 @@ Noch bewusst offen:
 - Tasks, Events, Measurements
 - MCP-/Agent-Adapter
 
+In Vorbereitung:
+- nutzerbasierte Authentifizierung mit Session im Browser und Token fuer CLI/API-Clients
+- Spec: [11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
+
 ## Projektstruktur
 
 ```text
@@ -172,6 +176,11 @@ uv run python -m kbase.interfaces.cli.main workflow notes-core `
 ```
 
 ## API-Schnellstart
+
+Aktueller Ist-Zustand:
+- Die laufende Implementierung nutzt noch `x-kbase-actor`.
+- Das Zielbild fuer `SEC-001` ersetzt diesen Header durch Benutzer, Session und Token.
+- Details: [11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
 
 ```powershell
 curl http://127.0.0.1:8000/health
