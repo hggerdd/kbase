@@ -26,6 +26,23 @@ npm run test:notes
 npm run test:search
 ```
 
+## Branch Workflow Rules
+
+- Every new feature, cleanup, fix, or documentation project must happen on its
+  own feature branch created from current `dev`.
+- Do not continue unrelated work on an existing feature branch.
+- Before starting work, check the current branch and worktree status.
+- If the current branch already contains another feature, stop and ask the user
+  whether to:
+  - commit the current branch, merge it into `dev`, then create a new feature
+    branch from `dev`; or
+  - continue because the requested work is actually part of the current feature.
+- If that distinction is unclear, keep asking until it is clear. Do not guess and
+  do not mix unrelated features in one branch.
+- Uncommitted unrelated files must stay out of the new work. Either leave them
+  untouched, ask the user how to handle them, or use a clearly scoped stash when
+  branch switching requires it.
+
 ## Architecture Rules
 
 - Keep domain rules in `src/kbase/core/`.
