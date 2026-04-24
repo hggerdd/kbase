@@ -1,5 +1,9 @@
 # Capability Core und Persistenz
 
+Status: architecture background. Most first-core capabilities described here
+now exist. Use `03_implementation_plan/12_capability_matrix.md` and `todo.md`
+for current coverage and gaps.
+
 ## Ziel
 
 Dieses Dokument priorisiert die ersten Capabilities, die umgesetzt werden muessen, um einen einfachen, aber echten Kern nutzen zu koennen. Gleichzeitig beschreibt es die minimale Persistenzstrategie, die Multiuser und parallele Nutzung nicht verbaut.

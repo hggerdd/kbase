@@ -1,0 +1,172 @@
+# Frontend App
+
+This document describes the current React/Vite web client in `frontend/`.
+
+The frontend is a same-origin browser client for the FastAPI backend. It does
+not contain domain rules; it calls HTTP endpoints that map to the shared
+application capabilities.
+
+## Current Shape
+
+Implemented pages:
+
+- Home
+- Search
+- Files
+- Notes
+- Projects
+- Imports
+- Settings
+  - Labels
+  - Categories
+
+Implemented app concerns:
+
+- Session bootstrap through `GET /api/auth/session`.
+- Login/logout through `/api/auth/login` and `/api/auth/logout`.
+- Hash-based navigation via `frontend/src/app/navigation/nav-config.js`.
+- Global search state in `App.jsx` with page-scoped default behavior.
+- Shared API client with `credentials: "include"` in
+  `frontend/src/shared/api/client.js`.
+- File upload progress through `XMLHttpRequest` in the shared API client.
+- Plain CSS styling in `frontend/src/styles.css`.
+
+Not implemented or incomplete:
+
+- Full ACL-aware UI states.
+- CLI/token account flow in the frontend.
+- Dedicated management UIs for metadata, provenance, and ACL.
+- Server-backed saved queries.
+- OCR/preview generation pipeline.
+- Broad browser/E2E smoke coverage.
+
+## Runtime
+
+Development:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Build:
+
+```powershell
+cd frontend
+npm run build
+```
+
+In Docker development, Vite proxies `/api` and `/health` to the API. In Docker
+production, Nginx provides the same routing. The frontend therefore uses
+same-origin requests by default.
+
+Optional override:
+
+```powershell
+$env:VITE_API_BASE_URL = "http://127.0.0.1:8000"
+npm run dev
+```
+
+There is no supported `VITE_KBASE_ACTOR` flow anymore. Identity comes from the
+server-side session.
+
+## Important Files
+
+```text
+frontend/src/main.jsx                         React entry point
+frontend/src/App.jsx                          session bootstrap, routing, global search
+frontend/src/app/AppShell.jsx                 shared app frame and navigation
+frontend/src/app/navigation/nav-config.js     route definitions
+frontend/src/shared/api/client.js             fetch/XHR wrapper
+frontend/src/features/*/api.js                endpoint wrappers per feature
+frontend/src/features/*/hooks.js              data loading and mutations
+frontend/src/features/*/state.js              feature state helpers
+frontend/src/pages/*                          page-level UI
+frontend/src/shared/ui/*                      reusable UI primitives
+frontend/src/styles.css                       global styling
+```
+
+## API Usage By Area
+
+Auth:
+
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/session`
+
+Notes:
+
+- `GET /api/items?item_kind=note`
+- `GET /api/items/{item_id}`
+- `POST /api/notes`
+- `PATCH /api/items/{item_id}`
+- `PUT /api/items/{item_id}/content`
+- `GET /api/items/{item_id}/history`
+- `PUT /api/items/{item_id}/labels`
+
+Search:
+
+- `GET /api/search/content`
+
+Files and imports:
+
+- `GET /api/items?item_kind=document|image|spreadsheet|summary`
+- `GET /api/items/{item_id}`
+- `GET /api/items/{item_id}/files/{file_id}/content`
+- `POST /api/file-items/upload`
+- `GET /api/inbox/files`
+- `POST /api/inbox/import`
+
+Projects:
+
+- `POST /api/projects`
+- `POST /api/projects/{project_id}/items`
+- `GET /api/projects/{project_id}/items`
+- shared item/list/search endpoints
+
+Labels:
+
+- `GET /api/labels`
+- `POST /api/labels`
+- `PATCH /api/labels/{label_id}`
+- `DELETE /api/labels/{label_id}`
+- `POST /api/labels/{label_id}/deactivate`
+- `POST /api/labels/{label_id}/reactivate`
+
+Categories:
+
+- `GET /api/categories`
+- `POST /api/categories`
+- `PATCH /api/categories/{category_key}`
+
+## Feature Modules
+
+The frontend follows a feature-slice structure:
+
+```text
+features/<area>/api.js      HTTP wrapper for that area
+features/<area>/hooks.js    React hooks and orchestration
+features/<area>/state.js    pure helpers and transformations
+pages/<area>/               page and component UI
+```
+
+Prefer adding a small feature module or extending an existing one over placing
+new backend calls directly in page components.
+
+## Tests
+
+Current frontend tests are Node-based and intentionally focused:
+
+```powershell
+cd frontend
+npm run test:layout
+npm run test:files
+npm run test:files:ui
+npm run test:notes
+npm run test:search
+npm run build
+```
+
+Coverage gaps are tracked in [../todo.md](../todo.md), especially settings UI tests,
+imports tests, and full browser smoke tests.

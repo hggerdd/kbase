@@ -1,5 +1,9 @@
 # Technology Proposals
 
+Status: historical design background. This file is not the current runbook.
+Prefer `README.md`, `DATA_MAP.md`, `API_DOKU.md`, `FRONTEND_APP.md`,
+`todo.md`, and the live code when behavior differs.
+
 ## Dateistruktur
 
 ```text

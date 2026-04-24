@@ -1,5 +1,9 @@
 # Use Cases
 
+Status: product/use-case background. This file is intentionally broader than
+the current implementation. Prefer `README.md` and `todo.md` for implemented
+scope and active backlog.
+
 Diese Datei enthält eine strukturierte Übersicht wichtiger Anwendungsfälle für ein Wissens-, Notiz- und Dokumentenmanagementsystem.
 
 ## Übersicht
