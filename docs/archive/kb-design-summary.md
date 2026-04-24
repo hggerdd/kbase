@@ -1,5 +1,9 @@
 # Personal Knowledge Base -- Final Design (Summary)
 
+Status: historical design summary. It describes the broad product model, not the
+complete current implementation. Prefer `README.md`, `DATA_MAP.md`, and
+`todo.md` for current state and open work.
+
 ## Core Principles
 
 -   Content-centric system with minimal base elements

@@ -1,481 +1,266 @@
 # TODO
 
-Diese Datei ist die strukturierte ToDo-Liste für dieses Repository. Aufgaben sind nach Epics gegliedert; bitte bei Änderungen Owner, Priority und Estimate ergänzen. Jede Aufgabe sollte eine kurze, prüfbare Akzeptanzbedingung bekommen.
-
-
-## Hinweise zur Nutzung
-- Owner: @name
-- Priority: high | medium | low
-- Estimate: z.B. 1d, 3pt
-- Acceptance: kurze, prüfbare Kriterien unter der Aufgabe
-
-## Epic: Label Management
-- [ ] Labels are currently only words. But I want also hierarchical labels (eg. finance\income\data or finance\bank\depot\data) that are not just strings with a divider but realy different levels that can individually be searched (not just "label starts with finance"). And data below finance\income is something else than data under finance\bank
-- [ ] Refactor the app to handle this kind of labels (also in the filter criteria)
-- [ ] Festlegen: Label-Lifecycle & Regeln (delete vs deactivate; rename-Propagation)
-	- Acceptance: Dokument mit Beispiel-Scenarios (rename, deactivate) vorhanden
-	- Owner: TBD
-	- Priority: High
-- [ ] DB-Modell & Migration (labels table: id, parent_id, full_path, active, meta)
-	- Acceptance: Migration + rollback + sample data vorhanden
-- [ ] Core-Capabilities: create_label, rename_label, deactivate_label, reactivate_label, list_labels (merge optional)
-	- Acceptance: Unit-Tests für Capabilities
-- [ ] API: POST /api/labels, GET /api/labels, PATCH /api/labels/{id}, POST /api/labels/{id}/deactivate
-- [ ] CLI: mirror capabilities (kbase label create|list|rename|deactivate)
-- [ ] Frontend: Label-Management UI (search, create, rename, deactivate)
-- [ ] Frontend: Label-Management standard modal ui for create, rename, remove that is reused in multiple places (in each place of the app where a lable can be added that modal can be used to spontantinious update the labels and use it)
-- [ ] Tests & Fixtures für Label-Flows
-
-- [ ] Spec & implementation plan: siehe [03_implementation_plan/10_label_management_plan.md](03_implementation_plan/10_label_management_plan.md)
-
-## Epic: Search
-- [ ] Globale Suchleiste (sichtbar auf allen Seiten, toggle global default: off)
-	- Acceptance: Page-context filter funktioniert (z.B. Notes → nur Notes)
-- [ ] Erweiterte Suchseite mit Filtern (category, label-hierarchy, type, date, owner)
-- [ ] Saved searches & Search history
-- [ ] Performance: Indexing plan, relevance ranking, paging
-
-## Epic: Files Viewer / File Management
-- [x] Files-Page: Explorer-Baum (configurable), Original-Dateinamen anzeigen
-	- Acceptance: Tree konfigurierbar, Klick öffnet Detail-Pane
-- [ ] File Summary Editor (rich text) mit Edit-Button und Autosave (debounce)
-- [ ] Previews: PDF (initial), Images, Text
-- [ ] UX-Fixes: linke Navigationsleiste fixiert; Tree default width; Metadaten kompakt
-- [ ] Tests: 10 Testdateien mit Label test als Fixtures
-
-## Epic: Projekte (Projects View)
-- [ ] Data model & API: projects + project_items (relationale Verknüpfung zu Notes/Files/Tasks)
-- [ ] Frontend: Projects List + Project Detail (Tabs: Overview, Notes, Files, Data, Timeline)
-- [ ] Verknüpfung: Item→Project (single + bulk) + Drag&Drop
-- [ ] Import/Export: ZIP/JSON Export, CSV Import mit Mapping UI
-- [ ] Wireframes & Specs: siehe [03_implementation_plan/09_projects_wireframe.md](03_implementation_plan/09_projects_wireframe.md) und [03_implementation_plan/08_projects_view_plan.md](03_implementation_plan/08_projects_view_plan.md)
-
-## Epic: Autosave & UX
-- [x] Speichern on change (Autosave mit Debounce) — bereits implementiert
-- [ ] Konflikt-Handling bei gleichzeitigem Edit
-- [ ] Accessibility & Keyboard Navigation
-
-## Epic: Tests & Test Data
-- [ ] API Unit Tests
-- [ ] Integration Tests
-- [ ] Frontend Smoke / E2E Tests
-- [ ] Test fixtures & sample CSVs
-
-## Epic: Ops & Rollout
-- [ ] Feature-Flag für Label Management
-- [ ] Migrationsplan + Backup + Rollback-Procedures
-- [ ] Monitoring / Telemetry (failed operations, latency, adoption)
-
-## Admin / Process
-- [ ] Owner & Priority für alle Aufgaben ergänzen
-- [ ] Aufwandsschätzung (T-Shirt / Story Points)
-- [ ] Aufteilen in Arbeitspakete & Priorisierung (MVP vs Phase 2)
-
-## Architekturreview 2026-04-16: konkrete Umsetzungs-ToDos
-
-Diese ToDos leiten sich direkt aus dem Architektur- und Sicherheitsreview ab. Sie sind absichtlich so formuliert, dass ein neuer Thread ohne weiteren Kontext damit weiterarbeiten kann.
-
-### Security / Trust Boundary
-
-- [ ] `SEC-001` Authentifizierungskonzept fuer Capability, API und Frontend festlegen
-	- Ziel: Die API darf den Actor nicht mehr implizit oder ungeprueft aus einem frei setzbaren Header uebernehmen.
-	- Ist-Zustand: `x-kbase-actor` kann vom Client frei gesetzt werden; ohne Header wird aktuell `heiko` verwendet.
-	- Aufgabe:
-		- Definiere ein minimales Auth-Konzept fuer die aktuelle lokale/LAN-Nutzung.
-		- Definiere Benutzer als Login-Subjekt und mappe sie serverseitig auf `principals` fuer Audit und ACL.
-		- Entscheide, ob API-Key, Session, Reverse-Proxy-Auth oder ein anderer Mechanismus verwendet wird.
-		- Dokumentiere die Vertrauensgrenzen zwischen Browser, LAN und Backend.
-		- Spec: siehe [03_implementation_plan/11_auth_acl_plan.md](03_implementation_plan/11_auth_acl_plan.md)
-	- Acceptance:
-		- Es gibt ein kurzes Spec-Dokument fuer Authentifizierung.
-		- Der Fallback auf `heiko` ist entfernt.
-		- Requests ohne gueltige Authentifizierung werden abgewiesen.
-		- Frontend, README und API-Doku verwenden dieselbe Auth-Annahme.
-
-- [ ] `SEC-002` Autorisierung / ACL-Durchsetzung fuer Reads und Writes aktivieren
-	- Ziel: Vorhandene ACL-Strukturen im Schema sollen fachlich wirksam werden.
-	- Ist-Zustand: `item_acl` existiert im Datenmodell, wird zur Laufzeit aber nicht ausgewertet.
-	- Aufgabe:
-		- Definiere, welche Operationen Lese- bzw. Schreibrechte benoetigen.
-		- Fuehre zentrale Berechtigungspruefungen im Capability-Layer oder in einer gemeinsamen Serviceschicht ein.
-		- Ziehe die Pruefungen in die kritischen Endpunkte ein: Items, Notes, Uploads, Labels, Categories, Projects, Datei-Downloads.
-	- Acceptance:
-		- Es gibt eine dokumentierte ACL-Regelbasis.
-		- Unerlaubte Zugriffe liefern einen klaren Fehlerstatus.
-		- Tests decken erlaubte und verbotene Zugriffe ab.
-
-- [ ] `SEC-003` Stored-XSS-Schutz fuer Notes und File-Summaries einfuehren
-	- Ziel: Persistierte Inhalte duerfen beim Anzeigen im Browser keine aktiven Skripte oder unsicheres HTML ausfuehren.
-	- Ist-Zustand: Markdown/HTML wird im Frontend in HTML umgewandelt und in Rich-Text-Komponenten uebernommen; eine explizite Sanitization ist nicht ersichtlich.
-	- Aufgabe:
-		- Definiere eine einheitliche Sanitization-Strategie fuer Notes, File-Summaries und andere Rich-Text-Flaechen.
-		- Implementiere diese Strategie an allen relevanten Rendering-Pfaden.
-		- Erstelle reproduzierbare Tests oder Sicherheitsbeispiele fuer typische XSS-Payloads.
-	- Acceptance:
-		- Notes und File-Summaries nutzen dieselbe sichere Rendering-Pipeline.
-		- Schadhafte HTML-/Script-Payloads werden neutralisiert.
-		- Die Sanitization-Strategie ist dokumentiert.
-
-- [ ] `SEC-004` CORS- und Client-Trust-Modell haerten und dokumentieren
-	- Ziel: Die Freigabe fuer lokale und LAN-Clients soll explizit und nachvollziehbar sein.
-	- Ist-Zustand: CORS ist fuer Development/LAN pragmatisch offen genug, die Sicherheitsannahmen sind aber nicht sauber dokumentiert.
-	- Aufgabe:
-		- Dokumentiere erlaubte Origins und den Umgang mit Credentials.
-		- Trenne lokale Entwicklung, LAN-Zugriff und einen moeglichen spaeteren produktiven Modus klar.
-		- Pruefe, welche Defaults fuer lokale Entwicklung in Ordnung sind und welche explizit als unsicher markiert werden muessen.
-	- Acceptance:
-		- README/API-Doku enthalten einen klaren Abschnitt zu CORS und Trust Boundary.
-		- Unsichere Defaults sind minimiert oder klar als Entwicklungsmodus gekennzeichnet.
-
-- [ ] `SEC-005` Sicherheitsreview fuer Datei-Upload und Datei-Auslieferung vervollstaendigen
-	- Ziel: Pfadschutz, Dateigroessen, MIME-Vertrauen und Download-Sicherheit sollen nachvollziehbar bewertet werden.
-	- Ist-Zustand: Es gibt bereits Pfadpruefungen, aber kein dokumentiertes Bedrohungsmodell.
-	- Aufgabe:
-		- Dokumentiere Schutzmechanismen gegen Path Traversal fuer Inbox, Storage und Download.
-		- Ergaenze offene Themen wie Dateigroessenlimits, MIME-Spoofing, Malware-Scan und Rate-Limits.
-		- Entscheide, welche Themen sofort umgesetzt werden und welche bewusst spaeter folgen.
-	- Acceptance:
-		- Ein kompaktes Sicherheitsdokument fuer Upload/Download liegt vor.
-		- Vorhandene Schutzmechanismen sind durch Tests abgesichert.
-		- Offene Restrisiken sind als Folge-ToDos erfasst.
-
-### Architektur-Konsistenz
-
-- [ ] `ARCH-001` README, API-Doku und realen Systemstand synchronisieren
-	- Ziel: Dokumentation und Implementierung duerfen sich nicht widersprechen.
-	- Ist-Zustand: README und API-Doku beschreiben Teile des aktuellen Stands nicht mehr korrekt.
-	- Aufgabe:
-		- Aktualisiere README auf den tatsaechlichen Stand von API, Frontend und offenen Themen.
-		- Ergaenze die aktuellen Endpunkte fuer Labels und Categories in der API-Doku.
-		- Entferne oder korrigiere Aussagen, die nicht mehr zutreffen.
-	- Acceptance:
-		- README, API_DOKU.md und `todo.md` beschreiben denselben Systemstand.
-		- Die neuen Category-Endpunkte sind dokumentiert.
-		- Veraltete Aussagen wie "FastAPI-Endpoints noch offen" sind bereinigt.
-
-- [ ] `ARCH-002` Capability-Matrix fuer API, CLI, Frontend und Tests erstellen
-	- Ziel: Neue Fachfunktionen sollen nicht versehentlich nur in einer Schnittstelle existieren.
-	- Ist-Zustand: Categories existieren bereits in Capability-Layer und API, aber noch nicht in der CLI.
-	- Aufgabe:
-		- Erstelle eine Tabelle: Capability -> API -> CLI -> Frontend -> Tests.
-		- Trage vorhandene Capabilities systematisch ein.
-		- Markiere sichtbare Luecken als Folgearbeiten.
-	- Acceptance:
-		- Es gibt ein Artefakt mit der vollstaendigen Capability-Abdeckung.
-		- Categories sind dort als Beispiel vollstaendig eingeordnet.
-		- Ein neuer Thread kann daraus fehlende Spiegelungen direkt ableiten.
-
-- [ ] `ARCH-003` Category-Management vollstaendig in die Systemarchitektur einhaengen
-	- Ziel: Categories sollen keine halbfertige API/Frontend-Erweiterung bleiben.
-	- Ist-Zustand: Categories sind im Backend und Frontend vorhanden, aber noch nicht in der CLI und noch nicht vollstaendig dokumentiert.
-	- Aufgabe:
-		- Spiegele Category-Capabilities in die CLI.
-		- Ergaenze Tests fuer CLI und ggf. Integration.
-		- Dokumentiere, wie Categories fachlich genutzt werden sollen.
-	- Acceptance:
-		- Categories sind in Capability-Layer, API, CLI, Frontend und Tests sichtbar.
-		- README/API-Doku enthalten die Bedienwege.
-
-### Labels / Taxonomie
-
-- [ ] `ARCH-004` Label-Lifecycle final fachlich festlegen
-	- Ziel: Es muss verbindlich entschieden werden, ob physisches Loeschen erlaubt ist oder `deactivate/reactivate` der Standard bleibt.
-	- Ist-Zustand: Konzept bevorzugt `deactivate`, Implementierung bietet trotzdem bereits physisches Loeschen.
-	- Aufgabe:
-		- Dokumentiere die Zielentscheidung fuer `create`, `rename`, `deactivate`, `reactivate` und `delete`.
-		- Beschreibe Auswirkungen auf Subtrees, Item-Zuordnungen und Suche.
-	- Acceptance:
-		- Ein kurzes Spec-Dokument zum Label-Lifecycle liegt vor.
-		- Die Entscheidung ist in `todo.md` klar referenziert.
-
-- [ ] `ARCH-005` Label-Delete an die Lifecycle-Entscheidung anpassen
-	- Ziel: Implementierung und Konzept muessen identisch sein.
-	- Ist-Zustand: Label-Subtrees koennen physisch geloescht werden; Item-Label-Zuordnungen werden dabei entfernt.
-	- Aufgabe:
-		- Entferne, schuetze oder bestaetige `DELETE /api/labels/{id}` gemaess `ARCH-004`.
-		- Passe Capability, API, CLI, Frontend und Tests konsistent an.
-	- Acceptance:
-		- Es gibt keinen Widerspruch mehr zwischen Konzept, Doku und Implementierung.
-		- Tests decken das gewollte Delete-/Deactivate-Verhalten ab.
-
-- [ ] `ARCH-006` Label-Management gegen das bestehende Konzept sauber abgleichen
-	- Ziel: Ein neuer Thread soll sofort erkennen, welche Teile des urspruenglichen Label-Konzepts bereits umgesetzt sind und welche nicht.
-	- Aufgabe:
-		- Aktualisiere den Label-Abschnitt in `todo.md`.
-		- Markiere explizit: umgesetzt, teilweise umgesetzt, offen.
-		- Halte offene Entscheidungen getrennt von bereits fixierten Regeln.
-	- Acceptance:
-		- Der Label-Abschnitt dient als belastbares Arbeitsdokument.
-		- Ein neuer Thread kann daraus direkt die naechsten Schritte ableiten.
-
-### Search / Saved Queries
-
-- [ ] `ARCH-007` Search History und Saved Queries fachlich sauber entscheiden
-	- Ziel: Search History soll entweder bewusst lokal bleiben oder als echte serverseitige Capability umgesetzt werden.
-	- Ist-Zustand: Das Schema enthaelt `saved_queries`, das Frontend speichert die Historie aber nur in `localStorage`.
-	- Aufgabe:
-		- Entscheide, ob Suchverlaeufe/Saved Queries actor-bezogen serverseitig gespeichert werden sollen.
-		- Wenn ja: definiere Capability, API, UI und Datenmodellnutzung.
-		- Wenn nein: dokumentiere bewusst, dass `saved_queries` noch ungenutzt ist.
-	- Acceptance:
-		- Die Zielentscheidung ist dokumentiert.
-		- Es gibt keinen impliziten Widerspruch mehr zwischen DB-Schema und Frontend-Verhalten.
-
-- [ ] `ARCH-008` Suchmodell fuer Labels, Label-Unterbaeume und Categories dokumentieren
-	- Ziel: Die Bedeutung von `label_paths`, `label_path_prefixes`, `category_keys` und UI-Filtern muss eindeutig sein.
-	- Aufgabe:
-		- Beschreibe die Suchsemantik mit Beispielen.
-		- Gleiche API-Parameter, Frontend-Wording und Tests darauf ab.
-	- Acceptance:
-		- Die Suchsemantik ist in einem kurzen Dokument eindeutig beschrieben.
-		- Tests fuer Exact Match und Prefix-/Subtree-Match existieren.
-
-### Categories / Dateimodell
-
-- [ ] `ARCH-009` Entscheiden, ob Categories flach oder hierarchisch sind
-	- Ziel: Das Fachmodell soll dieselbe Sprache sprechen wie die UI.
-	- Ist-Zustand: Das Datenmodell ist flach, Teile des Frontends behandeln Categories aber bereits wie Pfade/Hierarchien.
-	- Aufgabe:
-		- Entscheide, ob Categories echte Hierarchien bekommen oder strikt flache Schluessel bleiben.
-		- Wenn flach: entferne implizite Hierarchie-Annahmen aus UI und Doku.
-		- Wenn hierarchisch: definiere DB-, API- und UI-Anpassungen.
-	- Acceptance:
-		- Die Architekturentscheidung ist dokumentiert.
-		- Datenmodell, API und UI folgen derselben Definition.
-
-- [ ] `ARCH-010` File-Explorer auf serverseitige Filterung und skalierbares Laden umbauen
-	- Ziel: Der File-Viewer soll nicht dauerhaft alle Detailobjekte clientseitig laden und filtern.
-	- Ist-Zustand: Erst werden Summaries geladen, danach fuer alle Files die Detailobjekte.
-	- Aufgabe:
-		- Definiere einen Backend-Datenvertrag fuer gefilterte/paginierte File-Listen.
-		- Passe Frontend und API darauf an.
-		- Lege fest, welche Daten fuer Baum und Detailansicht wirklich sofort benoetigt werden.
-	- Acceptance:
-		- File-Filter laufen primaer serverseitig.
-		- Der Explorer laedt nicht mehr pauschal alle Details.
-		- Performance-Zielbild ist dokumentiert.
-
-### Concurrency / Autosave
-
-- [ ] `ARCH-011` Konfliktstrategie fuer gleichzeitige Bearbeitung definieren
-	- Ziel: Die bereits robuste lokale Notes-Auswahl soll um ein echtes Concurrent-Edit-Modell ergaenzt werden.
-	- Ist-Zustand: Schnellklick-/Autosave-Rennen innerhalb des Frontends sind adressiert, Multi-Client-Konflikte aber noch nicht.
-	- Aufgabe:
-		- Entscheide zwischen `last-write-wins`, Versionsnummern, optimistic locking oder einem anderen Verfahren.
-		- Beschreibe die Auswirkungen auf API, Frontend und Fehlermeldungen.
-	- Acceptance:
-		- Es gibt ein dokumentiertes Konfliktmodell.
-		- Mindestens ein echter Concurrent-Edit-Fall ist getestet.
-
-### Tests / Verifikation
-
-- [ ] `ARCH-012` Architektur- und Security-Risiken mit gezielten Tests absichern
-	- Ziel: Die aus dem Review abgeleiteten Risiken sollen nicht nur dokumentiert, sondern verifizierbar abgesichert sein.
-	- Aufgabe:
-		- Ergaenze Tests fuer Auth/ACL.
-		- Ergaenze Tests fuer XSS-Sanitization.
-		- Ergaenze Tests fuer Label-Lifecycle-Entscheidung.
-		- Ergaenze Tests fuer Search History / Saved Queries.
-		- Ergaenze Tests fuer skalierbares File-Filtering soweit die Architektur umgesetzt wird.
-	- Acceptance:
-		- Zu jedem Review-Block gibt es mindestens einen passenden Test oder ein bewusst dokumentiertes Test-Gap.
-
-## Kurzfristige UI-Fixes (Status)
-- [ ] Linke Navigationsleiste fixieren (UX)
-- [ ] File viewer: Stored path → Zeilenumbruch aktivieren
-- [ ] File summary: Benennen + Edit-Button (rich text)
-- [ ] Treeview schmaler, Metadaten kompakter, Preview-Bereich für PDFs
-
-## Appendix / Hinweise
-- Originale Detailnotizen zu Label-Management sind im Git-Log; bei Bedarf extrahiere ich sie in ein eigenes Spec-Dokument.
-
-
-Aktuell koennen Labels:
-
-- global gelesen werden
-- an Items angehaengt werden
-- an Items komplett ersetzt werden
-
-Was noch fehlt, ist eine echte Verwaltung der Label-Entitaeten selbst.
-
-## Zielbild
-
-Labels sollten nicht nur implizit beim Zuweisen an ein Item entstehen, sondern auch explizit verwaltet werden koennen.
-
-Dafuer braucht es eine eigene Label-Management-Schicht mit klaren Regeln.
-
-## Fachliche Idee
-
-### 1. Labels als eigenstaendige Struktur behandeln
-
-Ein Label ist nicht nur ein freier String, sondern ein Knoten in einer Hierarchie:
-
-- `finance`
-- `finance/investing`
-- `finance/investing/etf`
-
-Die Verwaltung sollte auf `full_path` und der Parent-Child-Struktur aufbauen.
-
-### 2. Gewuenschte Operationen
-
-Es sollten eigene Capabilities geben fuer:
-
-- `create_label`
-- `rename_label`
-- `deactivate_label` oder `delete_label`
-- optional spaeter: `merge_labels`
-
-### 3. Delete nicht sofort physisch
-
-Ein hartes Loeschen ist riskant, weil Labels bereits mit vielen Items verknuepft sein koennen.
-
-Deshalb ist fuer den ersten sinnvollen Schritt wahrscheinlich besser:
-
-- `deactivate_label`
-
-statt:
-
-- physisch loeschen
-
-Vorteile:
-
-- bestehende Referenzen bleiben nachvollziehbar
-- UI kann inaktive Labels ausblenden
-- spaeteres Restore bleibt moeglich
+This is the canonical backlog for the repository. Use stable task IDs so future
+LLM threads can reference work without depending on line numbers.
 
-### 4. Rename sauber definieren
+Schema for every task:
 
-Beim Umbenennen eines Labels muss klar geregelt werden, ob:
+```text
+TASK-ID | Status | Priority | Area | Title
+Source:
+Acceptance:
+```
 
-- nur der Zielknoten umbenannt wird
-- oder die ganze Subtree-Struktur mitgezogen wird
+Status values: `open`, `partial`, `blocked`, `done`.
+Priority values: `high`, `medium`, `low`.
 
-Beispiel:
+## Current Priorities
 
-- alt: `finance/investing`
-- neu: `finance/assets`
-
-Dann muss entschieden werden, ob auch automatisch:
+| ID | Status | Priority | Area | Title |
+| --- | --- | --- | --- | --- |
+| `SEC-001` | partial | high | auth | Finish local/LAN trust-boundary documentation |
+| `SEC-002` | open | high | acl | Enforce ACL for reads and writes |
+| `SEC-003` | open | high | frontend-security | Add shared rich-content sanitization |
+| `SEC-004` | partial | high | cors | Harden and document CORS/client trust modes |
+| `SEC-005` | open | high | files-security | Complete upload/download threat model |
+| `SEC-006` | open | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
+| `CLI-001` | open | high | categories | Add category commands to CLI |
+| `LAB-001` | open | high | labels | Finalize label lifecycle decision |
+| `LAB-002` | partial | high | labels | Align delete/deactivate implementation with lifecycle decision |
+| `SEARCH-001` | open | medium | search | Decide server-backed saved queries vs local-only search history |
+| `SEARCH-002` | partial | medium | search | Document exact label/category search semantics |
+| `CAT-001` | open | medium | categories | Decide whether categories remain flat or become hierarchical |
+| `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
+| `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
+| `NOTE-001` | open | medium | notes | Add concurrent edit conflict strategy |
+| `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
+| `FE-001` | open | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
+| `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
+| `MCP-001` | open | low | agents | Add MCP/agent adapter over existing capabilities |
+| `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
 
-- `finance/investing/etf`
+## Task Details
 
-zu:
+### `SEC-001` Finish Local/LAN Trust-Boundary Documentation
 
-- `finance/assets/etf`
+Source: `docs/auth-acl.md`, `docs/api.md`.
 
-wird.
+Acceptance:
 
-Fuer eine hierarchische Labelstruktur ist diese Propagation in der Regel sinnvoll.
+- README, API docs, frontend docs, and auth plan describe the same model.
+- Browser identity is documented as session-cookie based.
+- API-client identity is documented as bearer-token based.
+- LAN is explicitly documented as not trusted for identity.
 
-### 5. Auswirkungen auf bestehende Item-Zuordnungen
+### `SEC-002` Enforce ACL For Reads And Writes
 
-Wenn ein Label umbenannt wird, muessen auch alle `item_labels` konsistent bleiben.
+Source: schema tables `item_acl`, `principal_memberships`, API ACL endpoints.
 
-Das kann technisch auf zwei Arten gedacht werden:
+Acceptance:
 
-- Label-ID bleibt stabil, nur `full_path` aendert sich
-- Unterknoten werden ebenfalls angepasst
+- Shared authorization service defines at least `view`, `edit`, and `manage`.
+- Item reads, content reads, writes, uploads, project operations, and metadata
+  operations check permissions consistently.
+- Unauthorized requests return `403`.
+- Tests cover allowed and forbidden cases.
 
-Das waere die bevorzugte Richtung, weil Item-Zuordnungen dann nicht neu geschrieben werden muessen, sondern nur die Knotendaten.
-
-### 6. Vorschlaege fuer Modellregeln
-
-- `full_path` bleibt global eindeutig
-- jedes Segment darf nur einen Parent haben
-- Rename darf keine Kollision mit bestehendem `full_path` erzeugen
-- Delete/Deactivate darf bei aktiven Referenzen nicht unkontrolliert zu Inkonsistenz fuehren
-- Capabilities muessen Hierarchie und Referenzen atomar veraendern
-
-## Technische Richtung
-
-### Neue oder erweiterte Capabilities
-
-Geplante Capabilities:
-
-- `create_label`
-- `list_labels` ist bereits vorhanden
-- `rename_label`
-- `deactivate_label`
-- optional spaeter: `reactivate_label`
-
-### API
-
-Wichtiger Hinweis:
-
-Wenn diese Capabilities eingefuehrt werden, muessen sie nicht nur intern existieren, sondern auch auf die HTTP-API gegeben werden.
-
-Geplante API-Endpunkte koennten sein:
-
-- `POST /api/labels`
-- `GET /api/labels`
-- `PATCH /api/labels/{label_id}` oder `PATCH /api/labels/by-path/{full_path}`
-- `DELETE /api/labels/{label_id}` oder besser `POST /api/labels/{label_id}/deactivate`
-
-### CLI
-
-Wichtiger Hinweis:
-
-Die neuen Label-Capabilities muessen auch in die CLI gespiegelt werden.
-
-Beispiele:
-
-- `kbase label create`
-- `kbase label list`
-- `kbase label rename`
-- `kbase label deactivate`
-
-Die Zielarchitektur bleibt nur dann konsistent, wenn Capability Layer, API und CLI denselben Fachkern nutzen.
-
-## Frontend-Auswirkung
-
-Wenn Label-Management eingefuehrt wird, sollte das Frontend spaeter auch eine kleine Verwaltungsoberflaeche bekommen:
-
-- existierende Labels durchsuchen
-- neue Labels anlegen
-- Labels umbenennen
-- Labels deaktivieren
-
-Das ist aber nachgelagert. Der erste Schritt ist die saubere Capability-/API-/CLI-Schicht.
-
-## Offene Entscheidungen
-
-Noch zu klaeren:
-
-- soll `delete` ueberhaupt erlaubt sein oder nur `deactivate`
-- wie wird Rename von Subtrees genau behandelt
-- soll global ueber `id` oder ueber `full_path` adressiert werden
-- wie werden inaktive Labels in Suche, Frontend und Zuordnung behandelt
-
-## Empfohlene Reihenfolge
-
-1. Fachregeln fuer Label-Lifecycle festziehen
-2. Capability-Design definieren
-3. Repository-Operationen sauber entwerfen
-4. API-Endpunkte darauf setzen
-5. CLI-Befehle darauf setzen
-6. danach Frontend-Management ergaenzen
-
-
-## [ ] prüfe die aktuelle implementierung gegen das konzept
-- passt das so
-- sind wir nicht zu stringent unterwegs und verlieren flexibilität (siehe zuordnung files zu notes)
-
-## [x] speichern on change
-Speichere Änderungen wie bei modernen online tools automatisch uns sofort (mit einer leichten Verzögerung, um unendlich viele schreibvoränge zu vermeiden). Stelle sicher, dass der Nutzer es nicht merkt. Also nicht irgendwelche reloads oder verschieben des Fokus o.ä.
-
-
-## [x] Suchfunktion deutlich verbessern
-Wenn ich etwas suche, dann gib mir eine strukturierten output.
-1. Die Suchleiste soll global sichtbar sein auf jeder seite.
-2. Bei der Suche füge einen Schalter für global hinzu (er ist standardmäßig aus)
-3. bei der Suche verwende die aktuelle seite als Filter (z.B. Notes Seite sucht nur in Notes)
-4. Wenn global ausgewählt ist, Suche im ganzen System
-5. wenn die Suche ausgeführt ist, dann zeige alle Ergebnisse (nach relevanz sortiert an) - auf der Linken Seite
-6. Füge eine explizite Suchseite hinzu. Hier muss es dann möglich sein, advanced zu suchen nach gezielten Kriterien (z.B. Categorie, Label, labelhierarchie, etc.)
-7. Speichere Suchverläufe 
-
-## [x] Ertelle eine Seite, die explizit für Dateien gemacht ist
-Erstelle eine Seite, die dafür da ist, durch die Dateien zu navigieren. Dies soll anhand eines Explorerartigen Baumes erfolgen. Die Struktur des Baumes muss auswählbar sein.
-- Category --> label --> Datei (mit Orginalname, nicht wie er abgelegt ist) --> Füge Filter für Labels hinzu, damit nur diese angezeigt werden
-- Beispiel: Category: finance/income --> labels: Jahr 2025 und 2026. Dann werden in dem Baum alle evtl. Unterkategorien für finance/income als root nodes verwendet. Unterordner sind dann alle Labels die gewählt sind (hier 2025 und 2026). darunter werden alle Dateien angezeigt die diese Kriterien erfüllen (am Besten mit dem Orginalnamen). Wenn auf eine Datei geklickt wird, kommt rechts dabenen (oben rechts) eine detailansicht mit dem titel der datei, metadaten soweit vorhanden und die Zusammenfassung (markdown). Zeige die zusammenfassung in einem rich text element an mit passender formatierung.
-- für das testen erstelle 10 testdateien die dann in der struktur sind (gib das label test)
+### `SEC-003` Add Shared Rich-Content Sanitization
+
+Source: Notes editor, file summaries, Markdown/HTML rendering paths.
+
+Acceptance:
+
+- Notes and file summaries use the same sanitization pipeline.
+- Script/event-handler payloads are neutralized before rendering.
+- Unit or workspace tests cover representative stored-XSS payloads.
+
+### `SEC-004` Harden And Document CORS/Client Trust Modes
+
+Source: API CORS config, Docker dev/prod configs.
+
+Acceptance:
+
+- Dev, LAN, and production assumptions are described separately.
+- Credentialed browser requests only work for intended origins.
+- Unsafe defaults are either removed or labeled as development-only.
+
+### `SEC-005` Complete Upload/Download Threat Model
+
+Source: `ItemFileStore`, inbox store, file-content endpoint.
+
+Acceptance:
+
+- Path traversal controls are documented and tested.
+- File size limits, MIME trust, malware scan gaps, and rate limits are tracked.
+- Remaining risks become explicit backlog items.
+
+### `SEC-006` Replace CLI Actor Default
+
+Source: `src/kbase/interfaces/cli/main.py`.
+
+Acceptance:
+
+- Normal CLI commands no longer default to `--actor heiko`.
+- CLI has a documented token or local-dev auth flow.
+- Tests and README examples match the selected flow.
+
+### `CLI-001` Add Category Commands To CLI
+
+Source: `create_category`, `list_categories`, `update_category` capabilities.
+
+Acceptance:
+
+- `uv run kbase category list|create|update` exists.
+- CLI contract tests cover the commands.
+- Capability matrix marks category CLI coverage as `yes`.
+
+### `LAB-001` Finalize Label Lifecycle Decision
+
+Source: current label APIs and historical label-management notes.
+
+Acceptance:
+
+- A short lifecycle spec defines `create`, `rename`, `deactivate`,
+  `reactivate`, and `delete`.
+- The spec states whether hard delete is allowed and what happens to subtrees.
+- Search and UI behavior for inactive labels is explicit.
+
+### `LAB-002` Align Delete/Deactivate Implementation
+
+Source: `DELETE /api/labels/{label_id}`, Settings label delete UI.
+
+Acceptance:
+
+- Implementation matches `LAB-001`.
+- API, CLI, frontend, docs, and tests use the same lifecycle language.
+- No doc recommends deactivate while code silently encourages hard delete.
+
+### `SEARCH-001` Decide Saved Queries Storage
+
+Source: `saved_queries` table, frontend search state/history.
+
+Acceptance:
+
+- Decision recorded: server-backed capability or intentionally local-only.
+- If server-backed, capability/API/frontend/test tasks are created.
+- If local-only, schema is documented as unused future storage.
+
+### `SEARCH-002` Document Label/Category Search Semantics
+
+Source: `SearchContentInput`, `label_paths`, `label_path_prefixes`,
+`category_keys`.
+
+Acceptance:
+
+- Exact label match and subtree/prefix match are explained with examples.
+- API docs, frontend wording, and tests use the same terms.
+
+### `CAT-001` Decide Category Hierarchy
+
+Source: flat `item_categories` table and frontend wording.
+
+Acceptance:
+
+- Architecture decision states categories are flat or hierarchical.
+- UI and docs stop implying unsupported hierarchy if categories stay flat.
+- If hierarchical, data-model/API/UI tasks are created.
+
+### `FILE-001` Server-Side File Filtering And Pagination
+
+Source: file viewer currently combines item summaries and detail fetches.
+
+Acceptance:
+
+- Backend contract exists for filtered/paged file lists.
+- Frontend no longer requires all file details before useful rendering.
+- Performance target and tests are documented.
+
+### `FILE-002` Improve File Preview And Summary UX
+
+Source: file viewer plan and current file page.
+
+Acceptance:
+
+- Stored paths wrap cleanly.
+- Summary editor has a clear edit/save/autosave path.
+- PDF/image/text preview behavior is defined and tested where feasible.
+
+### `NOTE-001` Add Concurrent Edit Conflict Strategy
+
+Source: autosave and note editor behavior.
+
+Acceptance:
+
+- Decision recorded: last-write-wins, optimistic locking, version checks, or
+  another strategy.
+- API and frontend behavior are documented.
+- At least one concurrent-edit case is tested.
+
+### `TEST-001` Targeted Risk Tests
+
+Source: architecture/security review.
+
+Acceptance:
+
+- Tests exist for auth failure, ACL denial, XSS sanitization, label lifecycle,
+  saved-query/search decision, and file filtering/security.
+- Any intentionally untested risk has a written rationale.
+
+### `FE-001` Settings Workspace Tests
+
+Source: Settings/Labels and Settings/Categories pages.
+
+Acceptance:
+
+- Label create/rename/deactivate/reactivate/delete behavior has frontend tests.
+- Category create/update/activate/deactivate behavior has frontend tests.
+
+### `DOC-001` Keep Canonical Docs Synced
+
+Source: this cleanup and future code changes.
+
+Acceptance:
+
+- README, API docs, frontend docs, data map, capability matrix, and TODO do not
+  contradict the code.
+- Historical docs are clearly marked when they are background only.
+
+### `MCP-001` Add MCP/Agent Adapter
+
+Source: target architecture.
+
+Acceptance:
+
+- MCP tools call existing capabilities, not new domain logic.
+- Adapter docs describe auth, allowed operations, and data boundaries.
+
+### `AUTO-001` OCR, Preview Derivatives, Bulk Import
+
+Source: use cases, file viewer, metadata fields `ocr_status` and
+`summary_status`.
+
+Acceptance:
+
+- Pipeline design separates original files, derived files, metadata, audit, and
+  provenance.
+- First implementation has rollback/error behavior and tests.
+
+## Done Landmarks
+
+| ID | Status | Area | Result |
+| --- | --- | --- | --- |
+| `ARCH-001` | done | docs | README/API docs were synchronized with session/token auth and category endpoints. |
+| `ARCH-002` | done | architecture | Capability matrix exists in `docs/capabilities.md`. |
+| `FE-SEARCH-001` | done | search | Global search state and explicit Search page exist. |
+| `FE-FILES-001` | done | files | Files page with configurable explorer tree and test seed files exists. |
+| `FE-NOTES-001` | done | notes | Notes autosave with debounce exists. |
+| `LAB-BASE-001` | done | labels | Hierarchical label nodes, label assignment, label replacement, and label settings exist. |
+| `CAT-BASE-001` | done | categories | Category API and Settings/Categories frontend exist. |
+| `PROJ-BASE-001` | done | projects | Project create/add/list capabilities, API endpoints, CLI commands, and page exist. |
+
+## Historical Sources
+
+Historical background lives under `docs/archive/`.
+
+When archive files conflict with code, prefer the code plus the canonical docs
+listed in `docs/README.md`.

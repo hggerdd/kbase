@@ -1,5 +1,10 @@
 # Target Architecture Proposal
 
+Status: architecture background. The implemented project now runs primarily on
+PostgreSQL in Docker, still supports SQLite for tests/legacy local use, and has
+FastAPI plus React already in place. Prefer `README.md` and `DATA_MAP.md` for
+current operational truth.
+
 ## Ziel
 
 Dieses Dokument beschreibt eine konkrete Zielarchitektur fuer die Knowledge Base mit Python und `uv` als gesetztem Stack. Es geht nicht um das Endprodukt im Detail, sondern um eine belastbare technische Richtung, die:
