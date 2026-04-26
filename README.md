@@ -174,6 +174,8 @@ Important current split:
   LAN API clients still need bearer tokens.
 - Credentialed browser origins are local-dev defaults unless explicitly set
   with `KBASE_CORS_ORIGINS`.
+- Set `KBASE_TRUST_MODE=lan` or `KBASE_TRUST_MODE=production` to remove
+  development CORS defaults; production Compose sets this automatically.
 - CLI still accepts `--actor` and defaults to `heiko`; this gap is tracked as
   `SEC-006` in [todo.md](todo.md).
 

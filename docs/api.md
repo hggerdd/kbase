@@ -60,18 +60,21 @@ Default development origins:
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
 
-Set LAN/custom origins through `KBASE_CORS_ORIGINS`.
+Set LAN/custom origins through `KBASE_CORS_ORIGINS`. Because the API allows
+credentialed browser requests, wildcard CORS origins are rejected.
 
 Trust modes:
 
 - Local development uses the default localhost/`127.0.0.1` origins and the same
-  session-cookie or bearer-token identity model as every other mode.
+  session-cookie or bearer-token identity model as every other mode. This is the
+  default `KBASE_TRUST_MODE=local`.
 - LAN development is not a trusted identity boundary. LAN browsers need valid
   session cookies, LAN API clients need bearer tokens, and allowed browser
-  origins must be listed explicitly in `KBASE_CORS_ORIGINS`.
+  origins must be listed explicitly in `KBASE_CORS_ORIGINS`. Use
+  `KBASE_TRUST_MODE=lan` when the API is exposed for LAN browser testing.
 - Production-like deployments should prefer same-origin frontend/API routing
   through Nginx. Configure cross-origin credentialed browser access only for
-  intended origins.
+  intended origins. `KBASE_TRUST_MODE=production` has no default CORS origins.
 
 ## Quickstart
 

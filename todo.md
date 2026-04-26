@@ -21,7 +21,7 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-001` | done | high | auth | Finish local/LAN trust-boundary documentation |
 | `SEC-002` | open | high | acl | Enforce ACL for reads and writes |
 | `SEC-003` | open | high | frontend-security | Add shared rich-content sanitization |
-| `SEC-004` | partial | high | cors | Harden and document CORS/client trust modes |
+| `SEC-004` | done | high | cors | Harden and document CORS/client trust modes |
 | `SEC-005` | open | high | files-security | Complete upload/download threat model |
 | `SEC-006` | open | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
 | `CLI-001` | open | high | categories | Add category commands to CLI |

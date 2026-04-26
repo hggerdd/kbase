@@ -70,6 +70,7 @@ Local development:
 - API-client identity is still `Authorization: Bearer <TOKEN>`.
 - Default CORS origins are development-only Vite origins on localhost and
   `127.0.0.1`.
+- The default API trust mode is `KBASE_TRUST_MODE=local`.
 - The seeded dev users are convenience accounts, not a LAN trust mechanism.
 
 LAN development:
@@ -80,6 +81,7 @@ LAN development:
 - Every non-browser API client still needs a bearer token.
 - Set `KBASE_CORS_ORIGINS` to the exact LAN frontend origins that should be
   allowed to send credentialed browser requests.
+- Use `KBASE_TRUST_MODE=lan` so missing CORS configuration fails closed.
 
 Production-like deployment:
 
@@ -87,6 +89,7 @@ Production-like deployment:
   frontend with `/api` proxied to FastAPI.
 - Configure `KBASE_CORS_ORIGINS` only when a separate browser origin is
   intentionally supported.
+- `KBASE_TRUST_MODE=production` has no default CORS origins.
 - Do not expose dev credentials as real accounts.
 - Do not treat LAN, reverse-proxy headers, request IDs, or client-provided
   principal data as identity.

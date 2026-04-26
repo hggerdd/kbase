@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi import File, Form, UploadFile
@@ -120,6 +121,12 @@ from kbase.interfaces.api.schemas import (
 )
 
 SESSION_COOKIE_NAME = "kbase_session"
+LOCAL_DEVELOPMENT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 
 def _extract_bearer_token(authorization: str | None) -> str | None:
@@ -174,17 +181,37 @@ def _infer_file_item_kind(filename: str, mime_type: str | None) -> str:
     return "document"
 
 
+def _trust_mode() -> str:
+    mode = os.getenv("KBASE_TRUST_MODE", "local").strip().lower()
+    if mode not in {"local", "lan", "production"}:
+        raise ValueError("KBASE_TRUST_MODE must be one of: local, lan, production")
+    return mode
+
+
+def _parse_cors_origins(configured: str) -> list[str]:
+    origins: list[str] = []
+    for raw_origin in configured.split(","):
+        origin = raw_origin.strip().rstrip("/")
+        if not origin:
+            continue
+        if origin == "*":
+            raise ValueError("KBASE_CORS_ORIGINS must not contain '*' when credentials are enabled")
+        parsed = urlparse(origin)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path:
+            raise ValueError(f"Invalid CORS origin: {origin}")
+        origins.append(origin)
+    return origins
+
+
 def _cors_origins() -> list[str]:
     configured = os.getenv("KBASE_CORS_ORIGINS", "").strip()
     if configured:
-        return [origin.strip() for origin in configured.split(",") if origin.strip()]
+        return _parse_cors_origins(configured)
 
-    return [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ]
+    if _trust_mode() == "local":
+        return LOCAL_DEVELOPMENT_CORS_ORIGINS
+
+    return []
 
 
 def create_app() -> FastAPI:

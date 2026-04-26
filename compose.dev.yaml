@@ -27,7 +27,8 @@ services:
       KBASE_DB_URL: postgresql+psycopg://kbase:kbase@db:5432/kbase
       KBASE_STORAGE_ROOT: /app/kb/items
       KBASE_INBOX_ROOT: /app/kb/inbox
-      KBASE_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      KBASE_TRUST_MODE: ${KBASE_TRUST_MODE:-local}
+      KBASE_CORS_ORIGINS: ${KBASE_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     command: >
       sh -c "python scripts/init_db.py &&
       uvicorn kbase.interfaces.api.main:app --host 0.0.0.0 --port 8000 --reload

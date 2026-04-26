@@ -82,6 +82,8 @@ LAN usage:
   cookie.
 - If the frontend is served from a different LAN origin than the API, that exact
   origin must be allowed through `KBASE_CORS_ORIGINS`.
+- `KBASE_TRUST_MODE=lan` and `KBASE_TRUST_MODE=production` do not add default
+  browser CORS origins; same-origin proxying remains preferred.
 - Bearer tokens are for API clients and automation, not for frontend state.
 
 ## Important Files
