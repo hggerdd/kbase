@@ -125,7 +125,7 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
               </div>
 
               <label className="search-field">
-                <span>Categories</span>
+                <span>Category keys</span>
                 <input
                   value={workspace.filters.categoryKeysText}
                   onChange={(event) => workspace.updateFilter("categoryKeysText", event.target.value)}
@@ -151,7 +151,7 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
               </label>
 
               <label className="search-field">
-                <span>Exact labels</span>
+                <span>Exact label paths</span>
                 <input
                   value={workspace.filters.labelPathsText}
                   onChange={(event) => workspace.updateFilter("labelPathsText", event.target.value)}

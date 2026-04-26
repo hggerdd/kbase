@@ -28,7 +28,7 @@ Priority values: `high`, `medium`, `low`.
 | `LAB-001` | done | high | labels | Finalize label lifecycle decision |
 | `LAB-002` | done | high | labels | Align delete/deactivate implementation with lifecycle decision |
 | `SEARCH-001` | done | medium | search | Decide server-backed saved queries vs local-only search history |
-| `SEARCH-002` | partial | medium | search | Document exact label/category search semantics |
+| `SEARCH-002` | done | medium | search | Document exact label/category search semantics |
 | `CAT-001` | open | medium | categories | Decide whether categories remain flat or become hierarchical |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |

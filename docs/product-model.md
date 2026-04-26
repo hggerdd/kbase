@@ -127,6 +127,9 @@ Search behavior:
 - Subtree/prefix search matches descendants by `full_path` prefix.
 - Inactive labels are not returned by label picker/list calls unless requested
   with `include_inactive=true`.
+- Category search filters use exact flat category keys.
+- Multiple values inside one filter dimension are alternatives; different
+  dimensions combine to narrow results.
 
 Saved search decision:
 

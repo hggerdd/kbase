@@ -248,6 +248,24 @@ Traceability and ACL:
 - `limit`
 - `offset`
 
+Search filter semantics:
+
+- `query` is a text contains search across title, category key, status, content
+  text, label name, label full path, and label description.
+- `item_kinds`, `category_keys`, `statuses`, and `created_by_principal_ids` are
+  exact-key filters. Multiple values inside one field are OR alternatives.
+- `category_keys=research&category_keys=decision` means category is
+  `research` OR `decision`; categories are flat keys, not prefixes.
+- `label_paths` is an exact full-path label filter. `finance/bank` does not
+  match an item labeled only `finance/bank/depot/data`.
+- `label_path_prefixes` is a branch filter. `finance/bank` matches
+  `finance/bank` and descendants such as `finance/bank/depot/data`.
+- Exact label paths and branch filters are OR alternatives within the label
+  dimension.
+- Different dimensions combine with AND. For example, `category_keys=research`
+  plus `label_path_prefixes=finance/bank` returns research items in that label
+  branch.
+
 `GET /api/labels`:
 
 - `query`
