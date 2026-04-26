@@ -33,7 +33,7 @@ Legend:
 | Rename/update label | `rename_label` / `update_label` | yes | yes | yes | partial | frontend settings tests missing |
 | Deactivate label | `deactivate_label` | yes | yes | yes | partial | frontend settings tests missing |
 | Reactivate label | `reactivate_label` | yes | yes | yes | partial | frontend settings tests missing |
-| Delete label subtree | `delete_label` | yes | no | yes | partial | lifecycle decision open as `LAB-001`/`LAB-002` |
+| Delete label subtree | `delete_label` | yes | no | yes | partial | CLI command and frontend tests missing |
 | List categories | `list_categories` | yes | yes | yes | yes | well mirrored |
 | Create category | `create_category` | yes | yes | yes | partial | frontend settings tests missing |
 | Update category | `update_category` | yes | yes | yes | partial | frontend settings tests missing |
