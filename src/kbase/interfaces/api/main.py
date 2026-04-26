@@ -96,6 +96,7 @@ from kbase.application.dto.capabilities import (
     UpdateItemCoreInput,
 )
 from kbase.application.dto.common import AclEntryData, AssetData, CategoryData, ItemSummary, LabelData, MetadataEntryData, SessionData
+from kbase.application.services.errors import ConflictError
 from kbase.application.services.security import AuthenticationError, AuthorizationError, build_authenticated_actor
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
@@ -303,6 +304,10 @@ def create_app() -> FastAPI:
     async def handle_authorization_error(_request: Request, exc: AuthorizationError) -> JSONResponse:
         return JSONResponse(status_code=403, content={"detail": str(exc)})
 
+    @app.exception_handler(ConflictError)
+    async def handle_conflict_error(_request: Request, exc: ConflictError) -> JSONResponse:
+        return JSONResponse(status_code=409, content={"detail": str(exc)})
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -482,6 +487,7 @@ def create_app() -> FastAPI:
                 content_text=payload.content_text,
                 content_format=payload.content_format,
                 change_reason=payload.change_reason,
+                expected_content_updated_at=payload.expected_content_updated_at,
                 actor=actor,
                 provenance=_provenance("api.replace_content_part"),
             )

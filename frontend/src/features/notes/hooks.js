@@ -120,7 +120,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     };
   }
 
-  function syncLocalNoteState(itemId, persistedEditor) {
+  function syncLocalNoteState(itemId, persistedEditor, persistedContentPart = null) {
     const now = new Date().toISOString();
 
     commitSelectedNote((current) => {
@@ -141,6 +141,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
           ? {
               ...current.primary_content_part,
               content_text: persistedEditor.markdown_body,
+              updated_at: persistedContentPart?.updated_at ?? current.primary_content_part.updated_at,
             }
           : null,
         labels: persistedEditor.label_paths.map((fullPath) => ({
@@ -210,6 +211,8 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     }
 
     const persistedEditor = buildPersistedEditor(editorSnapshot);
+    const currentContentPart =
+      selectedNoteRef.current?.item?.id === itemId ? selectedNoteRef.current.primary_content_part : null;
 
     if (source === "manual") {
       setSaving(true);
@@ -219,21 +222,22 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     }
 
     try {
+      const contentPayload = await replaceNoteContent(itemId, {
+        content_text: persistedEditor.markdown_body,
+        change_reason: source === "manual" ? "web-edit" : "web-autosave",
+        expected_content_updated_at: currentContentPart?.updated_at ?? null,
+      });
       await updateNoteCore(itemId, {
         title: persistedEditor.title,
         category_key: persistedEditor.category_key,
         status: persistedEditor.status,
-      });
-      await replaceNoteContent(itemId, {
-        content_text: persistedEditor.markdown_body,
-        change_reason: source === "manual" ? "web-edit" : "web-autosave",
       });
       await replaceLabels(itemId, persistedEditor.label_paths);
       persistedEditorByNoteIdRef.current.set(itemId, snapshotKey);
       if (selectedIdRef.current === itemId) {
         lastPersistedEditorRef.current = snapshotKey;
       }
-      syncLocalNoteState(itemId, persistedEditor);
+      syncLocalNoteState(itemId, persistedEditor, contentPayload.primary_content_part);
       if (source === "manual") {
         if (selectedIdRef.current === itemId) {
           setNotice("Note saved");
@@ -244,7 +248,9 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
       return true;
     } catch (err) {
       setError(err.message);
-      if (source !== "manual") {
+      if (err.status === 409) {
+        setAutosaveState("conflict");
+      } else if (source !== "manual") {
         setAutosaveState("error");
       }
       return false;

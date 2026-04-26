@@ -33,6 +33,9 @@ Implemented app concerns:
 - Shared API client with `credentials: "include"` in
   `frontend/src/shared/api/client.js`.
 - File upload progress through `XMLHttpRequest` in the shared API client.
+- Notes autosave uses optimistic content locking. A stale content timestamp
+  from another editor returns `409` and leaves the workspace in a conflict
+  state for the user to reload or reconcile.
 - Plain CSS styling in `frontend/src/styles.css`.
 - Shared rich-content sanitization in `frontend/src/shared/utils/rich-content.js`
   for stored markdown/html render paths.
