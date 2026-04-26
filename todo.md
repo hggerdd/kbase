@@ -36,7 +36,7 @@ Priority values: `high`, `medium`, `low`.
 | `FILE-SEC-002` | open | medium | files-security | Add MIME validation and malware scanning policy |
 | `NOTE-001` | open | medium | notes | Add concurrent edit conflict strategy |
 | `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
-| `FE-001` | open | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
+| `FE-001` | done | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
 | `MCP-001` | open | low | agents | Add MCP/agent adapter over existing capabilities |
 | `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
