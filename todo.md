@@ -26,7 +26,7 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-006` | open | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
 | `CLI-001` | done | high | categories | Add category commands to CLI |
 | `LAB-001` | done | high | labels | Finalize label lifecycle decision |
-| `LAB-002` | partial | high | labels | Align delete/deactivate implementation with lifecycle decision |
+| `LAB-002` | done | high | labels | Align delete/deactivate implementation with lifecycle decision |
 | `SEARCH-001` | open | medium | search | Decide server-backed saved queries vs local-only search history |
 | `SEARCH-002` | partial | medium | search | Document exact label/category search semantics |
 | `CAT-001` | open | medium | categories | Decide whether categories remain flat or become hierarchical |

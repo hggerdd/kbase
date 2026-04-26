@@ -149,6 +149,12 @@ Labels:
 - `POST /api/labels/{label_id}/deactivate`
 - `POST /api/labels/{label_id}/reactivate`
 
+Settings/Labels lifecycle wording:
+
+- Deactivate/reactivate are the normal lifecycle actions.
+- Hard delete is presented as irreversible subtree cleanup.
+- The page can include inactive labels so they can be inspected and reactivated.
+
 Categories:
 
 - `GET /api/categories`

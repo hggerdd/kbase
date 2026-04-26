@@ -214,6 +214,22 @@ def test_cli_label_lifecycle(monkeypatch, tmp_path) -> None:
     assert listed.exit_code == 0
     assert "finance/assets" not in listed.stdout
 
+    reactivated = RUNNER.invoke(
+        app,
+        ["label", "reactivate", child["id"], "--json"],
+    )
+    assert reactivated.exit_code == 0
+    assert json.loads(reactivated.stdout)["is_active"] is True
+
+    deleted = RUNNER.invoke(
+        app,
+        ["label", "delete", root["id"], "--json"],
+    )
+    assert deleted.exit_code == 0
+    deleted_payload = json.loads(deleted.stdout)
+    assert deleted_payload["deleted_count"] == 2
+    assert set(deleted_payload["deleted_paths"]) == {"finance", "finance/assets"}
+
 
 def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     _configure_cli_db(monkeypatch, tmp_path)

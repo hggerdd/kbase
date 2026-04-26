@@ -192,6 +192,10 @@ export function LabelsPage() {
     if (!selectedLabel) {
       return;
     }
+    const confirmed = window.confirm(`Hard delete "${selectedLabel.full_path}" and its label subtree?`);
+    if (!confirmed) {
+      return;
+    }
     const deleted = await workspace.handleDeleteLabel(selectedLabel.id);
     if (deleted) {
       setSelectedId("");
@@ -205,10 +209,20 @@ export function LabelsPage() {
         title="Labels"
         description="Manage hierarchical labels and keep the taxonomy stable across the knowledge base."
         actions={
-          <button className="primary icon-text-button" type="button" onClick={() => setModalMode("create")}>
-            <span className="button-icon"><PlusIcon /></span>
-            Add label
-          </button>
+          <>
+            <label className="toggle-chip">
+              <input
+                type="checkbox"
+                checked={workspace.includeInactive}
+                onChange={(event) => workspace.setIncludeInactive(event.target.checked)}
+              />
+              <span>Show inactive</span>
+            </label>
+            <button className="primary icon-text-button" type="button" onClick={() => setModalMode("create")}>
+              <span className="button-icon"><PlusIcon /></span>
+              Add label
+            </button>
+          </>
         }
       />
 
@@ -253,8 +267,27 @@ export function LabelsPage() {
                 <button className="secondary" type="button" onClick={() => setModalMode("edit")} disabled={workspace.saving}>
                   Edit
                 </button>
+                {selectedLabel.is_active ? (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => void workspace.handleDeactivateLabel(selectedLabel.id)}
+                    disabled={workspace.saving}
+                  >
+                    Deactivate
+                  </button>
+                ) : (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => void workspace.handleReactivateLabel(selectedLabel.id)}
+                    disabled={workspace.saving}
+                  >
+                    Reactivate
+                  </button>
+                )}
                 <button className="danger" type="button" onClick={() => void deleteSelectedLabel()} disabled={workspace.saving}>
-                  Delete
+                  Hard delete subtree
                 </button>
               </div>
             </div>

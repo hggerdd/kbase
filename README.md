@@ -37,6 +37,7 @@ Implemented:
 - Relational schema for items, content, files, labels, categories, links,
   projects, ACL tables, audit, provenance, users, sessions, and API tokens.
 - Hierarchical label nodes and label assignment/replacement.
+- Label deactivate/reactivate lifecycle plus explicit hard-delete subtree cleanup.
 - Category management in API, CLI, and frontend.
 - File upload/import, inbox import, file-item storage, and file content delivery.
 - Docker Compose setups for development and production.

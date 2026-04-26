@@ -15,6 +15,7 @@ from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
 from kbase.application.capabilities.create_category import create_category
+from kbase.application.capabilities.delete_label import delete_label
 from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
@@ -46,6 +47,7 @@ from kbase.application.dto.capabilities import (
     CreateFileItemInput,
     CreateNoteInput,
     CreateProjectInput,
+    DeleteLabelInput,
     DeactivateLabelInput,
     GetItemInput,
     ImportInboxFileInput,
@@ -484,6 +486,22 @@ def reactivate_label_command(
             label_id=label_id,
             actor=_actor_context(actor),
             provenance=_provenance("cli.reactivate_label"),
+        )
+    )
+    _emit(result, as_json)
+
+
+@label_app.command("delete")
+def delete_label_command(
+    label_id: str,
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = delete_label(
+        DeleteLabelInput(
+            label_id=label_id,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.delete_label"),
         )
     )
     _emit(result, as_json)
