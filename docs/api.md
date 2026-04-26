@@ -145,6 +145,17 @@ Labels:
 - `POST /api/items/{item_id}/labels`
 - `PUT /api/items/{item_id}/labels`
 
+Label lifecycle:
+
+- `POST /api/labels` creates an active label node.
+- `PATCH /api/labels/{label_id}` renames the label or updates its description.
+- `POST /api/labels/{label_id}/deactivate` hides a label from normal active
+  listings while keeping the label and item assignments.
+- `POST /api/labels/{label_id}/reactivate` returns the label to active listings.
+- `DELETE /api/labels/{label_id}` hard-deletes the selected label subtree and
+  removes item assignments to deleted labels.
+- `GET /api/labels` excludes inactive labels unless `include_inactive=true`.
+
 Categories:
 
 - `GET /api/categories`
@@ -250,7 +261,7 @@ Traceability and ACL:
 ## Known API Gaps
 
 - ACL endpoints exist, but broad ACL enforcement is still `SEC-002`.
-- Label hard-delete vs deactivate lifecycle is still `LAB-001`/`LAB-002`.
+- Label API/UI lifecycle wording is tracked by `LAB-002`.
 - Saved queries are not exposed as a server-backed capability.
 - CLI auth is separate and incomplete as `SEC-006`.
 
