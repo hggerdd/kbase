@@ -77,6 +77,13 @@ Implemented core:
 - `label_nodes`: hierarchical labels.
 - `item_labels`: item-to-label assignments.
 - `item_categories`: flat category keys with optional `applies_to_kind`.
+
+Category decision:
+
+- Categories remain flat reference keys.
+- No category parent, path, subtree, or hierarchy semantics are part of the
+  current data model.
+- Hierarchical organization belongs to labels.
 - `item_links`: relations between items.
 - `project_items`: project-to-item membership.
 - `item_metadata`: typed metadata fields.

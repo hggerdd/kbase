@@ -33,7 +33,7 @@ test("summary markdown falls back to the primary content part", () => {
   assert.match(getSummaryMarkdown(detail), /Alpha/);
 });
 
-test("file filter requires matching labels and category prefix", () => {
+test("file filter requires matching labels and category key prefix", () => {
   const detail = makeDetail({
     id: "a",
     title: "Salary 2025",
@@ -58,6 +58,18 @@ test("file filter requires matching labels and category prefix", () => {
     }),
     false,
   );
+});
+
+test("file tree treats category keys as flat values", () => {
+  const tree = buildFileTree(
+    [makeDetail({ id: "a", title: "Alpha", categoryKey: "finance/income", labels: ["year/2025"], filename: "alpha.pdf" })],
+    {
+      treeLayout: "category-file",
+    },
+  );
+
+  assert.equal(tree[0].label, "finance/income");
+  assert.equal(tree[0].children[0].label, "alpha.pdf");
 });
 
 test("category-label-file tree groups files under category and selected labels", () => {

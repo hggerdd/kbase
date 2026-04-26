@@ -176,6 +176,13 @@ Categories:
 - `POST /api/categories`
 - `PATCH /api/categories/{category_key}`
 
+Settings/Categories wording:
+
+- Categories are flat keys.
+- The UI must not present category parents, trees, or subcategories.
+- Category filtering may match key prefixes as string filtering, but those
+  prefixes are not hierarchy semantics.
+
 ## Feature Modules
 
 The frontend follows a feature-slice structure:
