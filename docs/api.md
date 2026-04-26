@@ -134,6 +134,12 @@ Search:
 
 - `GET /api/search/content`
 
+Saved queries:
+
+- No saved-query endpoints are exposed.
+- The current frontend search history is browser-local.
+- The `saved_queries` table is reserved future storage.
+
 Labels:
 
 - `GET /api/labels`
@@ -262,7 +268,8 @@ Traceability and ACL:
 
 - ACL endpoints exist, but broad ACL enforcement is still `SEC-002`.
 - Label API/UI lifecycle wording is tracked by `LAB-002`.
-- Saved queries are not exposed as a server-backed capability.
+- Saved queries are intentionally local-only in the frontend for now; the
+  `saved_queries` table is reserved future storage.
 - CLI auth is separate and incomplete as `SEC-006`.
 
 ## Error Behavior

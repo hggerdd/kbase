@@ -231,6 +231,15 @@ Backend:
 - `KBASE_CORS_ORIGINS`: comma-separated allowed browser origins; wildcard
   origins are rejected because browser credentials are enabled.
 
+Saved queries:
+
+- The `saved_queries` table exists in the schema for future server-backed saved
+  searches.
+- It is not used by current capabilities, API routes, CLI commands, or
+  frontend state.
+- Current search history is browser-local `localStorage`, not synchronized
+  between users or devices.
+
 Frontend:
 
 - `VITE_API_BASE_URL`: optional API base override. Empty/same-origin default is
