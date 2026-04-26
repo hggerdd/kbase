@@ -18,28 +18,34 @@ Priority values: `high`, `medium`, `low`.
 
 | ID | Status | Priority | Area | Title |
 | --- | --- | --- | --- | --- |
-| `SEC-001` | done | high | auth | Finish local/LAN trust-boundary documentation |
 | `SEC-002` | open | high | acl | Enforce ACL for reads and writes |
+| `SEC-006` | open | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
+| `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
+| `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
+| `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
+| `FE-002` | open | medium | frontend | Show current build/version in the app chrome |
+| `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
+| `MCP-001` | open | low | agents | Add MCP/agent adapter over existing capabilities |
+| `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
+
+## Completed Current Priorities
+
+| ID | Status | Priority | Area | Title |
+| --- | --- | --- | --- | --- |
+| `SEC-001` | done | high | auth | Finish local/LAN trust-boundary documentation |
 | `SEC-003` | done | high | frontend-security | Add shared rich-content sanitization |
 | `SEC-004` | done | high | cors | Harden and document CORS/client trust modes |
 | `SEC-005` | done | high | files-security | Complete upload/download threat model |
-| `SEC-006` | open | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
 | `CLI-001` | done | high | categories | Add category commands to CLI |
 | `LAB-001` | done | high | labels | Finalize label lifecycle decision |
 | `LAB-002` | done | high | labels | Align delete/deactivate implementation with lifecycle decision |
 | `SEARCH-001` | done | medium | search | Decide server-backed saved queries vs local-only search history |
 | `SEARCH-002` | done | medium | search | Document exact label/category search semantics |
 | `CAT-001` | done | medium | categories | Decide whether categories remain flat or become hierarchical |
-| `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
-| `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
 | `FILE-SEC-001` | done | medium | files-security | Add upload size and rate limits |
 | `FILE-SEC-002` | done | medium | files-security | Add MIME validation and malware scanning policy |
 | `NOTE-001` | done | medium | notes | Add concurrent edit conflict strategy |
-| `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `FE-001` | done | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
-| `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
-| `MCP-001` | open | low | agents | Add MCP/agent adapter over existing capabilities |
-| `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
 
 ## Task Details
 
@@ -239,6 +245,19 @@ Acceptance:
 
 - Label create/rename/deactivate/reactivate/delete behavior has frontend tests.
 - Category create/update/activate/deactivate behavior has frontend tests.
+
+### `FE-002` Show Current Build/Version In App Chrome
+
+Source: frontend app shell and Git/build metadata.
+
+Acceptance:
+
+- The frontend shows the current Git branch or deployment label in the top right
+  corner.
+- The frontend shows the latest commit hash and commit date used for the build.
+- The display works for local/dev builds and production-like Docker builds.
+- The implementation does not require a browser user to open dev tools to see
+  whether they are on dev, prod, or a specific last commit.
 
 ### `DOC-001` Keep Canonical Docs Synced
 
