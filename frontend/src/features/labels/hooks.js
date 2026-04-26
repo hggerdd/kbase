@@ -109,7 +109,7 @@ export function useLabelsWorkspace() {
     setNotice("");
     try {
       const result = await deleteLabel(labelId);
-      setNotice(`${result.deleted_count} label${result.deleted_count === 1 ? "" : "s"} deleted`);
+      setNotice(`${result.deleted_count} label${result.deleted_count === 1 ? "" : "s"} hard deleted`);
       await loadLabels();
       return true;
     } catch (err) {
