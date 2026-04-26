@@ -200,6 +200,8 @@ Current controls:
 
 - Original upload filenames are reduced to a basename before storage-path
   construction.
+- Browser upload endpoints reject request bodies larger than
+  `KBASE_MAX_UPLOAD_BYTES`. The default is `52428800` bytes, or 50 MiB.
 - Item file paths are generated from item kind, item id, title slug, and original
   extension.
 - Path traversal outside storage, raw inbox, processing inbox, or rejected inbox
@@ -208,10 +210,15 @@ Current controls:
 
 Known file-security gaps:
 
-- Upload size limits are not enforced centrally yet.
+- Inbox import reads files that already exist below `kb/inbox/raw`. It does not
+  enforce `KBASE_MAX_UPLOAD_BYTES`; operators should keep the raw inbox local or
+  controlled until the import pipeline gets background scanning and quotas.
 - MIME type is treated as client-supplied metadata and is not a trust boundary.
 - Malware scanning is not implemented.
-- Per-user upload/download rate limits are not implemented.
+- In-process per-user upload/download rate limits are not implemented. For LAN
+  or production-like exposure, put coarse request/body rate limits at the
+  reverse proxy until `SEC-002`/future quota work can identify users
+  consistently at the application layer.
 - Preview/OCR derivative generation is future work and must keep originals and
   derived files separate.
 

@@ -226,6 +226,8 @@ Backend:
 
 - `KBASE_DB_URL`: database URL.
 - `KBASE_STORAGE_ROOT`: overrides item-file storage root.
+- `KBASE_MAX_UPLOAD_BYTES`: maximum accepted size for browser upload
+  endpoints. Defaults to `52428800` bytes, or 50 MiB.
 - `KBASE_TRUST_MODE`: `local`, `lan`, or `production`; local keeps development
   CORS defaults, LAN and production require explicit browser origins.
 - `KBASE_CORS_ORIGINS`: comma-separated allowed browser origins; wildcard

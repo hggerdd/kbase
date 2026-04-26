@@ -371,6 +371,39 @@ def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> No
     assert download.content == b"hello attachment"
 
 
+def test_api_rejects_uploads_over_configured_size(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+    monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
+    monkeypatch.setenv("KBASE_MAX_UPLOAD_BYTES", "4")
+
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Upload limit",
+            "category_key": "research",
+            "markdown_body": "Body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    item_id = created.json()["item"]["id"]
+
+    attachment = client.post(
+        f"/api/items/{item_id}/attachments/upload",
+        files={"file": ("large.txt", b"12345", "text/plain")},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert attachment.status_code == 413
+    assert "4 byte limit" in attachment.json()["detail"]
+
+    file_item = client.post(
+        "/api/file-items/upload",
+        files={"file": ("large.txt", b"12345", "text/plain")},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert file_item.status_code == 413
+    assert "4 byte limit" in file_item.json()["detail"]
+
+
 def test_api_can_list_and_import_inbox_file(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
     inbox_root = tmp_path / "inbox"

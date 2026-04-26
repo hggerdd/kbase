@@ -121,6 +121,8 @@ from kbase.interfaces.api.schemas import (
 )
 
 SESSION_COOKIE_NAME = "kbase_session"
+DEFAULT_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+UPLOAD_READ_CHUNK_BYTES = 1024 * 1024
 LOCAL_DEVELOPMENT_CORS_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -212,6 +214,37 @@ def _cors_origins() -> list[str]:
         return LOCAL_DEVELOPMENT_CORS_ORIGINS
 
     return []
+
+
+def _max_upload_bytes() -> int:
+    configured = os.getenv("KBASE_MAX_UPLOAD_BYTES", "").strip()
+    if not configured:
+        return DEFAULT_MAX_UPLOAD_BYTES
+    try:
+        value = int(configured)
+    except ValueError:
+        raise ValueError("KBASE_MAX_UPLOAD_BYTES must be an integer byte count")
+    if value < 1:
+        raise ValueError("KBASE_MAX_UPLOAD_BYTES must be greater than zero")
+    return value
+
+
+async def _read_upload_bytes(file: UploadFile) -> bytes:
+    max_bytes = _max_upload_bytes()
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(min(UPLOAD_READ_CHUNK_BYTES, max_bytes + 1))
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Upload exceeds the configured {max_bytes} byte limit",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def create_app() -> FastAPI:
@@ -717,7 +750,7 @@ def create_app() -> FastAPI:
         caption: str | None = Form(default=None),
         actor: ActorContext = Depends(_actor_context),
     ) -> ItemDetailResult:
-        payload = await file.read()
+        payload = await _read_upload_bytes(file)
         original_filename = Path(file.filename or "upload.bin").name
         import_file_as_item(
             CreateFileItemInput(
@@ -750,7 +783,7 @@ def create_app() -> FastAPI:
         project_ids: list[str] = Form(default=[]),
         actor: ActorContext = Depends(_actor_context),
     ) -> ItemDetailResult:
-        payload = await file.read()
+        payload = await _read_upload_bytes(file)
         original_filename = Path(file.filename or "upload.bin").name
         return import_file_as_item(
             CreateFileItemInput(
