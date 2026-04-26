@@ -22,7 +22,7 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-002` | open | high | acl | Enforce ACL for reads and writes |
 | `SEC-003` | open | high | frontend-security | Add shared rich-content sanitization |
 | `SEC-004` | done | high | cors | Harden and document CORS/client trust modes |
-| `SEC-005` | open | high | files-security | Complete upload/download threat model |
+| `SEC-005` | done | high | files-security | Complete upload/download threat model |
 | `SEC-006` | open | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
 | `CLI-001` | open | high | categories | Add category commands to CLI |
 | `LAB-001` | open | high | labels | Finalize label lifecycle decision |
@@ -32,6 +32,8 @@ Priority values: `high`, `medium`, `low`.
 | `CAT-001` | open | medium | categories | Decide whether categories remain flat or become hierarchical |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
+| `FILE-SEC-001` | open | medium | files-security | Add upload size and rate limits |
+| `FILE-SEC-002` | open | medium | files-security | Add MIME validation and malware scanning policy |
 | `NOTE-001` | open | medium | notes | Add concurrent edit conflict strategy |
 | `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `FE-001` | open | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
@@ -184,6 +186,29 @@ Acceptance:
 - Stored paths wrap cleanly.
 - Summary editor has a clear edit/save/autosave path.
 - PDF/image/text preview behavior is defined and tested where feasible.
+
+### `FILE-SEC-001` Add Upload Size And Rate Limits
+
+Source: `SEC-005` threat model.
+
+Acceptance:
+
+- API upload endpoints enforce a documented maximum file size.
+- Inbox import has a documented maximum file size or explicit bypass rationale.
+- Upload/download rate-limit strategy is selected and documented.
+- Tests cover oversized upload rejection.
+
+### `FILE-SEC-002` Add MIME Validation And Malware Scanning Policy
+
+Source: `SEC-005` threat model.
+
+Acceptance:
+
+- MIME type is validated or explicitly stored as untrusted client metadata.
+- Malware scanning decision is documented for local, LAN, and production-like
+  modes.
+- Any asynchronous scan status fields or backlog items are aligned with
+  `AUTO-001`.
 
 ### `NOTE-001` Add Concurrent Edit Conflict Strategy
 

@@ -35,6 +35,15 @@ class ItemFileStore:
     def __init__(self, root: Path | None = None) -> None:
         self.root = root or _storage_root()
 
+    def resolve_relative_path(self, relative_path: str) -> Path:
+        candidate = (self.root / relative_path).resolve()
+        root = self.root.resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("Item file path must stay within storage root") from exc
+        return candidate
+
     def build_relative_path(
         self,
         *,
@@ -53,7 +62,7 @@ class ItemFileStore:
         return f"{folder_name}/{bucket}/{filename}"
 
     def write_bytes(self, *, relative_path: str, payload: bytes) -> Path:
-        target = self.root / Path(relative_path)
+        target = self.resolve_relative_path(relative_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(payload)
         return target

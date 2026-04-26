@@ -107,6 +107,10 @@ kb/items/notes/
 <kind-folder>/<bucket>/<prefix>_<item_id>_<slug><extension>
 ```
 
+All stored item-file paths must resolve below this root. `ItemFileStore`
+constructs normal stored paths and rejects traversal outside the configured
+storage root.
+
 Examples:
 
 - documents: `doc_<id>_<slug>.pdf`
@@ -125,6 +129,10 @@ Inbox import area:
 - `raw/`: files waiting for import
 - `processing/`: transient processing area
 - `rejected/`: rejected/problem files
+
+Inbox raw, processing, and rejected operations are root-confined. Import paths
+must resolve below `raw/`, and move destinations must remain inside their
+target inbox folder.
 
 ```text
 kb/logs/

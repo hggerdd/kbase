@@ -324,9 +324,10 @@ def create_app() -> FastAPI:
         if item_file is None:
             raise HTTPException(status_code=404, detail="File not found")
 
-        storage_root = ItemFileStore().root.resolve()
-        target = (storage_root / item_file.relative_path).resolve()
-        if not str(target).startswith(str(storage_root)):
+        file_store = ItemFileStore()
+        try:
+            target = file_store.resolve_relative_path(item_file.relative_path)
+        except ValueError:
             raise HTTPException(status_code=400, detail="Invalid file path")
         if not target.exists():
             raise HTTPException(status_code=404, detail="Stored file missing")

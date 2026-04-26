@@ -61,31 +61,34 @@ class InboxStore:
     def move_raw_to_processing(self, relative_path: str) -> tuple[Path, str]:
         source = self.resolve_raw_path(relative_path)
         destination_relative = self._build_unique_relative_path(relative_path, self.processing_root)
-        destination = self.processing_root / destination_relative
+        destination = self._resolve_under_root(self.processing_root, destination_relative, "Processing path")
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source), str(destination))
-        return destination, destination_relative.as_posix()
+        return destination, destination.relative_to(self.processing_root.resolve()).as_posix()
 
     def move_processing_to_rejected(self, processing_relative_path: str) -> Path:
-        source = (self.processing_root / processing_relative_path).resolve()
-        processing_root = self.processing_root.resolve()
-        if processing_root not in source.parents and source != processing_root:
-            raise ValueError("Processing path must stay within kb/inbox/processing")
+        source = self._resolve_under_root(self.processing_root, processing_relative_path, "Processing path")
         if not source.exists():
             raise ValueError(f"Processing file '{processing_relative_path}' not found")
         destination_relative = self._build_unique_relative_path(processing_relative_path, self.rejected_root)
-        destination = self.rejected_root / destination_relative
+        destination = self._resolve_under_root(self.rejected_root, destination_relative, "Rejected path")
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source), str(destination))
         return destination
 
     def remove_processing_file(self, processing_relative_path: str) -> None:
-        source = (self.processing_root / processing_relative_path).resolve()
-        processing_root = self.processing_root.resolve()
-        if processing_root not in source.parents and source != processing_root:
-            raise ValueError("Processing path must stay within kb/inbox/processing")
+        source = self._resolve_under_root(self.processing_root, processing_relative_path, "Processing path")
         if source.exists():
             source.unlink()
+
+    def _resolve_under_root(self, root: Path, relative_path: str | Path, label: str) -> Path:
+        candidate = (root / relative_path).resolve()
+        resolved_root = root.resolve()
+        try:
+            candidate.relative_to(resolved_root)
+        except ValueError as exc:
+            raise ValueError(f"{label} must stay within {resolved_root}") from exc
+        return candidate
 
     def _build_unique_relative_path(self, relative_path: str, target_root: Path) -> Path:
         target = Path(relative_path)
