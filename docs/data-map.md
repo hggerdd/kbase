@@ -218,7 +218,10 @@ Backend:
 
 - `KBASE_DB_URL`: database URL.
 - `KBASE_STORAGE_ROOT`: overrides item-file storage root.
-- `KBASE_CORS_ORIGINS`: comma-separated allowed browser origins.
+- `KBASE_TRUST_MODE`: `local`, `lan`, or `production`; local keeps development
+  CORS defaults, LAN and production require explicit browser origins.
+- `KBASE_CORS_ORIGINS`: comma-separated allowed browser origins; wildcard
+  origins are rejected because browser credentials are enabled.
 
 Frontend:
 
