@@ -127,3 +127,10 @@ Search behavior:
 - Subtree/prefix search matches descendants by `full_path` prefix.
 - Inactive labels are not returned by label picker/list calls unless requested
   with `include_inactive=true`.
+
+Saved search decision:
+
+- Current search history is local to the browser.
+- There is no server-backed saved-query workflow yet.
+- The database `saved_queries` table is reserved for future synchronized saved
+  searches.

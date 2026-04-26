@@ -40,9 +40,15 @@ Not implemented or incomplete:
 - Full ACL-aware UI states.
 - CLI/token account flow in the frontend.
 - Dedicated management UIs for metadata, provenance, and ACL.
-- Server-backed saved queries.
 - OCR/preview generation pipeline.
 - Broad browser/E2E smoke coverage.
+
+Search history:
+
+- Search history is stored in browser `localStorage` under
+  `kbase.search.history`.
+- There is no server-backed saved-query UI or API contract yet.
+- Clearing browser storage clears this history for that browser only.
 
 ## Runtime
 

@@ -47,7 +47,8 @@ Known gaps:
 
 - ACL tables and endpoints exist, but runtime ACL enforcement is incomplete.
 - CLI still defaults to local `--actor heiko`; it is not token/session based yet.
-- Saved queries exist in the schema, but search history is not server-backed.
+- Search history is intentionally browser-local for now; `saved_queries` exists
+  in the schema as unused future storage.
 - OCR, derived previews, bulk import, tasks, events, measurements, MCP, and agent
   adapters are later work.
 
