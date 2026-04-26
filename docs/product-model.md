@@ -80,6 +80,9 @@ Principal:
   API and must not be treated as proof that file bytes are safe.
 - Generated/derived data must stay distinguishable from canonical user/source
   data through provenance and metadata.
+- Note content editing uses optimistic conflict detection. A save can include
+  the loaded content timestamp; stale saves are rejected instead of silently
+  overwriting newer content.
 
 ## Label Lifecycle
 

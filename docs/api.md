@@ -254,6 +254,14 @@ Traceability and ACL:
 - `limit`
 - `offset`
 
+`PUT /api/items/{item_id}/content`:
+
+- Replaces the primary content part by default.
+- `expected_content_updated_at` is optional. When provided, it must match the
+  current content part `updated_at` value from `GET /api/items/{item_id}`.
+- A stale `expected_content_updated_at` returns `409` and leaves content
+  unchanged.
+
 `GET /api/search/content`:
 
 - `query`
@@ -315,5 +323,6 @@ Search filter semantics:
 - validation or domain errors: `400`
 - missing/invalid authentication: `401`
 - missing authorization: `403`
+- stale write precondition: `409`
 - successful reads/writes: usually `200`
 - successful logout: `204`

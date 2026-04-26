@@ -33,7 +33,9 @@ export async function request(path, options = {}) {
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(payload.detail ?? "Request failed");
+    const error = new Error(payload.detail ?? "Request failed");
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) {

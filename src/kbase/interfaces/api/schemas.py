@@ -36,6 +36,7 @@ class ReplaceContentRequest(BaseModel):
     content_text: str
     content_format: str = "markdown"
     change_reason: str | None = None
+    expected_content_updated_at: str | None = None
 
 
 class AssignLabelsRequest(BaseModel):

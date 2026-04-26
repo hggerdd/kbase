@@ -34,7 +34,7 @@ Priority values: `high`, `medium`, `low`.
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
 | `FILE-SEC-001` | done | medium | files-security | Add upload size and rate limits |
 | `FILE-SEC-002` | done | medium | files-security | Add MIME validation and malware scanning policy |
-| `NOTE-001` | open | medium | notes | Add concurrent edit conflict strategy |
+| `NOTE-001` | done | medium | notes | Add concurrent edit conflict strategy |
 | `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `FE-001` | done | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |

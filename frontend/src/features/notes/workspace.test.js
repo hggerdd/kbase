@@ -49,6 +49,14 @@ function createResponse(payload) {
   };
 }
 
+function createErrorResponse(status, detail) {
+  return {
+    ok: false,
+    status,
+    json: async () => ({ detail }),
+  };
+}
+
 function createWorkspaceHarness(onWorkspace) {
   return function WorkspaceHarness() {
     const workspace = useNotesWorkspace();
@@ -677,6 +685,87 @@ test("workspace persists note labels through the labels capability only", async 
   assert.equal(updateCoreCount, 0);
   assert.equal(replaceContentCount, 0);
 
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace marks autosave conflicts without updating note core or labels", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  globalThis.__KBASE_AUTOSAVE_DELAY_MS__ = 5;
+  let updateCoreCount = 0;
+  let replaceLabelsCount = 0;
+  let replaceContentBody = null;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      if (method === "PATCH") {
+        updateCoreCount += 1;
+        return createResponse({});
+      }
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A", updated_at: "2026-04-14T10:05:00Z" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/content")) {
+      replaceContentBody = JSON.parse(options.body);
+      return createErrorResponse(409, "Note content changed since it was loaded");
+    }
+    if (value.endsWith("/api/items/note-a/labels")) {
+      replaceLabelsCount += 1;
+      return createResponse([]);
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  });
+
+  await act(async () => {
+    latestWorkspace.setEditor((current) => ({
+      ...current,
+      title: "Alpha conflict",
+      html_body: "<p>Body conflict</p>",
+      markdown_body: "Body conflict",
+    }));
+  });
+
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="autosave-state"]').textContent, "conflict");
+    assert.equal(replaceContentBody.expected_content_updated_at, "2026-04-14T10:05:00Z");
+  });
+  assert.equal(updateCoreCount, 0);
+  assert.equal(replaceLabelsCount, 0);
+
+  delete globalThis.__KBASE_AUTOSAVE_DELAY_MS__;
   await act(async () => {
     root.unmount();
   });

@@ -57,6 +57,43 @@ def test_api_create_note_and_get_item(monkeypatch, tmp_path) -> None:
     assert item["labels"][0]["full_path"] == "api/demo"
 
 
+def test_api_rejects_stale_note_content_replace(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Conflict note",
+            "category_key": "research",
+            "markdown_body": "Initial",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    item_id = created.json()["item"]["id"]
+    original_updated_at = created.json()["primary_content_part"]["updated_at"]
+
+    first_save = client.put(
+        f"/api/items/{item_id}/content",
+        json={
+            "content_text": "First save",
+            "expected_content_updated_at": original_updated_at,
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert first_save.status_code == 200
+
+    stale_save = client.put(
+        f"/api/items/{item_id}/content",
+        json={
+            "content_text": "Stale overwrite",
+            "expected_content_updated_at": original_updated_at,
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert stale_save.status_code == 409
+    assert stale_save.json()["detail"] == "Note content changed since it was loaded"
+
+
 def test_api_project_flow_and_search(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
 
