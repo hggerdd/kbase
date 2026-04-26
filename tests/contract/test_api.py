@@ -404,6 +404,29 @@ def test_api_rejects_uploads_over_configured_size(monkeypatch, tmp_path) -> None
     assert "4 byte limit" in file_item.json()["detail"]
 
 
+def test_api_neutralizes_browser_executable_upload_mime_types(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+    monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
+
+    uploaded = client.post(
+        "/api/file-items/upload",
+        files={"file": ("payload.html", b"<script>alert(1)</script>", "text/html")},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert uploaded.status_code == 200
+    payload = uploaded.json()
+    item_id = payload["item"]["id"]
+    file_payload = payload["files"][0]
+    assert file_payload["mime_type"] == "application/octet-stream"
+
+    download = client.get(
+        f"/api/items/{item_id}/files/{file_payload['id']}/content",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert download.status_code == 200
+    assert download.headers["content-type"].startswith("application/octet-stream")
+
+
 def test_api_can_list_and_import_inbox_file(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
     inbox_root = tmp_path / "inbox"
