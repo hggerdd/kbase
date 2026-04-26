@@ -213,3 +213,66 @@ def test_cli_label_lifecycle(monkeypatch, tmp_path) -> None:
     listed = RUNNER.invoke(app, ["label", "list"])
     assert listed.exit_code == 0
     assert "finance/assets" not in listed.stdout
+
+
+def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
+    _configure_cli_db(monkeypatch, tmp_path)
+
+    created = RUNNER.invoke(
+        app,
+        [
+            "category",
+            "create",
+            "--key",
+            "meeting_note",
+            "--label",
+            "Meeting note",
+            "--description",
+            "Notes captured from meetings",
+            "--applies-to-kind",
+            "note",
+            "--json",
+        ],
+    )
+    assert created.exit_code == 0
+    created_payload = json.loads(created.stdout)
+    assert created_payload["key"] == "meeting_note"
+    assert created_payload["label"] == "Meeting note"
+
+    listed = RUNNER.invoke(
+        app,
+        ["category", "list", "--applies-to-kind", "note", "--json"],
+    )
+    assert listed.exit_code == 0
+    listed_payload = json.loads(listed.stdout)
+    assert "meeting_note" in [category["key"] for category in listed_payload["categories"]]
+
+    updated = RUNNER.invoke(
+        app,
+        [
+            "category",
+            "update",
+            "meeting_note",
+            "--label",
+            "Meeting notes",
+            "--inactive",
+            "--json",
+        ],
+    )
+    assert updated.exit_code == 0
+    updated_payload = json.loads(updated.stdout)
+    assert updated_payload["label"] == "Meeting notes"
+    assert updated_payload["is_active"] is False
+
+    active_only = RUNNER.invoke(app, ["category", "list", "--applies-to-kind", "note", "--json"])
+    assert active_only.exit_code == 0
+    active_payload = json.loads(active_only.stdout)
+    assert "meeting_note" not in [category["key"] for category in active_payload["categories"]]
+
+    include_inactive = RUNNER.invoke(
+        app,
+        ["category", "list", "--applies-to-kind", "note", "--include-inactive", "--json"],
+    )
+    assert include_inactive.exit_code == 0
+    inactive_payload = json.loads(include_inactive.stdout)
+    assert "meeting_note" in [category["key"] for category in inactive_payload["categories"]]

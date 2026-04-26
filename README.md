@@ -37,7 +37,7 @@ Implemented:
 - Relational schema for items, content, files, labels, categories, links,
   projects, ACL tables, audit, provenance, users, sessions, and API tokens.
 - Hierarchical label nodes and label assignment/replacement.
-- Category management in API and frontend.
+- Category management in API, CLI, and frontend.
 - File upload/import, inbox import, file-item storage, and file content delivery.
 - Docker Compose setups for development and production.
 - Python unit/integration/contract tests plus focused frontend Node tests.
@@ -46,7 +46,6 @@ Known gaps:
 
 - ACL tables and endpoints exist, but runtime ACL enforcement is incomplete.
 - CLI still defaults to local `--actor heiko`; it is not token/session based yet.
-- Category capabilities are not mirrored into CLI commands.
 - Saved queries exist in the schema, but search history is not server-backed.
 - OCR, derived previews, bulk import, tasks, events, measurements, MCP, and agent
   adapters are later work.
@@ -185,6 +184,7 @@ Important current split:
 uv run kbase --help
 uv run kbase note create --title "Waschmaschine vergleichen" --category research --body "Bosch vs Siemens" --json
 uv run kbase item list --item-kind note --json
+uv run kbase category list --json
 uv run kbase search content --query Bosch --json
 ```
 

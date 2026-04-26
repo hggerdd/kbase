@@ -34,9 +34,9 @@ Legend:
 | Deactivate label | `deactivate_label` | yes | yes | yes | partial | frontend settings tests missing |
 | Reactivate label | `reactivate_label` | yes | yes | yes | partial | frontend settings tests missing |
 | Delete label subtree | `delete_label` | yes | no | yes | partial | lifecycle decision open as `LAB-001`/`LAB-002` |
-| List categories | `list_categories` | yes | no | yes | partial | CLI command missing |
-| Create category | `create_category` | yes | no | yes | partial | CLI command and frontend tests missing |
-| Update category | `update_category` | yes | no | yes | partial | CLI command and frontend tests missing |
+| List categories | `list_categories` | yes | yes | yes | yes | well mirrored |
+| Create category | `create_category` | yes | yes | yes | partial | frontend settings tests missing |
+| Update category | `update_category` | yes | yes | yes | partial | frontend settings tests missing |
 | Classify item | `classify_item` | yes | yes | no | yes | no dedicated frontend management UI |
 | Patch metadata | `patch_item_metadata` | yes | yes | no | yes | no frontend management UI |
 | Register asset | `register_asset` | yes | yes | no | partial | frontend uses upload flows instead |
@@ -58,10 +58,9 @@ Legend:
 
 1. `SEC-006`: replace CLI `--actor heiko` default with a real local token/auth
    flow.
-2. `CLI-001`: add `category list|create|update` commands.
-3. `SEC-002`: implement shared ACL enforcement.
-4. `FE-001`: add Settings/Labels and Settings/Categories frontend tests.
-5. Add contract tests for project commands, history, provenance, and ACL.
+2. `SEC-002`: implement shared ACL enforcement.
+3. `FE-001`: add Settings/Labels and Settings/Categories frontend tests.
+4. Add contract tests for project commands, history, provenance, and ACL.
 
 ## Rule For New Work
 
