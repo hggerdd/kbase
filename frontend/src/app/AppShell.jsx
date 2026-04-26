@@ -4,6 +4,7 @@ import { NAV_ITEMS } from "./navigation/nav-config";
 import { getNavIcon, HelpIcon, PlusIcon, SearchIcon } from "../shared/ui/Icons";
 import { AppBarPageHeader } from "../shared/ui/AppBarPageHeader";
 import { getSearchScopeForRoute } from "../features/search/state.js";
+import { getBuildInfo } from "../shared/build-info.js";
 
 const PAGE_HEADER_CONFIG = {
   notes: {
@@ -38,6 +39,7 @@ export function AppShell({
   session,
 }) {
   const activeNav = NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
+  const buildInfo = getBuildInfo();
   const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
   const pageHeaderConfig = PAGE_HEADER_CONFIG[activeRoute] ?? null;
   const showGlobalSearch = !pageHeaderConfig;
@@ -154,6 +156,15 @@ export function AppShell({
           )}
 
           <div className="app-bar-actions">
+            <div
+              className="build-version-chip"
+              title={`Deployment: ${buildInfo.deployment}\nBranch: ${buildInfo.branch}\nCommit: ${buildInfo.commitHash}\nCommit date: ${buildInfo.commitDateLabel}`}
+            >
+              <span className="build-version-env">{buildInfo.deployment}</span>
+              <span className="build-version-branch">{buildInfo.branch}</span>
+              <span className="build-version-commit">{buildInfo.commitShort}</span>
+              <span className="build-version-date">{buildInfo.commitDateLabel}</span>
+            </div>
             {!showGlobalSearch ? (
               <button
                 className="header-link header-icon-button"

@@ -36,6 +36,8 @@ Implemented app concerns:
 - Notes autosave uses optimistic content locking. A stale content timestamp
   from another editor returns `409` and leaves the workspace in a conflict
   state for the user to reload or reconcile.
+- The top-right app chrome shows the deployment label, Git branch, short commit,
+  and commit date from Vite build metadata.
 - Plain CSS styling in `frontend/src/styles.css`.
 - Shared rich-content sanitization in `frontend/src/shared/utils/rich-content.js`
   for stored markdown/html render paths.
@@ -82,6 +84,15 @@ Optional override:
 $env:VITE_API_BASE_URL = "http://127.0.0.1:8000"
 npm run dev
 ```
+
+Build/version metadata:
+
+- Local Vite runs read `.git` when it is available.
+- Docker development mounts `.git` read-only so the visible badge reflects the
+  current branch and commit while testing.
+- Production-like Docker builds can pass `VITE_KBASE_DEPLOYMENT_LABEL`,
+  `VITE_KBASE_GIT_BRANCH`, `VITE_KBASE_GIT_COMMIT`, and
+  `VITE_KBASE_GIT_COMMIT_DATE` as build arguments.
 
 There is no supported `VITE_KBASE_ACTOR` flow anymore. Identity comes from the
 server-side session.
