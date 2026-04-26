@@ -188,7 +188,7 @@ export function FileViewerPage() {
             </label>
 
             <label className="search-field">
-              <span>Category prefix</span>
+              <span>Category key prefix</span>
               <input
                 value={workspace.categoryPrefix}
                 onChange={(event) => workspace.setCategoryPrefix(event.target.value)}

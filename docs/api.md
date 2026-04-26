@@ -168,6 +168,12 @@ Categories:
 - `POST /api/categories`
 - `PATCH /api/categories/{category_key}`
 
+Category model:
+
+- Categories are flat reference keys.
+- There is no category parent, tree, or subtree API.
+- Use labels when hierarchy or branch filtering is needed.
+
 Files, assets, and inbox:
 
 - `POST /api/assets`

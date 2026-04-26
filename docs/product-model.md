@@ -58,7 +58,8 @@ Category:
 - Flat reference key such as `research`, `income_document`, or
   `project_general`.
 - Applies to an item kind when configured.
-- Whether categories should become hierarchical is open as `CAT-001`.
+- Categories are not hierarchical. Use labels for hierarchy and branch filters.
+- Category search and file filtering treat category keys as flat strings.
 
 Project:
 

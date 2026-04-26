@@ -111,17 +111,12 @@ function ensureNestedGroup(root, segments, prefixId) {
   return currentGroup;
 }
 
-function getCategorySegments(categoryKey, categoryPrefix) {
-  const normalizedPrefix = String(categoryPrefix ?? "").trim();
+function getCategorySegments(categoryKey) {
   if (!categoryKey) {
     return ["uncategorized"];
   }
 
-  if (normalizedPrefix && categoryKey.startsWith(`${normalizedPrefix}/`)) {
-    return categoryKey.slice(normalizedPrefix.length + 1).split("/").filter(Boolean);
-  }
-
-  return categoryKey.split("/").filter(Boolean);
+  return [categoryKey];
 }
 
 export function buildFileTree(details, { treeLayout, selectedLabels = [], categoryPrefix = "" }) {
@@ -130,7 +125,7 @@ export function buildFileTree(details, { treeLayout, selectedLabels = [], catego
   for (const detail of details) {
     const fileLeaf = buildFileLeaf(detail);
     const categoryKey = detail.item.category_key ?? "uncategorized";
-    const categorySegments = getCategorySegments(categoryKey, categoryPrefix);
+    const categorySegments = getCategorySegments(categoryKey);
     const itemLabels = getItemLabels(detail);
     const displayLabels =
       selectedLabels.length > 0
