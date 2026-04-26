@@ -161,6 +161,37 @@ Files, assets, and inbox:
 - `GET /api/inbox/files`
 - `POST /api/inbox/import`
 
+## File Security Model
+
+Upload/import paths:
+
+- Browser uploads are read by FastAPI and stored through `ItemFileStore`.
+- Inbox imports can only resolve files below `kb/inbox/raw`.
+- Inbox processing and rejection moves must stay below their matching inbox
+  folders.
+- Stored item files are written below `kb/items/` or `KBASE_STORAGE_ROOT`.
+- Download responses resolve the stored relative path through `ItemFileStore`
+  before serving bytes.
+
+Current controls:
+
+- Original upload filenames are reduced to a basename before storage-path
+  construction.
+- Item file paths are generated from item kind, item id, title slug, and original
+  extension.
+- Path traversal outside storage, raw inbox, processing inbox, or rejected inbox
+  roots raises an error.
+- Download of a stored path outside the item-file root returns `400`.
+
+Known file-security gaps:
+
+- Upload size limits are not enforced centrally yet.
+- MIME type is treated as client-supplied metadata and is not a trust boundary.
+- Malware scanning is not implemented.
+- Per-user upload/download rate limits are not implemented.
+- Preview/OCR derivative generation is future work and must keep originals and
+  derived files separate.
+
 Links and projects:
 
 - `POST /api/links`
