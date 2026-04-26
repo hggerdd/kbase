@@ -14,6 +14,7 @@ from kbase.application.capabilities.classify_item import classify_item
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.create_category import create_category
 from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
@@ -21,6 +22,7 @@ from kbase.application.capabilities.get_item_provenance import get_item_provenan
 from kbase.application.capabilities.import_file_as_item import import_file_as_item
 from kbase.application.capabilities.import_inbox_file import import_inbox_file
 from kbase.application.capabilities.link_items import link_items
+from kbase.application.capabilities.list_categories import list_categories
 from kbase.application.capabilities.list_labels import list_labels
 from kbase.application.capabilities.list_items import list_items
 from kbase.application.capabilities.list_inbox_files import list_inbox_files
@@ -32,12 +34,14 @@ from kbase.application.capabilities.reactivate_label import reactivate_label
 from kbase.application.capabilities.rename_label import rename_label
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
+from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.update_item_core import update_item_core
 from kbase.application.dto.capabilities import (
     AddItemToProjectInput,
     AssignLabelsInput,
     AttachAssetToItemInput,
     ClassifyItemInput,
+    CreateCategoryInput,
     CreateLabelInput,
     CreateFileItemInput,
     CreateNoteInput,
@@ -46,6 +50,7 @@ from kbase.application.dto.capabilities import (
     GetItemInput,
     ImportInboxFileInput,
     LinkItemsInput,
+    ListCategoriesInput,
     ListItemsInput,
     ListLabelsInput,
     ListProjectItemsInput,
@@ -56,6 +61,7 @@ from kbase.application.dto.capabilities import (
     RenameLabelInput,
     ReplaceContentPartInput,
     SearchContentInput,
+    UpdateCategoryInput,
     UpdateItemCoreInput,
 )
 from kbase.core.value_objects.actor import ActorContext
@@ -66,6 +72,7 @@ app = typer.Typer(no_args_is_help=True)
 note_app = typer.Typer(no_args_is_help=True)
 item_app = typer.Typer(no_args_is_help=True)
 content_app = typer.Typer(no_args_is_help=True)
+category_app = typer.Typer(no_args_is_help=True)
 label_app = typer.Typer(no_args_is_help=True)
 classify_app = typer.Typer(no_args_is_help=True)
 metadata_app = typer.Typer(no_args_is_help=True)
@@ -82,6 +89,7 @@ workflow_app = typer.Typer(no_args_is_help=True)
 app.add_typer(note_app, name="note")
 app.add_typer(item_app, name="item")
 app.add_typer(content_app, name="content")
+app.add_typer(category_app, name="category")
 app.add_typer(label_app, name="label")
 app.add_typer(classify_app, name="classify")
 app.add_typer(metadata_app, name="metadata")
@@ -291,6 +299,79 @@ def search_content_command(
             limit=limit,
             offset=offset,
             actor=_actor_context(actor),
+        )
+    )
+    _emit(result, as_json)
+
+
+@category_app.command("list")
+def list_categories_command(
+    query: str | None = typer.Option(None, "--query"),
+    applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
+    include_inactive: bool = typer.Option(False, "--include-inactive"),
+    limit: int = typer.Option(100, "--limit"),
+    offset: int = typer.Option(0, "--offset"),
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = list_categories(
+        ListCategoriesInput(
+            query=query,
+            applies_to_kind=applies_to_kind,
+            include_inactive=include_inactive,
+            limit=limit,
+            offset=offset,
+            actor=_actor_context(actor),
+        )
+    )
+    _emit(result, as_json)
+
+
+@category_app.command("create")
+def create_category_command(
+    key: str = typer.Option(..., "--key"),
+    label: str = typer.Option(..., "--label"),
+    description: str | None = typer.Option(None, "--description"),
+    applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = create_category(
+        CreateCategoryInput(
+            key=key,
+            label=label,
+            description=description,
+            applies_to_kind=applies_to_kind,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.create_category"),
+        )
+    )
+    _emit(result, as_json)
+
+
+@category_app.command("update")
+def update_category_command(
+    key: str,
+    label: str | None = typer.Option(None, "--label"),
+    description: str | None = typer.Option(None, "--description"),
+    applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
+    active: bool | None = typer.Option(None, "--active/--inactive"),
+    actor: str = typer.Option("heiko", "--actor"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    if label is None and description is None and applies_to_kind is None and active is None:
+        raise typer.BadParameter("At least one update option is required")
+    result = update_category(
+        UpdateCategoryInput(
+            key=key,
+            label=label,
+            description=description,
+            description_provided=description is not None,
+            applies_to_kind=applies_to_kind,
+            applies_to_kind_provided=applies_to_kind is not None,
+            is_active=active,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.update_category"),
         )
     )
     _emit(result, as_json)
