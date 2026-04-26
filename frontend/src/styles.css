@@ -244,6 +244,55 @@ textarea {
   border-radius: 999px;
 }
 
+.build-version-chip {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, auto);
+  column-gap: 6px;
+  row-gap: 1px;
+  align-items: center;
+  max-width: 260px;
+  min-height: 38px;
+  padding: 4px 10px;
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.build-version-env {
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 6px;
+  border-right: 1px solid var(--surface-border);
+  color: var(--primary-strong);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.build-version-branch,
+.build-version-commit,
+.build-version-date {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.build-version-branch {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.build-version-commit,
+.build-version-date {
+  color: var(--muted);
+}
+
 .global-search,
 .search-bar {
   display: flex;
@@ -2519,6 +2568,17 @@ button:disabled {
   .header-help-button {
     width: 40px;
     height: 40px;
+  }
+
+  .build-version-chip {
+    max-width: 148px;
+    min-height: 36px;
+    padding: 3px 8px;
+    font-size: 0.68rem;
+  }
+
+  .build-version-date {
+    display: none;
   }
 
   .header-link-text {

@@ -179,6 +179,8 @@ Important current split:
   development CORS defaults; production Compose sets this automatically.
 - Browser file uploads are capped by `KBASE_MAX_UPLOAD_BYTES`; the default is
   50 MiB.
+- The frontend top-right chrome shows the deployment label, Git branch, commit,
+  and commit date so testing sessions can confirm which build is running.
 - CLI still accepts `--actor` and defaults to `heiko`; this gap is tracked as
   `SEC-006` in [todo.md](todo.md).
 

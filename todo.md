@@ -23,7 +23,6 @@ Priority values: `high`, `medium`, `low`.
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
 | `TEST-001` | open | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
-| `FE-002` | open | medium | frontend | Show current build/version in the app chrome |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
 | `MCP-001` | open | low | agents | Add MCP/agent adapter over existing capabilities |
 | `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
@@ -46,6 +45,7 @@ Priority values: `high`, `medium`, `low`.
 | `FILE-SEC-002` | done | medium | files-security | Add MIME validation and malware scanning policy |
 | `NOTE-001` | done | medium | notes | Add concurrent edit conflict strategy |
 | `FE-001` | done | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
+| `FE-002` | done | medium | frontend | Show current build/version in the app chrome |
 
 ## Task Details
 

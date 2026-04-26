@@ -246,6 +246,11 @@ Frontend:
 
 - `VITE_API_BASE_URL`: optional API base override. Empty/same-origin default is
   preferred for Compose.
+- `VITE_KBASE_DEPLOYMENT_LABEL`: visible frontend deployment label, normally
+  `dev` or `prod`.
+- `VITE_KBASE_GIT_BRANCH`, `VITE_KBASE_GIT_COMMIT`, and
+  `VITE_KBASE_GIT_COMMIT_DATE`: optional frontend build metadata overrides for
+  Docker/CI builds when `.git` is not available inside the build context.
 
 Do not reintroduce client-side actor configuration. Browser identity is derived
 from the server session.
