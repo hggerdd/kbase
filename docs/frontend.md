@@ -6,6 +6,10 @@ The frontend is a same-origin browser client for the FastAPI backend. It does
 not contain domain rules; it calls HTTP endpoints that map to the shared
 application capabilities.
 
+Identity comes from the backend. The browser uses the `kbase_session` cookie
+created by `POST /api/auth/login`, refreshes identity through
+`GET /api/auth/session`, and never selects a principal directly.
+
 ## Current Shape
 
 Implemented pages:
@@ -70,6 +74,15 @@ npm run dev
 
 There is no supported `VITE_KBASE_ACTOR` flow anymore. Identity comes from the
 server-side session.
+
+LAN usage:
+
+- LAN is not trusted for identity.
+- A browser opened from another LAN device still needs a valid backend session
+  cookie.
+- If the frontend is served from a different LAN origin than the API, that exact
+  origin must be allowed through `KBASE_CORS_ORIGINS`.
+- Bearer tokens are for API clients and automation, not for frontend state.
 
 ## Important Files
 

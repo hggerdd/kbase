@@ -152,10 +152,12 @@ Browser clients:
 - `POST /api/auth/login`
 - `GET /api/auth/session`
 - `POST /api/auth/logout`
+- identity is the server-side `kbase_session` cookie
 
 API clients:
 
 - create bearer tokens with `POST /api/auth/tokens`
+- send tokens as `Authorization: Bearer <TOKEN>`
 
 Seed/dev users:
 
@@ -168,6 +170,10 @@ Important current split:
 
 - HTTP identity is session-cookie or bearer-token based.
 - HTTP does not support `x-kbase-actor`.
+- LAN access is not trusted for identity; LAN browsers still need sessions and
+  LAN API clients still need bearer tokens.
+- Credentialed browser origins are local-dev defaults unless explicitly set
+  with `KBASE_CORS_ORIGINS`.
 - CLI still accepts `--actor` and defaults to `heiko`; this gap is tracked as
   `SEC-006` in [todo.md](todo.md).
 

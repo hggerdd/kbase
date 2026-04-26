@@ -18,7 +18,7 @@ Priority values: `high`, `medium`, `low`.
 
 | ID | Status | Priority | Area | Title |
 | --- | --- | --- | --- | --- |
-| `SEC-001` | partial | high | auth | Finish local/LAN trust-boundary documentation |
+| `SEC-001` | done | high | auth | Finish local/LAN trust-boundary documentation |
 | `SEC-002` | open | high | acl | Enforce ACL for reads and writes |
 | `SEC-003` | open | high | frontend-security | Add shared rich-content sanitization |
 | `SEC-004` | partial | high | cors | Harden and document CORS/client trust modes |

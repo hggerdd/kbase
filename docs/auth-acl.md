@@ -1,6 +1,6 @@
 # Auth And ACL
 
-Status: current as of 2026-04-24.
+Status: current as of 2026-04-26.
 
 This document describes identity, trust boundaries, and the unfinished ACL path.
 Backlog IDs: `SEC-001`, `SEC-002`, `SEC-004`, `SEC-006`.
@@ -40,6 +40,13 @@ Browser:
 - Must not choose `principal_id`.
 - Must not make authorization decisions.
 
+API client:
+
+- Authenticates with `Authorization: Bearer <TOKEN>`.
+- May run from scripts, CLI replacement flows, automation, or external tools.
+- Must receive tokens from an authenticated user flow.
+- Must protect raw tokens outside the repository and runtime data folders.
+
 Backend:
 
 - Owns login validation.
@@ -52,6 +59,37 @@ LAN:
 - Is not trusted for identity.
 - LAN clients still need a valid session or bearer token.
 - Allowed browser origins must be explicit through `KBASE_CORS_ORIGINS`.
+
+## Runtime Trust Modes
+
+Local development:
+
+- Intended for one developer on the same machine.
+- Browser identity is still the `kbase_session` cookie from
+  `POST /api/auth/login`.
+- API-client identity is still `Authorization: Bearer <TOKEN>`.
+- Default CORS origins are development-only Vite origins on localhost and
+  `127.0.0.1`.
+- The seeded dev users are convenience accounts, not a LAN trust mechanism.
+
+LAN development:
+
+- Intended for testing from other devices on the same private network.
+- The network location does not prove identity.
+- Every browser still needs a valid server-side session cookie.
+- Every non-browser API client still needs a bearer token.
+- Set `KBASE_CORS_ORIGINS` to the exact LAN frontend origins that should be
+  allowed to send credentialed browser requests.
+
+Production-like deployment:
+
+- Serve the frontend and API through a controlled origin, normally the Nginx
+  frontend with `/api` proxied to FastAPI.
+- Configure `KBASE_CORS_ORIGINS` only when a separate browser origin is
+  intentionally supported.
+- Do not expose dev credentials as real accounts.
+- Do not treat LAN, reverse-proxy headers, request IDs, or client-provided
+  principal data as identity.
 
 ## Identity Model
 

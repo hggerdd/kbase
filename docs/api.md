@@ -1,6 +1,6 @@
 # API
 
-Status: current as of 2026-04-24.
+Status: current as of 2026-04-26.
 
 The FastAPI layer is an adapter over application capabilities. It should not
 contain separate domain logic.
@@ -50,7 +50,8 @@ wife  / wife-local-dev
 ## Trust And CORS
 
 Browser requests use credentials and server-side session identity. The browser
-must not choose a principal.
+must not choose a principal. Non-browser API clients use
+`Authorization: Bearer <TOKEN>` created through an authenticated session.
 
 Default development origins:
 
@@ -60,6 +61,17 @@ Default development origins:
 - `http://127.0.0.1:3000`
 
 Set LAN/custom origins through `KBASE_CORS_ORIGINS`.
+
+Trust modes:
+
+- Local development uses the default localhost/`127.0.0.1` origins and the same
+  session-cookie or bearer-token identity model as every other mode.
+- LAN development is not a trusted identity boundary. LAN browsers need valid
+  session cookies, LAN API clients need bearer tokens, and allowed browser
+  origins must be listed explicitly in `KBASE_CORS_ORIGINS`.
+- Production-like deployments should prefer same-origin frontend/API routing
+  through Nginx. Configure cross-origin credentialed browser access only for
+  intended origins.
 
 ## Quickstart
 
