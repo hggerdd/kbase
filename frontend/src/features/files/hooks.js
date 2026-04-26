@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { marked } from "marked";
 import TurndownService from "turndown";
 import { fetchFileItemDetail, fetchFileItemSummaries, fetchFileLabels, replaceFileSummary } from "./api.js";
 import { buildFileTree, itemMatchesFileFilters } from "./state.js";
+import { renderMarkdownToSafeHtml, sanitizeRichHtml } from "../../shared/utils/rich-content.js";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
@@ -83,7 +83,7 @@ export function useFileViewerWorkspace() {
       "";
 
     let cancelled = false;
-    void Promise.resolve(marked.parse(summaryText)).then((html) => {
+    void renderMarkdownToSafeHtml(summaryText).then((html) => {
       if (!cancelled) {
         setRenderedSummary(html);
         setSummaryEditorHtml(html);
@@ -119,7 +119,7 @@ export function useFileViewerWorkspace() {
     setError("");
     setNotice("");
     try {
-      const markdownBody = turndown.turndown(summaryEditorHtml || "");
+      const markdownBody = turndown.turndown(sanitizeRichHtml(summaryEditorHtml || ""));
       await replaceFileSummary(selectedItem.item.id, markdownBody);
       setItems((currentItems) =>
         currentItems.map((detail) =>
@@ -149,7 +149,7 @@ export function useFileViewerWorkspace() {
             : detail,
         ),
       );
-      setRenderedSummary(await Promise.resolve(marked.parse(markdownBody)));
+      setRenderedSummary(await renderMarkdownToSafeHtml(markdownBody));
       setSummaryEditing(false);
       setNotice("File summary saved");
     } catch (err) {

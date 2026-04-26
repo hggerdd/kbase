@@ -34,6 +34,8 @@ Implemented app concerns:
   `frontend/src/shared/api/client.js`.
 - File upload progress through `XMLHttpRequest` in the shared API client.
 - Plain CSS styling in `frontend/src/styles.css`.
+- Shared rich-content sanitization in `frontend/src/shared/utils/rich-content.js`
+  for stored markdown/html render paths.
 
 Not implemented or incomplete:
 
@@ -138,6 +140,13 @@ Search filter wording:
   its descendants.
 - Multiple entries in one field are alternatives; different filter fields narrow
   the result together.
+
+Rich content:
+
+- Notes and file summaries render stored markdown through the same sanitization
+  helper before HTML reaches editors or preview surfaces.
+- Script tags, event-handler attributes, unsafe `javascript:` URLs, and embedded
+  active content are removed from rendered rich content.
 
 Files and imports:
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import TurndownService from "turndown";
-import { marked } from "marked";
+import { renderMarkdownToSafeHtml, sanitizeRichHtml } from "../../shared/utils/rich-content.js";
 import {
   createNote,
   fetchHistory,
@@ -107,13 +107,14 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   }
 
   function buildPersistedEditor(editorSnapshot) {
-    const markdownBody = turndown.turndown(editorSnapshot.html_body || "");
+    const safeHtmlBody = sanitizeRichHtml(editorSnapshot.html_body || "");
+    const markdownBody = turndown.turndown(safeHtmlBody);
     const labelPaths = combineLabelPaths(editorSnapshot.selected_labels, editorSnapshot.label_paths);
     return {
       title: editorSnapshot.title,
       category_key: editorSnapshot.category_key,
       status: editorSnapshot.status || null,
-      html_body: editorSnapshot.html_body,
+      html_body: safeHtmlBody,
       markdown_body: markdownBody,
       label_paths: labelPaths,
     };
@@ -322,7 +323,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
         return;
       }
       const markdownBody = notePayload.primary_content_part?.content_text ?? "";
-      const nextEditor = editorFromItemDetail(notePayload, await marked.parse(markdownBody));
+      const nextEditor = editorFromItemDetail(notePayload, await renderMarkdownToSafeHtml(markdownBody));
       commitSelectedNote(notePayload);
       setHistory(historyPayload.events);
       commitEditor(nextEditor);
@@ -443,7 +444,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     setError("");
     setNotice("");
     try {
-      const markdownBody = turndown.turndown(draft.html_body || "");
+      const markdownBody = turndown.turndown(sanitizeRichHtml(draft.html_body || ""));
       const labelPaths = combineLabelPaths(draft.selected_labels, draft.label_paths);
       const payload = await createNote({
         title: draft.title,
