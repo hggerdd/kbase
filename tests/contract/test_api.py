@@ -314,6 +314,22 @@ def test_api_search_supports_label_path_prefixes(monkeypatch, tmp_path) -> None:
     assert search.status_code == 200
     assert [item["title"] for item in search.json()["items"]] == ["Depot export"]
 
+    exact = client.get(
+        "/api/search/content",
+        params={"label_paths": "finance/bank"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert exact.status_code == 200
+    assert exact.json()["items"] == []
+
+    exact_leaf = client.get(
+        "/api/search/content",
+        params={"label_paths": "finance/bank/depot/data"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert exact_leaf.status_code == 200
+    assert [item["title"] for item in exact_leaf.json()["items"]] == ["Depot export"]
+
 
 def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)

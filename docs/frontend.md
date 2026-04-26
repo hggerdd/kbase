@@ -130,6 +130,15 @@ Search:
 
 - `GET /api/search/content`
 
+Search filter wording:
+
+- Categories are exact category keys.
+- Exact labels are exact full label paths.
+- Label branches are subtree/prefix filters that include the selected path and
+  its descendants.
+- Multiple entries in one field are alternatives; different filter fields narrow
+  the result together.
+
 Files and imports:
 
 - `GET /api/items?item_kind=document|image|spreadsheet|summary`
