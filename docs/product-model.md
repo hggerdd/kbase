@@ -76,6 +76,8 @@ Principal:
 - Browser identity is never trusted as a raw principal id.
 - Agents should use capabilities, not direct table writes.
 - Stored files and relational metadata must stay linked through explicit rows.
+- Stored file MIME types are preview/download hints. They are normalized by the
+  API and must not be treated as proof that file bytes are safe.
 - Generated/derived data must stay distinguishable from canonical user/source
   data through provenance and metadata.
 

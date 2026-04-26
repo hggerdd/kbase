@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import mimetypes
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -123,6 +125,17 @@ from kbase.interfaces.api.schemas import (
 SESSION_COOKIE_NAME = "kbase_session"
 DEFAULT_MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 UPLOAD_READ_CHUNK_BYTES = 1024 * 1024
+DEFAULT_DOWNLOAD_MIME_TYPE = "application/octet-stream"
+MIME_TYPE_PATTERN = re.compile(
+    r"^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$"
+)
+BROWSER_ACTIVE_MIME_TYPES = {
+    "application/xhtml+xml",
+    "application/xml",
+    "image/svg+xml",
+    "text/html",
+    "text/xml",
+}
 LOCAL_DEVELOPMENT_CORS_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -181,6 +194,27 @@ def _infer_file_item_kind(filename: str, mime_type: str | None) -> str:
     if suffix in {".xls", ".xlsx", ".csv", ".ods"}:
         return "spreadsheet"
     return "document"
+
+
+def _normalize_mime_type(mime_type: str | None) -> str | None:
+    if not mime_type:
+        return None
+    normalized = mime_type.split(";", 1)[0].strip().lower()
+    if not MIME_TYPE_PATTERN.match(normalized):
+        return None
+    return normalized
+
+
+def _safe_file_mime_type(filename: str, client_mime_type: str | None) -> str:
+    guessed_mime_type = _normalize_mime_type(mimetypes.guess_type(filename)[0])
+    if guessed_mime_type and guessed_mime_type not in BROWSER_ACTIVE_MIME_TYPES:
+        return guessed_mime_type
+
+    normalized_client_mime_type = _normalize_mime_type(client_mime_type)
+    if normalized_client_mime_type and normalized_client_mime_type not in BROWSER_ACTIVE_MIME_TYPES:
+        return normalized_client_mime_type
+
+    return DEFAULT_DOWNLOAD_MIME_TYPE
 
 
 def _trust_mode() -> str:
@@ -367,7 +401,7 @@ def create_app() -> FastAPI:
 
         return FileResponse(
             path=target,
-            media_type=item_file.mime_type or "application/octet-stream",
+            media_type=_safe_file_mime_type(item_file.original_filename or target.name, item_file.mime_type),
             filename=item_file.original_filename or target.name,
         )
 
@@ -752,12 +786,13 @@ def create_app() -> FastAPI:
     ) -> ItemDetailResult:
         payload = await _read_upload_bytes(file)
         original_filename = Path(file.filename or "upload.bin").name
+        mime_type = _safe_file_mime_type(original_filename, file.content_type)
         import_file_as_item(
             CreateFileItemInput(
                 title=original_filename,
-                item_kind=_infer_file_item_kind(original_filename, file.content_type),
+                item_kind=_infer_file_item_kind(original_filename, mime_type),
                 original_filename=original_filename,
-                mime_type=file.content_type,
+                mime_type=mime_type,
                 size_bytes=len(payload),
                 file_bytes=payload,
                 link_to_item_id=item_id,
@@ -785,15 +820,16 @@ def create_app() -> FastAPI:
     ) -> ItemDetailResult:
         payload = await _read_upload_bytes(file)
         original_filename = Path(file.filename or "upload.bin").name
+        mime_type = _safe_file_mime_type(original_filename, file.content_type)
         return import_file_as_item(
             CreateFileItemInput(
                 title=title,
-                item_kind=item_kind or _infer_file_item_kind(original_filename, file.content_type),
+                item_kind=item_kind or _infer_file_item_kind(original_filename, mime_type),
                 category_key=category_key,
                 status=status,
                 language_code=language_code,
                 original_filename=original_filename,
-                mime_type=file.content_type,
+                mime_type=mime_type,
                 size_bytes=len(payload),
                 file_bytes=payload,
                 link_to_item_id=link_to_item_id,

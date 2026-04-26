@@ -202,6 +202,9 @@ Current controls:
   construction.
 - Browser upload endpoints reject request bodies larger than
   `KBASE_MAX_UPLOAD_BYTES`. The default is `52428800` bytes, or 50 MiB.
+- Browser upload MIME types are normalized before storage and download. Known
+  browser-executable types such as `text/html`, `application/xhtml+xml`, and
+  `image/svg+xml` are served as `application/octet-stream`.
 - Item file paths are generated from item kind, item id, title slug, and original
   extension.
 - Path traversal outside storage, raw inbox, processing inbox, or rejected inbox
@@ -213,8 +216,12 @@ Known file-security gaps:
 - Inbox import reads files that already exist below `kb/inbox/raw`. It does not
   enforce `KBASE_MAX_UPLOAD_BYTES`; operators should keep the raw inbox local or
   controlled until the import pipeline gets background scanning and quotas.
-- MIME type is treated as client-supplied metadata and is not a trust boundary.
-- Malware scanning is not implemented.
+- MIME type remains metadata for display/preview hints, not proof of safe file
+  contents.
+- Malware scanning is not implemented in-process. Local mode accepts this as a
+  single-machine user responsibility; LAN and production-like deployments should
+  keep uploads restricted to trusted users and add scanning at the import/storage
+  boundary before broader sharing.
 - In-process per-user upload/download rate limits are not implemented. For LAN
   or production-like exposure, put coarse request/body rate limits at the
   reverse proxy until `SEC-002`/future quota work can identify users
