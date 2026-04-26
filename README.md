@@ -177,6 +177,8 @@ Important current split:
   with `KBASE_CORS_ORIGINS`.
 - Set `KBASE_TRUST_MODE=lan` or `KBASE_TRUST_MODE=production` to remove
   development CORS defaults; production Compose sets this automatically.
+- Browser file uploads are capped by `KBASE_MAX_UPLOAD_BYTES`; the default is
+  50 MiB.
 - CLI still accepts `--actor` and defaults to `heiko`; this gap is tracked as
   `SEC-006` in [todo.md](todo.md).
 
