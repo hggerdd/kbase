@@ -125,6 +125,20 @@ export default defineConfig(({ mode }) => {
     define: {
       __KBASE_BUILD_INFO__: JSON.stringify(buildInfo),
     },
+    plugins: [
+      {
+        name: "kbase-build-info",
+        transform(code, id) {
+          if (!id.endsWith("src/shared/build-info.js")) {
+            return null;
+          }
+          return {
+            code: code.replaceAll("__KBASE_BUILD_INFO__", JSON.stringify(buildInfo)),
+            map: null,
+          };
+        },
+      },
+    ],
     server: {
       host: env.VITE_DEV_HOST || "127.0.0.1",
       port: Number(env.VITE_DEV_PORT || 5173),
