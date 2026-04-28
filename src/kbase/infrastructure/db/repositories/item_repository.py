@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Select, and_, exists, literal, or_, select
+from sqlalchemy import Select, and_, exists, func, literal, or_, select
 from sqlalchemy.orm import Session
 
 from kbase.infrastructure.db.models.tables import (
@@ -174,6 +174,22 @@ class ItemRepository:
             category.is_active = 1 if is_active else 0
         self.session.flush()
         return category
+
+    def delete_category(self, category: ItemCategoryModel) -> None:
+        self.session.delete(category)
+        self.session.flush()
+
+    def count_items_with_category(self, category_key: str) -> int:
+        stmt = select(func.count()).select_from(ItemModel).where(ItemModel.category_key == category_key)
+        return int(self.session.scalar(stmt) or 0)
+
+    def count_classifications_with_category(self, category_key: str) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(ItemClassificationModel)
+            .where(ItemClassificationModel.category_key == category_key)
+        )
+        return int(self.session.scalar(stmt) or 0)
 
     def set_classifications(
         self,

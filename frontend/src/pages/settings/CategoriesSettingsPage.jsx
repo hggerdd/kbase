@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { EMPTY_CATEGORY_DRAFT, useCategoriesWorkspace } from "../../features/categories/hooks.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { EmptyState } from "../../shared/ui/EmptyState";
-import { PencilIcon, PlusIcon } from "../../shared/ui/Icons.jsx";
+import { PencilIcon, PlusIcon, TrashIcon } from "../../shared/ui/Icons.jsx";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
@@ -131,6 +131,18 @@ export function CategoriesSettingsPage() {
     }
   }
 
+  async function deleteSelectedCategory(categoryKey, categoryLabel) {
+    const confirmed = window.confirm(`Delete category "${categoryLabel}"? This only works when the category is unused.`);
+    if (!confirmed) {
+      return;
+    }
+    const deleted = await workspace.handleDeleteCategory(categoryKey);
+    if (deleted && selectedKey === categoryKey) {
+      setSelectedKey("");
+      setModalMode(null);
+    }
+  }
+
   return (
     <ResponsiveContainer>
       <PageHeader
@@ -199,6 +211,15 @@ export function CategoriesSettingsPage() {
                   </button>
                   <button className="secondary" type="button" disabled={workspace.saving} onClick={() => void workspace.handleSetActive(category.key, !category.is_active)}>
                     {category.is_active ? "Deactivate" : "Activate"}
+                  </button>
+                  <button
+                    className="danger icon-text-button"
+                    type="button"
+                    disabled={workspace.saving}
+                    onClick={() => void deleteSelectedCategory(category.key, category.label)}
+                  >
+                    <span className="button-icon"><TrashIcon /></span>
+                    Delete
                   </button>
                 </div>
               </article>

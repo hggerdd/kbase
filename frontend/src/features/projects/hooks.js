@@ -325,6 +325,30 @@ export function useProjectsWorkspace() {
     }
   }
 
+  async function handleDeleteProject(projectId = selectedId) {
+    if (!projectId) {
+      return false;
+    }
+
+    setActionLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      await updateProjectCore(projectId, { is_archived: true });
+      setNotice("Project deleted");
+      if (selectedId === projectId) {
+        setSelectedId(null);
+      }
+      await loadProjects();
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   return {
     actionLoading,
     availableKinds,
@@ -339,6 +363,7 @@ export function useProjectsWorkspace() {
     handleCandidateSearch,
     handleCreateProject,
     handleCreateProjectNote,
+    handleDeleteProject,
     handleProjectUpload,
     handleUpdateProjectStatus,
     itemSearch,

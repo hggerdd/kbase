@@ -251,6 +251,21 @@ class UpdateCategoryInput(BaseModel):
     provenance: ProvenanceInput
 
 
+class DeleteCategoryInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class DeleteCategoryResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    deleted: bool
+
+
 class CreateLabelInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

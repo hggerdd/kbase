@@ -17,6 +17,7 @@ from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
 from kbase.application.capabilities.create_category import create_category
+from kbase.application.capabilities.delete_category import delete_category
 from kbase.application.capabilities.delete_label import delete_label
 from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
@@ -50,6 +51,7 @@ from kbase.application.dto.capabilities import (
     CreateFileItemInput,
     CreateNoteInput,
     CreateProjectInput,
+    DeleteCategoryInput,
     DeleteLabelInput,
     DeactivateLabelInput,
     GetItemInput,
@@ -468,6 +470,22 @@ def update_category_command(
             is_active=active,
             actor=_actor_context(actor),
             provenance=_provenance("cli.update_category"),
+        )
+    )
+    _emit(result, as_json)
+
+
+@category_app.command("delete")
+def delete_category_command(
+    key: str,
+    actor: str | None = _actor_option(),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = delete_category(
+        DeleteCategoryInput(
+            key=key,
+            actor=_actor_context(actor),
+            provenance=_provenance("cli.delete_category"),
         )
     )
     _emit(result, as_json)

@@ -1,12 +1,14 @@
 import React from "react";
 import { LabelsPage } from "../labels/LabelsPage.jsx";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
-import { TagIcon, FolderIcon } from "../../shared/ui/Icons.jsx";
+import { TagIcon, FolderIcon, NoteIcon } from "../../shared/ui/Icons.jsx";
 import { CategoriesSettingsPage } from "./CategoriesSettingsPage.jsx";
+import { ProjectsSettingsPage } from "./ProjectsSettingsPage.jsx";
 
 const SETTINGS_TABS = [
   { id: "labels", label: "Labels", icon: TagIcon },
-  { id: "categories", label: "Categories", icon: FolderIcon },
+  { id: "categories", label: "Categories", icon: NoteIcon },
+  { id: "projects", label: "Projects", icon: FolderIcon },
 ];
 
 function getSettingsSection(route) {
@@ -43,7 +45,9 @@ export function SettingsPage({ route, onNavigate }) {
         </div>
       </ResponsiveContainer>
 
-      {activeSection === "categories" ? <CategoriesSettingsPage /> : <LabelsPage />}
+      {activeSection === "categories" ? <CategoriesSettingsPage /> : null}
+      {activeSection === "labels" ? <LabelsPage /> : null}
+      {activeSection === "projects" ? <ProjectsSettingsPage /> : null}
     </div>
   );
 }
