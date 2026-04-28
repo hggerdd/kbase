@@ -1,8 +1,9 @@
 # Auth And ACL
 
-Status: current as of 2026-04-26.
+Status: current as of 2026-04-28.
 
-This document describes identity, trust boundaries, and the unfinished ACL path.
+This document describes identity, trust boundaries, the current ACL behavior,
+and the remaining security gaps.
 Backlog IDs: `SEC-001`, `SEC-002`, `SEC-004`, `SEC-006`.
 
 ## Current State
@@ -10,6 +11,10 @@ Backlog IDs: `SEC-001`, `SEC-002`, `SEC-004`, `SEC-006`.
 Implemented:
 
 - HTTP endpoints authenticate through session cookie or bearer token.
+- CLI normal commands authenticate through session token or bearer token
+  resolved locally from root CLI flags or `KBASE_*` env vars.
+- CLI bootstrap token creation exists:
+  - `uv run kbase auth token-create --username <USER> --token-label <LABEL>`
 - Browser login exists:
   - `POST /api/auth/login`
   - `GET /api/auth/session`
@@ -20,15 +25,19 @@ Implemented:
 - Frontend requests use `credentials: "include"`.
 - The schema contains `users`, `user_sessions`, `api_tokens`, `principals`,
   `principal_memberships`, and `item_acl`.
+- Shared item authorization uses `view`, `edit`, and `manage`.
+- Item detail/list/search, content writes, metadata writes, file
+  upload/download, project membership operations, ACL endpoints, and related
+  item/project references run through the same item-permission checks.
 - DB bootstrap creates dev users:
   - `heiko / heiko-local-dev`
   - `wife / wife-local-dev`
 
 Not implemented or incomplete:
 
-- Runtime ACL enforcement is not complete across all read/write capabilities.
-- CLI commands still use local `--actor heiko` defaults.
-- CLI has no token/session flow.
+- Existing items with no explicit ACL rows still fall back to
+  authenticated-user visibility as a bootstrap compatibility rule.
+- Label/category administration is authenticated but not separately admin-scoped.
 - Frontend does not yet have complete ACL-aware UI states for `403` responses.
 
 ## Trust Boundary
@@ -135,25 +144,31 @@ Unsupported identity mechanisms:
 `x-kbase-request-id` may be used for request correlation only. It is not an
 identity mechanism.
 
-## CLI Gap
+## CLI Flow
 
-The CLI currently calls capabilities directly in-process and passes an
-`ActorContext` built from `--actor`.
+The CLI still calls capabilities in-process, but normal commands no longer
+invent an actor locally.
 
-Current gap:
+Normal CLI identity:
 
-- Many commands default to `--actor heiko`.
-- This is local development behavior, not the target security model.
+- `uv run kbase --api-token <TOKEN> ...`
+- `uv run kbase --session-token <SESSION> ...`
+- `KBASE_API_TOKEN` or `KBASE_SESSION_TOKEN`
 
-Target:
+Bootstrap token flow:
 
-- Add a CLI auth/token flow.
-- Store tokens outside the repository.
-- Remove the normal `--actor heiko` default.
-- Keep explicit actor override only for tests, seed/admin operations, or a
-  clearly named local-dev mode.
+1. Create a CLI token:
+   `uv run kbase auth token-create --username heiko --token-label cli-dev --json`
+2. Export the returned secret into `KBASE_API_TOKEN`.
+3. Run normal CLI commands without `--actor`.
 
-## ACL Target
+Compatibility-only local actor mode:
+
+- `--actor` is still available for explicit local-dev/test usage.
+- It is disabled by default.
+- Re-enable it only with `--allow-local-actor`.
+
+## ACL Behavior
 
 Seeded permissions:
 
@@ -161,33 +176,47 @@ Seeded permissions:
 - `edit`
 - `manage`
 
-Starting rules:
+Current rules:
 
-- New item creators receive at least `manage`.
+- New item creators receive `view`, `edit`, and `manage`.
 - Group permissions are resolved through `principal_memberships`.
 - No matching permission means access denied.
 - Missing authentication returns `401`.
 - Missing authorization returns `403`.
+- Items with no ACL rows remain visible to authenticated users until an
+  explicit ACL is written for that item.
 
-Capabilities that need enforcement:
+Protected paths:
 
-- Item list/detail reads.
+- Item list/detail/search reads.
 - Content reads and writes.
-- Note creation/update.
+- Note creation/update and item metadata/classification writes.
 - File upload/import/download.
 - Project membership operations.
-- Metadata/classification changes.
-- Label/category mutations where they affect shared state.
-- ACL read/write endpoints.
+- Related item/project references returned from item detail and link lookups.
+- Item label mutations and ACL read/write endpoints.
 
-## Migration Path
+## Risk Coverage
 
-1. Finish trust-boundary documentation for local, LAN, and production-like modes.
-2. Implement CLI token/auth flow and remove normal actor defaults.
-3. Add shared authorization service.
-4. Wire authorization into critical capabilities.
-5. Add contract/integration tests for `401` and `403`.
-6. Add frontend expired-session and forbidden-state handling.
+Current contract coverage added for `TEST-001`:
+
+- anonymous domain access returns `401`
+- bearer-token access works for non-browser clients
+- ACL-denied item detail returns `403`
+- ACL-denied note edits, label replacement, and attachment upload return `403`
+- ACL-denied file download returns `403`
+- ACL filters item list/search visibility and project item access
+- item detail hides related items, outgoing links, and project refs that the
+  caller cannot read
+- CLI commands require token/session auth by default and gate `--actor` behind
+  `--allow-local-actor`
+
+## Follow-Up
+
+1. Decide whether to migrate or backfill legacy rows that still have no ACL.
+2. Scope label/category administration more narrowly if multiple trusted users
+   should not share global taxonomy writes.
+3. Add frontend expired-session and forbidden-state handling.
 
 ## Related Docs
 

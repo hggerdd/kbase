@@ -361,6 +361,14 @@ class CreateApiTokenInput(BaseModel):
     actor: ActorContext
 
 
+class CreateApiTokenWithPasswordInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str
+    password: str
+    token_label: str
+
+
 class CreateApiTokenResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

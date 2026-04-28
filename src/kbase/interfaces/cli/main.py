@@ -5,12 +5,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import click
 import typer
 
 from kbase.application.capabilities.add_item_to_project import add_item_to_project
 from kbase.application.capabilities.assign_labels import assign_labels
 from kbase.application.capabilities.attach_asset_to_item import attach_asset_to_item
 from kbase.application.capabilities.classify_item import classify_item
+from kbase.application.capabilities.create_api_token_with_password import create_api_token_with_password_flow
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
@@ -43,6 +45,7 @@ from kbase.application.dto.capabilities import (
     AttachAssetToItemInput,
     ClassifyItemInput,
     CreateCategoryInput,
+    CreateApiTokenWithPasswordInput,
     CreateLabelInput,
     CreateFileItemInput,
     CreateNoteInput,
@@ -65,12 +68,16 @@ from kbase.application.dto.capabilities import (
     SearchContentInput,
     UpdateCategoryInput,
     UpdateItemCoreInput,
+    GetSessionInput,
 )
+from kbase.application.capabilities.get_current_session import get_current_session
+from kbase.application.services.security import AuthenticationError
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
 
 
 app = typer.Typer(no_args_is_help=True)
+auth_app = typer.Typer(no_args_is_help=True)
 note_app = typer.Typer(no_args_is_help=True)
 item_app = typer.Typer(no_args_is_help=True)
 content_app = typer.Typer(no_args_is_help=True)
@@ -88,6 +95,7 @@ provenance_app = typer.Typer(no_args_is_help=True)
 search_app = typer.Typer(no_args_is_help=True)
 workflow_app = typer.Typer(no_args_is_help=True)
 
+app.add_typer(auth_app, name="auth")
 app.add_typer(note_app, name="note")
 app.add_typer(item_app, name="item")
 app.add_typer(content_app, name="content")
@@ -105,9 +113,73 @@ app.add_typer(provenance_app, name="provenance")
 app.add_typer(search_app, name="search")
 app.add_typer(workflow_app, name="workflow")
 
+LOCAL_ACTOR_OPTION_HELP = (
+    "Use explicit local actor mode instead of session/token auth. Requires root --allow-local-actor."
+)
 
-def _actor_context(actor: str, request_id: str | None = None) -> ActorContext:
-    return ActorContext(principal_id=actor, request_id=request_id)
+
+@app.callback()
+def app_callback(
+    ctx: typer.Context,
+    api_token: str | None = typer.Option(
+        None,
+        "--api-token",
+        envvar="KBASE_API_TOKEN",
+        help="Bearer token for normal CLI commands.",
+    ),
+    session_token: str | None = typer.Option(
+        None,
+        "--session-token",
+        envvar="KBASE_SESSION_TOKEN",
+        help="Session token for normal CLI commands.",
+    ),
+    allow_local_actor: bool = typer.Option(
+        False,
+        "--allow-local-actor",
+        envvar="KBASE_CLI_ALLOW_LOCAL_ACTOR",
+        help="Allow the compatibility-only --actor override for local development.",
+    ),
+) -> None:
+    ctx.obj = {
+        "api_token": api_token,
+        "session_token": session_token,
+        "allow_local_actor": allow_local_actor,
+    }
+
+
+def _auth_config() -> dict[str, Any]:
+    ctx = click.get_current_context()
+    root = ctx.find_root()
+    return root.obj if isinstance(root.obj, dict) else {}
+
+
+def _actor_option() -> str | None:
+    return typer.Option(None, "--actor", help=LOCAL_ACTOR_OPTION_HELP)
+
+
+def _actor_context(actor: str | None = None, request_id: str | None = None) -> ActorContext:
+    auth = _auth_config()
+    if actor is not None:
+        if not auth.get("allow_local_actor"):
+            raise typer.BadParameter(
+                "The --actor override is disabled by default. Re-run with --allow-local-actor to use local actor mode."
+            )
+        return ActorContext(principal_id=actor, request_id=request_id)
+
+    try:
+        session = get_current_session(
+            GetSessionInput(
+                session_token=auth.get("session_token"),
+                api_token=auth.get("api_token"),
+                request_id=request_id,
+            )
+        )
+    except AuthenticationError as exc:
+        raise typer.BadParameter(
+            "Authentication required. Use --api-token/--session-token or set KBASE_API_TOKEN/KBASE_SESSION_TOKEN. "
+            "Use 'kbase auth token-create' to bootstrap a CLI token."
+        ) from exc
+    return ActorContext(principal_id=session.principal_id, request_id=request_id)
 
 
 def _provenance(method_key: str) -> ProvenanceInput:
@@ -154,6 +226,28 @@ def _infer_file_item_kind(path: Path) -> str:
     return "document"
 
 
+@auth_app.command("token-create")
+def auth_token_create_command(
+    username: str = typer.Option(..., "--username"),
+    password: str = typer.Option(
+        ...,
+        "--password",
+        prompt=True,
+        hide_input=True,
+    ),
+    token_label: str = typer.Option("cli", "--token-label"),
+    as_json: bool = typer.Option(False, "--json"),
+) -> None:
+    result = create_api_token_with_password_flow(
+        CreateApiTokenWithPasswordInput(
+            username=username,
+            password=password,
+            token_label=token_label,
+        )
+    )
+    _emit(result, as_json)
+
+
 @note_app.command("create")
 def create_note_command(
     title: str = typer.Option(...),
@@ -167,7 +261,7 @@ def create_note_command(
     project_ids: list[str] = typer.Option(None, "--project-id"),
     labels: list[str] = typer.Option(None, "--label"),
     metadata_json: str | None = typer.Option(None, "--metadata-json"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     markdown_body = _read_text_input(body=body, body_file=body_file, stdin=stdin)
@@ -192,7 +286,7 @@ def create_note_command(
 @item_app.command("get")
 def get_item_command(
     item_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = get_item(GetItemInput(item_id=item_id, actor=_actor_context(actor)))
@@ -206,7 +300,7 @@ def list_items_command(
     include_archived: bool = typer.Option(False, "--include-archived"),
     limit: int = typer.Option(50, "--limit"),
     offset: int = typer.Option(0, "--offset"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = list_items(
@@ -230,7 +324,7 @@ def update_item_command(
     status: str | None = typer.Option(None, "--status"),
     language: str | None = typer.Option(None, "--language"),
     archived: bool | None = typer.Option(None, "--archived"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = update_item_core(
@@ -256,7 +350,7 @@ def replace_content_command(
     stdin: bool = typer.Option(False, "--stdin"),
     part_kind: str = typer.Option("markdown_body", "--part-kind"),
     change_reason: str | None = typer.Option(None, "--reason"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     content_text = _read_text_input(body=body, body_file=body_file, stdin=stdin)
@@ -285,7 +379,7 @@ def search_content_command(
     include_archived: bool = typer.Option(False, "--include-archived"),
     limit: int = typer.Option(50, "--limit"),
     offset: int = typer.Option(0, "--offset"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = search_content(
@@ -313,7 +407,7 @@ def list_categories_command(
     include_inactive: bool = typer.Option(False, "--include-inactive"),
     limit: int = typer.Option(100, "--limit"),
     offset: int = typer.Option(0, "--offset"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = list_categories(
@@ -335,7 +429,7 @@ def create_category_command(
     label: str = typer.Option(..., "--label"),
     description: str | None = typer.Option(None, "--description"),
     applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = create_category(
@@ -358,7 +452,7 @@ def update_category_command(
     description: str | None = typer.Option(None, "--description"),
     applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
     active: bool | None = typer.Option(None, "--active/--inactive"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     if label is None and description is None and applies_to_kind is None and active is None:
@@ -383,7 +477,7 @@ def update_category_command(
 def assign_labels_command(
     item_id: str,
     label: list[str] = typer.Option(..., "--label"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = assign_labels(
@@ -404,7 +498,7 @@ def list_labels_command(
     parent_id: str | None = typer.Option(None, "--parent-id"),
     full_path_prefix: str | None = typer.Option(None, "--prefix"),
     limit: int = typer.Option(100, "--limit"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
 ) -> None:
     result = list_labels(
         ListLabelsInput(
@@ -425,7 +519,7 @@ def create_label_command(
     parent_id: str | None = typer.Option(None, "--parent-id"),
     description: str | None = typer.Option(None, "--description"),
     meta_json: str | None = typer.Option(None, "--meta-json"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = create_label(
@@ -445,7 +539,7 @@ def create_label_command(
 def rename_label_command(
     label_id: str,
     name: str = typer.Option(..., "--name"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = rename_label(
@@ -462,7 +556,7 @@ def rename_label_command(
 @label_app.command("deactivate")
 def deactivate_label_command(
     label_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = deactivate_label(
@@ -478,7 +572,7 @@ def deactivate_label_command(
 @label_app.command("reactivate")
 def reactivate_label_command(
     label_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = reactivate_label(
@@ -494,7 +588,7 @@ def reactivate_label_command(
 @label_app.command("delete")
 def delete_label_command(
     label_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = delete_label(
@@ -512,7 +606,7 @@ def classify_item_command(
     item_id: str,
     category: str = typer.Option(..., "--category"),
     secondary: list[str] = typer.Option(None, "--secondary"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = classify_item(
@@ -532,7 +626,7 @@ def patch_metadata_command(
     item_id: str,
     set_json: str | None = typer.Option(None, "--set-json"),
     unset: list[str] = typer.Option(None, "--unset"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = patch_item_metadata(
@@ -555,7 +649,7 @@ def register_asset_command(
     mime_type: str | None = typer.Option(None, "--mime-type"),
     size_bytes: int | None = typer.Option(None, "--size-bytes"),
     checksum_sha256: str | None = typer.Option(None, "--checksum-sha256"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = register_asset(
@@ -580,7 +674,7 @@ def attach_asset_command(
     relationship_role: str = typer.Option(..., "--role"),
     caption: str | None = typer.Option(None, "--caption"),
     sort_order: int = typer.Option(0, "--sort-order"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = attach_asset_to_item(
@@ -611,7 +705,7 @@ def import_file_item_command(
     project_ids: list[str] = typer.Option(None, "--project-id"),
     labels: list[str] = typer.Option(None, "--label"),
     metadata_json: str | None = typer.Option(None, "--metadata-json"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     payload = path.read_bytes()
@@ -642,6 +736,7 @@ def import_file_item_command(
 def list_inbox_command(
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
+    _actor_context()
     result = list_inbox_files()
     _emit(result, as_json)
 
@@ -660,7 +755,7 @@ def import_inbox_command(
     project_ids: list[str] = typer.Option(None, "--project-id"),
     labels: list[str] = typer.Option(None, "--label"),
     metadata_json: str | None = typer.Option(None, "--metadata-json"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = import_inbox_file(
@@ -690,7 +785,7 @@ def link_add_command(
     to_item_id: str = typer.Option(..., "--to-item-id"),
     link_type: str = typer.Option(..., "--link-type"),
     note: str | None = typer.Option(None, "--note"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = link_items(
@@ -709,7 +804,7 @@ def link_add_command(
 @link_app.command("list")
 def link_list_command(
     item_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = list_related_items(ListRelatedItemsInput(item_id=item_id, actor=_actor_context(actor)))
@@ -722,7 +817,7 @@ def project_create_command(
     category: str = typer.Option("project_general", "--category"),
     description: str | None = typer.Option(None, "--description"),
     status: str | None = typer.Option(None, "--status"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = create_project(
@@ -744,7 +839,7 @@ def project_add_item_command(
     item_id: str,
     role: str | None = typer.Option(None, "--role"),
     sort_order: int = typer.Option(0, "--sort-order"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = add_item_to_project(
@@ -765,7 +860,7 @@ def project_list_items_command(
     project_id: str,
     limit: int = typer.Option(50, "--limit"),
     offset: int = typer.Option(0, "--offset"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = list_project_items(
@@ -782,7 +877,7 @@ def project_list_items_command(
 @history_app.command("show")
 def history_show_command(
     item_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = get_item_history(GetItemInput(item_id=item_id, actor=_actor_context(actor)))
@@ -792,7 +887,7 @@ def history_show_command(
 @provenance_app.command("show")
 def provenance_show_command(
     item_id: str,
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     result = get_item_provenance(GetItemInput(item_id=item_id, actor=_actor_context(actor)))
@@ -810,7 +905,7 @@ def workflow_notes_core_command(
     project_category: str = typer.Option("project_general", "--project-category"),
     label: list[str] = typer.Option(None, "--label"),
     metadata_json: str | None = typer.Option(None, "--metadata-json"),
-    actor: str = typer.Option("heiko", "--actor"),
+    actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
     created_project = None

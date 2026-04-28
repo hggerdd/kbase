@@ -4,7 +4,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import GetItemInput, ItemDetailResult
-from kbase.application.services.capability_support import build_repositories, require_item, require_item_read
+from kbase.application.services.capability_support import (
+    build_repositories,
+    filter_accessible_items,
+    filter_accessible_links,
+    require_item,
+    require_item_read,
+)
 from kbase.application.services.mappers import (
     to_asset_data,
     to_content_part_data,
@@ -14,6 +20,7 @@ from kbase.application.services.mappers import (
     to_label_data,
     to_link_data,
 )
+from kbase.application.services.security import READ_PERMISSIONS
 from kbase.infrastructure.db.models.tables import ItemMetadataModel, MetadataFieldModel
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -36,9 +43,24 @@ def get_item(
         labels = repos.labels.list_labels_for_item(item.id)
         classifications = repos.items.get_classifications(item.id)
         assets = repos.assets.list_assets_for_item(item.id)
-        related_items = repos.links.list_related_items(item.id)
-        outgoing_links = repos.links.list_links(item.id)
-        projects = repos.projects.list_projects_for_item(item.id)
+        related_items = filter_accessible_items(
+            repos,
+            items=repos.links.list_related_items(item.id),
+            actor_principal_id=data.actor.principal_id,
+            permission_keys=READ_PERMISSIONS,
+        )
+        outgoing_links = filter_accessible_links(
+            repos,
+            links=repos.links.list_links(item.id),
+            actor_principal_id=data.actor.principal_id,
+            permission_keys=READ_PERMISSIONS,
+        )
+        projects = filter_accessible_items(
+            repos,
+            items=repos.projects.list_projects_for_item(item.id),
+            actor_principal_id=data.actor.principal_id,
+            permission_keys=READ_PERMISSIONS,
+        )
         stmt = (
             select(ItemMetadataModel, MetadataFieldModel)
             .join(MetadataFieldModel, MetadataFieldModel.key == ItemMetadataModel.field_key)

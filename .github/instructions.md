@@ -61,9 +61,29 @@ npm run test:search
 - HTTP identity is session-cookie or bearer-token based.
 - Do not document or implement `x-kbase-actor` as a supported HTTP identity
   mechanism.
-- The CLI still has `--actor heiko` defaults; treat this as a known gap tracked
-  by `SEC-006`, not as the target architecture.
+- CLI normal commands should resolve identity from session/token-based auth.
+- Any retained `--actor` path must stay explicit, local-dev only, and must not
+  become the default behavior again.
 - New browser work should use `GET /api/auth/session` for identity context.
+
+## Security Thinking
+
+- Treat security as part of normal design work, not as a later hardening pass.
+- Before changing API, CLI, file, project, search, label, category, or agent
+  behavior, ask what the trust boundary is and which authenticated principal is
+  allowed to read, write, or manage the target data.
+- Prefer shared authorization checks in the capability/application boundary over
+  adapter-local checks in FastAPI routes, CLI commands, or frontend code.
+- Fail closed when identity or authorization is unclear. Do not add convenience
+  paths that bypass session, token, ACL, upload-size, MIME, or path-safety
+  controls.
+- Preserve or improve audit/provenance when adding write paths.
+- When existing behavior is intentionally permissive for bootstrap or local-dev
+  reasons, document that explicitly in canonical docs and track the follow-up in
+  `todo.md`.
+- Add or update regression tests for authentication failure, authorization
+  denial, and any security-sensitive file or content handling that the change
+  touches.
 
 ## Documentation Rules
 
