@@ -11,6 +11,22 @@ export function emptyEditor() {
   };
 }
 
+export function buildCategoryCounts(notes) {
+  const counts = new Map();
+  notes.forEach((note) => {
+    const key = note.category_key ?? "uncategorized";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+  return counts;
+}
+
+export function resolveCategoryCountNotes(selectedCategoryKey, visibleNotes, unfilteredCategoryNotes) {
+  if (!selectedCategoryKey) {
+    return visibleNotes;
+  }
+  return unfilteredCategoryNotes ?? visibleNotes;
+}
+
 export function combineLabelPaths(selectedLabels, labelPathsText) {
   return [
     ...selectedLabels,

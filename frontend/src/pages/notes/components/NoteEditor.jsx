@@ -43,6 +43,7 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [pendingTitle, setPendingTitle] = useState("");
   const selectedLabelPaths = workspace.editor.selected_labels;
+  const editorInstanceKey = workspace.selectedId ?? "no-note";
   const summaryBits = [
     workspaceSummary?.categoryLabel ?? formatLabel(currentCategory),
     workspaceSummary?.projectLabel ?? null,
@@ -245,6 +246,7 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
 
           <div className="editor-body note-rich-editor">
             <ReactQuill
+              key={editorInstanceKey}
               theme="snow"
               value={workspace.editor.html_body}
               onChange={(value) =>

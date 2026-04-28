@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildCategoryCounts,
   combineLabelPaths,
   deriveSelectionTransition,
   editorFromItemDetail,
+  resolveCategoryCountNotes,
   serializeEditorState,
 } from "./state.js";
 
@@ -102,4 +104,31 @@ test("editor serialization is stable for semantically identical states", () => {
   });
 
   assert.equal(left, right);
+});
+
+test("category counts include every category from the provided note source", () => {
+  const counts = buildCategoryCounts([
+    { id: "note-1", category_key: "research" },
+    { id: "note-2", category_key: "decision" },
+    { id: "note-3", category_key: "research" },
+    { id: "note-4", category_key: null },
+  ]);
+
+  assert.equal(counts.get("research"), 2);
+  assert.equal(counts.get("decision"), 1);
+  assert.equal(counts.get("uncategorized"), 1);
+});
+
+test("category sidebar counts use the unfiltered note source while a category is selected", () => {
+  const visibleNotes = [{ id: "note-1", category_key: "research" }];
+  const unfilteredCategoryNotes = [
+    { id: "note-1", category_key: "research" },
+    { id: "note-2", category_key: "decision" },
+  ];
+
+  assert.equal(resolveCategoryCountNotes("", visibleNotes, unfilteredCategoryNotes), visibleNotes);
+  assert.equal(
+    resolveCategoryCountNotes("research", visibleNotes, unfilteredCategoryNotes),
+    unfilteredCategoryNotes,
+  );
 });

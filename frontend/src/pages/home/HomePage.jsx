@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { fetchNotes } from "../../features/notes/api.js";
 import { fetchProjects } from "../../features/projects/api.js";
 import { useNotesWorkspace } from "../../features/notes/hooks";
+import { buildCategoryCounts, resolveCategoryCountNotes } from "../../features/notes/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { FolderIcon, NoteIcon, SearchIcon, TagIcon } from "../../shared/ui/Icons";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
@@ -103,6 +105,7 @@ export function HomePage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
   const [labelQuery, setLabelQuery] = useState("");
+  const [categoryCountNotes, setCategoryCountNotes] = useState(null);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
   const [selectedLabelPath, setSelectedLabelPath] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -180,18 +183,46 @@ export function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedCategoryKey) {
+      setCategoryCountNotes(null);
+      return undefined;
+    }
+
+    let active = true;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const items = await fetchNotes(workspace.search, {
+            labelPathPrefixes: selectedLabelPath ? [selectedLabelPath] : [],
+            projectId: selectedProjectId || null,
+          });
+          if (active) {
+            setCategoryCountNotes(items);
+          }
+        } catch {
+          if (active) {
+            setCategoryCountNotes(null);
+          }
+        }
+      })();
+    }, 350);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [selectedCategoryKey, selectedLabelPath, selectedProjectId, workspace.search]);
+
   const sortedNotes = useMemo(
     () => [...workspace.notes].sort((left, right) => getTimestamp(right.updated_at) - getTimestamp(left.updated_at)),
     [workspace.notes],
   );
-  const categoryCounts = useMemo(() => {
-    const counts = new Map();
-    sortedNotes.forEach((note) => {
-      const key = note.category_key ?? "uncategorized";
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    });
-    return counts;
-  }, [sortedNotes]);
+  const categoryCountSourceNotes = useMemo(
+    () => resolveCategoryCountNotes(selectedCategoryKey, workspace.notes, categoryCountNotes),
+    [categoryCountNotes, selectedCategoryKey, workspace.notes],
+  );
+  const categoryCounts = useMemo(() => buildCategoryCounts(categoryCountSourceNotes), [categoryCountSourceNotes]);
   const activeProject = projectsState.projects.find((project) => project.id === selectedProjectId) ?? null;
   const visibleLabels = useMemo(() => {
     const normalizedQuery = labelQuery.trim().toLowerCase();
@@ -284,7 +315,7 @@ export function HomePage() {
                   <NoteIcon />
                 </span>
                 <span className="workspace-tree-label">All notes</span>
-                <span className="workspace-tree-meta">{sortedNotes.length}</span>
+                <span className="workspace-tree-meta">{categoryCountSourceNotes.length}</span>
               </button>
               {workspace.availableCategories.map((category) => (
                 <button
