@@ -56,7 +56,7 @@ function Harness({ onWorkspace }) {
   return React.createElement("div", { "data-notice": workspace.notice });
 }
 
-test("categories workspace covers create update deactivate and reactivate", async () => {
+test("categories workspace covers create update deactivate reactivate and delete", async () => {
   const container = createDom();
   let latestWorkspace;
   let categories = [];
@@ -93,6 +93,10 @@ test("categories workspace covers create update deactivate and reactivate", asyn
         is_active: body.is_active ?? category.is_active,
       }));
       return createResponse(categories[0]);
+    }
+    if (value === "/api/categories/meeting_note" && method === "DELETE") {
+      categories = [];
+      return createResponse({ key: "meeting_note", deleted: true });
     }
     throw new Error(`Unhandled fetch: ${method} ${value}`);
   };
@@ -149,8 +153,17 @@ test("categories workspace covers create update deactivate and reactivate", asyn
     assert.equal(latestWorkspace.notice, "Category activated");
     assert.equal(latestWorkspace.categories[0].is_active, true);
   });
+
+  await act(async () => {
+    await latestWorkspace.handleDeleteCategory("meeting_note");
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.notice, "Category deleted");
+    assert.equal(latestWorkspace.categories.length, 0);
+  });
   assert.equal(calls.some((call) => call.method === "PATCH" && call.body?.is_active === false), true);
   assert.equal(calls.some((call) => call.method === "PATCH" && call.body?.is_active === true), true);
+  assert.equal(calls.some((call) => call.method === "DELETE" && call.url === "/api/categories/meeting_note"), true);
 
   await act(async () => root.unmount());
 });

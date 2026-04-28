@@ -294,6 +294,35 @@ def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
     )
     assert "meeting_note" in [category["key"] for category in include_inactive.json()["categories"]]
 
+    deleted = client.delete(
+        "/api/categories/meeting_note",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert deleted.status_code == 200
+    assert deleted.json() == {"key": "meeting_note", "deleted": True}
+
+
+def test_api_rejects_delete_of_used_category(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Uses category",
+            "category_key": "research",
+            "markdown_body": "Body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created.status_code == 200
+
+    deleted = client.delete(
+        "/api/categories/research",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert deleted.status_code == 400
+    assert deleted.json()["detail"] == "Category 'research' is still in use and cannot be deleted"
+
 
 def test_api_delete_label_removes_subtree_and_item_assignments(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)

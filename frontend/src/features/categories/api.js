@@ -35,3 +35,9 @@ export async function updateCategory(categoryKey, input) {
     body: JSON.stringify(input),
   });
 }
+
+export async function deleteCategory(categoryKey) {
+  return request(`/api/categories/${encodeURIComponent(categoryKey)}`, {
+    method: "DELETE",
+  });
+}

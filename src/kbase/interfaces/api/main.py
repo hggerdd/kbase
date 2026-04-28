@@ -20,6 +20,7 @@ from kbase.application.capabilities.create_category import create_category
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.delete_category import delete_category
 from kbase.application.capabilities.delete_label import delete_label
 from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_current_session import get_current_session
@@ -63,6 +64,8 @@ from kbase.application.dto.capabilities import (
     CreateFileItemInput,
     DeleteLabelInput,
     DeleteLabelResult,
+    DeleteCategoryInput,
+    DeleteCategoryResult,
     DeactivateLabelInput,
     GetItemAclInput,
     GetItemHistoryResult,
@@ -710,6 +713,19 @@ def create_app() -> FastAPI:
                 is_active=payload.is_active,
                 actor=actor,
                 provenance=_provenance("api.update_category"),
+            )
+        )
+
+    @app.delete("/api/categories/{category_key}", response_model=DeleteCategoryResult)
+    def delete_category_endpoint(
+        category_key: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> DeleteCategoryResult:
+        return delete_category(
+            DeleteCategoryInput(
+                key=category_key,
+                actor=actor,
+                provenance=_provenance("api.delete_category"),
             )
         )
 

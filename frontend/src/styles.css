@@ -2265,6 +2265,111 @@ button:disabled {
   width: min(92vw, 520px);
 }
 
+.settings-projects-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.settings-projects-list-panel,
+.settings-projects-detail-panel {
+  min-width: 0;
+  min-height: 520px;
+}
+
+.settings-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.settings-search-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--surface-border);
+  background: #ffffff;
+  color: var(--text);
+  outline: none;
+}
+
+.settings-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-project-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--surface-border);
+  background: #fbfdff;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.settings-project-row:hover,
+.settings-project-row.active {
+  border-color: #9db7dd;
+  background: #f5f9ff;
+}
+
+.settings-project-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.settings-project-row-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.settings-project-row-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-project-row-copy strong,
+.settings-project-row-copy span,
+.settings-project-row-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-project-row-copy span,
+.settings-project-row-date,
+.settings-project-metrics span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.settings-project-detail,
+.settings-project-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-project-detail-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .roadmap strong {
   display: inline-flex;
   align-items: center;
@@ -2719,6 +2824,10 @@ button:disabled {
   }
 
   .labels-explorer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-projects-layout {
     grid-template-columns: 1fr;
   }
 

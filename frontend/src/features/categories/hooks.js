@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createCategory, fetchCategories, updateCategory } from "./api.js";
+import { createCategory, deleteCategory, fetchCategories, updateCategory } from "./api.js";
 
 export const EMPTY_CATEGORY_DRAFT = {
   key: "",
@@ -102,11 +102,29 @@ export function useCategoriesWorkspace() {
     }
   }
 
+  async function handleDeleteCategory(categoryKey) {
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await deleteCategory(categoryKey);
+      setNotice("Category deleted");
+      await loadCategories();
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return {
     appliesToKind,
     categories,
     error,
     handleCreateCategory,
+    handleDeleteCategory,
     handleSetActive,
     handleUpdateCategory,
     includeInactive,

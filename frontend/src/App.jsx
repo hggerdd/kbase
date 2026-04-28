@@ -24,7 +24,10 @@ function useHashRoute() {
 
   function navigate(nextRoute) {
     const root = getRouteRoot(nextRoute);
-    const normalizedRoute = NAV_ITEMS.some((item) => item.id === root) ? nextRoute : "home";
+    const normalizedRoute =
+      NAV_ITEMS.some((item) => item.id === root) || ["notes", "projects", "settings"].includes(root)
+        ? nextRoute
+        : "home";
     const nextHash = routeToHash(normalizedRoute);
     if (window.location.hash !== nextHash) {
       window.location.hash = nextHash;

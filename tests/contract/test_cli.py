@@ -338,3 +338,7 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     assert include_inactive.exit_code == 0
     inactive_payload = json.loads(include_inactive.stdout)
     assert "meeting_note" in [category["key"] for category in inactive_payload["categories"]]
+
+    deleted = _run_with_token(token, ["category", "delete", "meeting_note", "--json"])
+    assert deleted.exit_code == 0
+    assert json.loads(deleted.stdout) == {"key": "meeting_note", "deleted": True}

@@ -7,6 +7,7 @@ from kbase.application.capabilities.classify_item import classify_item
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.delete_category import delete_category
 from kbase.application.capabilities.delete_label import delete_label
 from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
@@ -34,6 +35,7 @@ from kbase.application.dto.capabilities import (
     CreateLabelInput,
     CreateNoteInput,
     CreateProjectInput,
+    DeleteCategoryInput,
     DeleteLabelInput,
     DeactivateLabelInput,
     GetItemInput,
@@ -582,6 +584,43 @@ def test_create_project_defaults_to_project_general(session_factory) -> None:
     item = get_item(GetItemInput(item_id=project.id, actor=actor()), session_factory=session_factory)
     assert item.item.item_kind == "project"
     assert item.item.category_key == "project_general"
+
+
+def test_delete_category_removes_unused_category_and_blocks_used_category(session_factory) -> None:
+    create_note(
+        CreateNoteInput(
+            title="Uses research",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    deleted = delete_category(
+        DeleteCategoryInput(
+            key="learning",
+            actor=actor(),
+            provenance=provenance("test.delete_category"),
+        ),
+        session_factory=session_factory,
+    )
+    assert deleted.deleted is True
+
+    try:
+        delete_category(
+            DeleteCategoryInput(
+                key="research",
+                actor=actor(),
+                provenance=provenance("test.delete_category"),
+            ),
+            session_factory=session_factory,
+        )
+    except ValueError as error:
+        assert str(error) == "Category 'research' is still in use and cannot be deleted"
+    else:
+        raise AssertionError("Expected delete_category to reject an in-use category")
 
 
 def test_replace_labels_replaces_existing_item_labels(session_factory) -> None:
