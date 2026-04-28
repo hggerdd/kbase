@@ -15,6 +15,12 @@ test("route scope defaults to page-specific item kinds when global search is dis
   assert.equal(scope.label, "Notes");
 });
 
+test("home route search scope stays limited to notes after the home workspace refactor", () => {
+  const scope = getSearchScopeForRoute("home", false);
+  assert.deepEqual(scope.itemKinds, ["note"]);
+  assert.equal(scope.label, "Home notes");
+});
+
 test("buildSearchInput keeps page scope when no explicit item kinds are provided", () => {
   const searchInput = buildSearchInput({
     query: "alpha",

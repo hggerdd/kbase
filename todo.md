@@ -46,6 +46,7 @@ Priority values: `high`, `medium`, `low`.
 | `NOTE-001` | done | medium | notes | Add concurrent edit conflict strategy |
 | `FE-001` | done | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
 | `FE-002` | done | medium | frontend | Show current build/version in the app chrome |
+| `FE-003` | done | medium | frontend | Refactor home into the primary notes workspace |
 
 ## Task Details
 
@@ -259,6 +260,22 @@ Acceptance:
 - The implementation does not require a browser user to open dev tools to see
   whether they are on dev, prod, or a specific last commit.
 
+### `FE-003` Refactor Home Into The Primary Notes Workspace
+
+Source: `docs/mockups/notes-frontend-proposal.html`, existing notes workspace,
+frontend navigation.
+
+Acceptance:
+
+- Home becomes the primary note workspace instead of a separate dashboard.
+- The reduced primary navigation still exposes Home, Search, Files, Imports,
+  and a reachable Settings entry.
+- Home supports note search, note selection, autosave editing, category
+  filtering, project filtering, label filtering, and note creation using the
+  existing capabilities.
+- Project-scoped note creation keeps the active project context.
+- Frontend docs and focused tests reflect the new navigation and home behavior.
+
 ### `DOC-001` Keep Canonical Docs Synced
 
 Source: this cleanup and future code changes.
@@ -295,6 +312,7 @@ Acceptance:
 | --- | --- | --- | --- |
 | `ARCH-001` | done | docs | README/API docs were synchronized with session/token auth and category endpoints. |
 | `ARCH-002` | done | architecture | Capability matrix exists in `docs/capabilities.md`. |
+| `FE-003` | done | frontend | Home now hosts the primary notes workspace with category, project, and label filters. |
 | `FE-SEARCH-001` | done | search | Global search state and explicit Search page exist. |
 | `FE-FILES-001` | done | files | Files page with configurable explorer tree and test seed files exists. |
 | `FE-NOTES-001` | done | notes | Notes autosave with debounce exists. |

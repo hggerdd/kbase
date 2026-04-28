@@ -1,8 +1,34 @@
 import { request, uploadRequest } from "../../shared/api/client.js";
 
-export async function fetchNotes(query = "", { limit = 100 } = {}) {
-  const path = query
-    ? `/api/search/content?query=${encodeURIComponent(query)}&item_kinds=note&limit=${limit}`
+export async function fetchNotes(
+  query = "",
+  {
+    limit = 100,
+    categoryKeys = [],
+    labelPathPrefixes = [],
+    projectId = null,
+  } = {},
+) {
+  const hasScopedFilters =
+    categoryKeys.length > 0 ||
+    labelPathPrefixes.length > 0 ||
+    Boolean(projectId);
+
+  const path = query || hasScopedFilters
+    ? (() => {
+        const params = new URLSearchParams();
+        if (query) {
+          params.set("query", query);
+        }
+        params.append("item_kinds", "note");
+        params.set("limit", String(limit));
+        categoryKeys.forEach((categoryKey) => params.append("category_keys", categoryKey));
+        labelPathPrefixes.forEach((labelPath) => params.append("label_path_prefixes", labelPath));
+        if (projectId) {
+          params.set("project_id", projectId);
+        }
+        return `/api/search/content?${params.toString()}`;
+      })()
     : `/api/items?item_kind=note&limit=${limit}`;
   const payload = await request(path);
   return payload.items;

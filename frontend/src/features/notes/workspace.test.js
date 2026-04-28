@@ -139,6 +139,20 @@ function createWorkspaceHarness(onWorkspace) {
   };
 }
 
+function createFilteredWorkspaceHarness(filters, createProjectId, onWorkspace) {
+  return function WorkspaceHarness() {
+    const workspace = useNotesWorkspace({ createProjectId, filters });
+    onWorkspace?.(workspace);
+
+    return React.createElement(
+      "div",
+      null,
+      React.createElement("div", { "data-testid": "notes-count" }, String(workspace.notes.length)),
+      React.createElement("div", { "data-testid": "selected-id" }, workspace.selectedId ?? ""),
+    );
+  };
+}
+
 test("workspace keeps showing complete note data when the same note is selected again", async () => {
   const container = createDom();
   let latestWorkspace;
@@ -847,6 +861,126 @@ test("workspace refuses to save an editor snapshot that belongs to another note"
   assert.equal(updateCoreCount, 0);
   assert.equal(replaceContentCount, 0);
   assert.equal(replaceLabelsCount, 0);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace loads notes through the scoped search endpoint when home filters are applied", async () => {
+  const container = createDom();
+  const fetchUrls = [];
+  const Harness = createFilteredWorkspaceHarness(
+    {
+      categoryKeys: ["research"],
+      labelPathPrefixes: ["product/ui"],
+      projectId: "project-1",
+    },
+    null,
+  );
+
+  global.fetch = async (url) => {
+    const value = String(url);
+    fetchUrls.push(value);
+    if (value.includes("/api/search/content?")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/categories?applies_to_kind=note&limit=200")) {
+      return createResponse({ categories: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="notes-count"]').textContent, "1");
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  });
+
+  const scopedSearchUrl = fetchUrls.find((value) => value.includes("/api/search/content?"));
+  assert.match(scopedSearchUrl, /item_kinds=note/);
+  assert.match(scopedSearchUrl, /category_keys=research/);
+  assert.match(scopedSearchUrl, /label_path_prefixes=product%2Fui/);
+  assert.match(scopedSearchUrl, /project_id=project-1/);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace creates notes inside the active project scope when requested", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createFilteredWorkspaceHarness({}, "project-1", (workspace) => {
+    latestWorkspace = workspace;
+  });
+  let createPayload = null;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({ items: [] });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/categories?applies_to_kind=note&limit=200")) {
+      return createResponse({ categories: [] });
+    }
+    if (value.endsWith("/api/notes") && method === "POST") {
+      createPayload = JSON.parse(options.body);
+      return createResponse({ item: { id: "note-new" } });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="notes-count"]').textContent, "0");
+  });
+
+  await act(async () => {
+    latestWorkspace.setDraft({
+      ...latestWorkspace.draft,
+      title: "Project note",
+      category_key: "research",
+      html_body: "<p>Scoped body</p>",
+      markdown_body: "Scoped body",
+    });
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleCreateNote({ preventDefault() {} });
+  });
+
+  assert.deepEqual(createPayload.project_ids, ["project-1"]);
 
   await act(async () => {
     root.unmount();

@@ -1,12 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "./navigation/BottomNav";
 import { NAV_ITEMS } from "./navigation/nav-config";
-import { getNavIcon, HelpIcon, PlusIcon, SearchIcon } from "../shared/ui/Icons";
+import { getNavIcon, HelpIcon, PlusIcon, SearchIcon, SettingsIcon } from "../shared/ui/Icons";
 import { AppBarPageHeader } from "../shared/ui/AppBarPageHeader";
 import { getSearchScopeForRoute } from "../features/search/state.js";
 import { getBuildInfo } from "../shared/build-info.js";
 
 const PAGE_HEADER_CONFIG = {
+  home: {
+    title: "Home",
+    singular: "Notiz",
+    plural: "Notizen",
+    addLabel: "Notiz hinzufügen",
+    createEvent: "kbase:notes-create",
+    statusLabel: "Notes connected",
+  },
   notes: {
     title: "Notizen",
     singular: "Notiz",
@@ -38,12 +46,19 @@ export function AppShell({
   searchContextRoute,
   session,
 }) {
-  const activeNav = NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
+  const activeNav = useMemo(() => {
+    if (activeRoute === "notes") {
+      return NAV_ITEMS.find((item) => item.id === "home") ?? NAV_ITEMS[0];
+    }
+    return NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
+  }, [activeRoute]);
   const buildInfo = getBuildInfo();
   const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
   const pageHeaderConfig = PAGE_HEADER_CONFIG[activeRoute] ?? null;
   const showGlobalSearch = !pageHeaderConfig;
+  const isWorkspaceRoute = activeRoute === "home" || activeRoute === "notes";
   const [pageHeaderMeta, setPageHeaderMeta] = useState({
+    home: { count: 0 },
     notes: { count: 0 },
     projects: { count: 0 },
   });
@@ -88,7 +103,7 @@ export function AppShell({
                 <button
                   key={item.id}
                   type="button"
-                  className={`sidebar-link sidebar-link-rail ${activeRoute === item.id ? "active" : ""}`}
+                  className={`sidebar-link sidebar-link-rail ${activeNav.id === item.id ? "active" : ""}`}
                   onClick={() => onNavigate(item.id)}
                   aria-label={item.label}
                   title={item.label}
@@ -103,6 +118,17 @@ export function AppShell({
         </nav>
 
         <div className="sidebar-footer">
+          <button
+            type="button"
+            className={`sidebar-link sidebar-link-rail ${activeRoute === "settings" ? "active" : ""}`}
+            onClick={() => onNavigate("settings/labels")}
+            aria-label="Settings"
+            title="Settings"
+          >
+            <span className="sidebar-link-icon">
+              <SettingsIcon />
+            </span>
+          </button>
           <div className="session-chip session-chip-rail">
             <span className="session-dot" />
             <span>{session?.username ?? "guest"}</span>
@@ -189,10 +215,10 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="app-main">{children}</main>
+        <main className={`app-main ${isWorkspaceRoute ? "app-main-workspace" : ""}`.trim()}>{children}</main>
       </section>
 
-      <BottomNav activeRoute={activeRoute} onNavigate={onNavigate} />
+      <BottomNav activeRoute={activeNav.id} onNavigate={onNavigate} />
     </div>
   );
 }

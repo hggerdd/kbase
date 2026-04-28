@@ -4,9 +4,10 @@ Capability-first personal knowledge base with a Python/FastAPI backend,
 React/Vite frontend, Docker Compose runtime, PostgreSQL in containers, and
 SQLite for local/test cases.
 
-Current product surface: local/LAN web app for Notes, Files, Search, Projects,
-Imports, Labels, and Categories. The backend is a modular monolith organized
-around application capabilities, not around UI screens or raw table CRUD.
+Current product surface: local/LAN web app with a home-centered notes
+workspace, plus Files, Search, Projects, Imports, Labels, and Categories. The
+backend is a modular monolith organized around application capabilities, not
+around UI screens or raw table CRUD.
 
 ## Start Here
 
@@ -33,6 +34,8 @@ Implemented:
 
 - FastAPI backend over shared application capabilities.
 - React/Vite frontend with session login and hash-based navigation.
+- Home now serves as the primary notes workspace with category, project, and
+  label filtering over the existing notes capabilities.
 - Typer CLI over the same application capability layer.
 - Relational schema for items, content, files, labels, categories, links,
   projects, ACL tables, audit, provenance, users, sessions, and API tokens.

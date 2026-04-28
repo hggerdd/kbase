@@ -3,7 +3,7 @@ import ReactQuill from "react-quill";
 import TurndownService from "turndown";
 import { NOTE_CATEGORIES, NOTE_STATUSES } from "../../../features/notes/constants";
 import { EmptyState } from "../../../shared/ui/EmptyState";
-import { HistoryIcon, PencilIcon, TrashIcon, XIcon } from "../../../shared/ui/Icons";
+import { HistoryIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "../../../shared/ui/Icons";
 import { OptionSelectModal } from "../../../shared/ui/OptionSelectModal";
 import { Panel } from "../../../shared/ui/Panel";
 import { formatDate } from "../../../shared/utils/format";
@@ -18,7 +18,7 @@ function formatLabel(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function NoteEditor({ workspace, onClose }) {
+export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary = null }) {
   const activeNote = workspace.selectedNote?.item;
   const currentStatus = workspace.editor.status || activeNote?.status || "draft";
   const currentCategory = workspace.editor.category_key || activeNote?.category_key || "research";
@@ -43,6 +43,11 @@ export function NoteEditor({ workspace, onClose }) {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [pendingTitle, setPendingTitle] = useState("");
   const selectedLabelPaths = workspace.editor.selected_labels;
+  const summaryBits = [
+    workspaceSummary?.categoryLabel ?? formatLabel(currentCategory),
+    workspaceSummary?.projectLabel ?? null,
+    workspaceSummary?.labelPath ?? null,
+  ].filter(Boolean);
 
   useEffect(() => {
     setPendingTitle(workspace.editor.title ?? "");
@@ -95,7 +100,7 @@ export function NoteEditor({ workspace, onClose }) {
   }
 
   return (
-    <Panel className="panel-main note-editor-panel">
+    <Panel className="panel-main note-editor-panel workspace-note-editor-panel">
       {workspace.selectedNote ? (
         <>
           {workspace.selectedNoteLoading ? (
@@ -105,8 +110,9 @@ export function NoteEditor({ workspace, onClose }) {
             </div>
           ) : null}
 
-          <div className="note-view-header">
-            <div className="note-view-heading">
+          <div className="workspace-detail-hero">
+            <div className="workspace-detail-main">
+              <span className="workspace-detail-kicker">Selected note</span>
               <div className="note-title-row">
                 <h2>{workspace.editor.title || activeNote?.title || "Untitled note"}</h2>
                 <button
@@ -121,6 +127,25 @@ export function NoteEditor({ workspace, onClose }) {
                 >
                   <PencilIcon />
                 </button>
+              </div>
+
+              {summaryBits.length > 0 ? (
+                <p className="workspace-detail-summary">{summaryBits.join(" · ")}</p>
+              ) : null}
+
+              <div className="workspace-detail-stats">
+                <button
+                  className="status-badge status-badge-button note-status-pill"
+                  type="button"
+                  onClick={() => setIsStatusModalOpen(true)}
+                >
+                  {currentStatus}
+                </button>
+                {activeNote?.updated_at ? (
+                  <span className="workspace-detail-stat">
+                    Updated {formatDate(activeNote.updated_at, { dateStyle: "medium", timeStyle: "short" })}
+                  </span>
+                ) : null}
               </div>
 
               <div className="note-taxonomy-row">
@@ -167,17 +192,9 @@ export function NoteEditor({ workspace, onClose }) {
                   )}
                 </div>
               </div>
-
-              <button
-                className="status-badge status-badge-button note-status-pill"
-                type="button"
-                onClick={() => setIsStatusModalOpen(true)}
-              >
-                {currentStatus}
-              </button>
             </div>
 
-            <div className="note-view-actions">
+            <div className="workspace-detail-actions">
               <button
                 className="header-link header-icon-button"
                 type="button"
@@ -187,6 +204,17 @@ export function NoteEditor({ workspace, onClose }) {
               >
                 <span className="header-link-icon">
                   <HistoryIcon />
+                </span>
+              </button>
+              <button
+                className="header-link header-icon-button"
+                type="button"
+                aria-label="Create note"
+                title="Create note"
+                onClick={onOpenCreate}
+              >
+                <span className="header-link-icon">
+                  <PlusIcon />
                 </span>
               </button>
               <button

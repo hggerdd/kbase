@@ -107,7 +107,7 @@ export default function App() {
         return <SettingsPage route={route} onNavigate={navigate} />;
       case "home":
       default:
-        return <HomePage onNavigate={navigate} onSeedSearch={seedGlobalSearch} />;
+        return <HomePage />;
     }
   }, [navigate, route, routeRoot, searchState]);
 

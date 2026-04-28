@@ -17,7 +17,6 @@ Implemented pages:
 - Home
 - Search
 - Files
-- Notes
 - Projects
 - Imports
 - Settings
@@ -29,6 +28,10 @@ Implemented app concerns:
 - Session bootstrap through `GET /api/auth/session`.
 - Login/logout through `/api/auth/login` and `/api/auth/logout`.
 - Hash-based navigation via `frontend/src/app/navigation/nav-config.js`.
+- Reduced primary navigation: Home, Search, Files, Imports, plus a reachable
+  Settings entry from the app rail.
+- Home is the primary notes workspace and reuses the existing notes capability
+  flow instead of a separate dashboard.
 - Global search state in `App.jsx` with page-scoped default behavior.
 - Shared API client with `credentials: "include"` in
   `frontend/src/shared/api/client.js`.
@@ -36,6 +39,8 @@ Implemented app concerns:
 - Notes autosave uses optimistic content locking. A stale content timestamp
   from another editor returns `409` and leaves the workspace in a conflict
   state for the user to reload or reconcile.
+- Home note filters use existing capabilities and endpoints for note search,
+  category scoping, project scoping, and label subtree scoping.
 - The top-right app chrome shows the deployment label, Git branch, short commit,
   and commit date from Vite build metadata.
 - Plain CSS styling in `frontend/src/styles.css`.
@@ -141,6 +146,17 @@ Notes:
 - `PUT /api/items/{item_id}/content`
 - `GET /api/items/{item_id}/history`
 - `PUT /api/items/{item_id}/labels`
+
+Home/notes workspace behavior:
+
+- The `home` route is the main notes workspace.
+- The legacy `notes` route renders the same workspace for compatibility.
+- Home search is note-scoped by default when the global search flow forwards
+  into the Search page.
+- Category filters remain flat keys; the home UI must not imply category
+  hierarchy semantics that the backend does not support.
+- Label filters use subtree/prefix semantics through label path prefixes.
+- If a project is selected in Home, newly created notes keep that project scope.
 
 Search:
 

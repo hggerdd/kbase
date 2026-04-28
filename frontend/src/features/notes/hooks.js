@@ -28,7 +28,12 @@ function getAutosaveDelayMs() {
   return globalThis.__KBASE_AUTOSAVE_DELAY_MS__ ?? 700;
 }
 
-export function useNotesWorkspace({ externalSearch = "", externalSearchVersion = 0 } = {}) {
+export function useNotesWorkspace({
+  createProjectId = null,
+  externalSearch = "",
+  externalSearchVersion = 0,
+  filters = {},
+} = {}) {
   const notesRequestRef = useRef(0);
   const noteRequestRef = useRef(0);
   const selectionActionRef = useRef(0);
@@ -268,7 +273,11 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
     setLoading(true);
     setError("");
     try {
-      const items = await fetchNotes(query);
+      const items = await fetchNotes(query, {
+        categoryKeys: filters.categoryKeys ?? [],
+        labelPathPrefixes: filters.labelPathPrefixes ?? [],
+        projectId: filters.projectId ?? null,
+      });
       if (requestId !== notesRequestRef.current) {
         return;
       }
@@ -412,7 +421,13 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
   useEffect(() => {
     setSearch(externalSearch);
     void loadNotes(externalSearch);
-  }, [externalSearch, externalSearchVersion]);
+  }, [
+    externalSearch,
+    externalSearchVersion,
+    filters.categoryKeys?.join(","),
+    filters.labelPathPrefixes?.join(","),
+    filters.projectId,
+  ]);
 
   useEffect(() => {
     if (!selectedId || !selectedNote || selectedNoteLoading || saving || uploading) {
@@ -457,6 +472,7 @@ export function useNotesWorkspace({ externalSearch = "", externalSearchVersion =
         category_key: draft.category_key,
         markdown_body: markdownBody,
         label_paths: labelPaths,
+        project_ids: createProjectId ? [createProjectId] : undefined,
       });
       setDraft(EMPTY_DRAFT);
       setNotice("Note created");
