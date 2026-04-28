@@ -36,6 +36,7 @@ export function useNotesWorkspace({
 } = {}) {
   const notesRequestRef = useRef(0);
   const noteRequestRef = useRef(0);
+  const pendingSelectionLoadRef = useRef(null);
   const selectionActionRef = useRef(0);
   const autosaveTimerRef = useRef(null);
   const lastPersistedEditorRef = useRef(serializeEditorState(emptyEditor()));
@@ -387,6 +388,7 @@ export function useNotesWorkspace({
     });
 
     if (transition.shouldReloadImmediately) {
+      pendingSelectionLoadRef.current = note.id;
       void loadNote(note.id);
       return true;
     }
@@ -404,6 +406,8 @@ export function useNotesWorkspace({
       setHistory([]);
     }
     commitEditor(transition.nextEditor);
+    pendingSelectionLoadRef.current = transition.nextSelectedId;
+    void loadNote(transition.nextSelectedId);
     return true;
   }
 
@@ -415,6 +419,13 @@ export function useNotesWorkspace({
   }, []);
 
   useEffect(() => {
+    if (!selectedId) {
+      return;
+    }
+    if (pendingSelectionLoadRef.current === selectedId) {
+      pendingSelectionLoadRef.current = null;
+      return;
+    }
     void loadNote(selectedId);
   }, [selectedId]);
 
@@ -505,6 +516,7 @@ export function useNotesWorkspace({
   function closeSelectedNote() {
     selectionActionRef.current += 1;
     noteRequestRef.current += 1;
+    pendingSelectionLoadRef.current = null;
     clearAutosaveTimer();
     commitSelectedId(null);
     commitSelectedNote(null);
