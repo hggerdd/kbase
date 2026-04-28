@@ -34,7 +34,7 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def login_with_password(*, repos, username: str, password: str) -> tuple[SessionData, str]:
+def authenticate_user_credentials(*, repos, username: str, password: str) -> tuple[object, SessionData]:
     user = repos.security.get_user_by_username(username)
     if user is None or not user.is_active:
         raise AuthenticationError("Invalid credentials")
@@ -44,21 +44,27 @@ def login_with_password(*, repos, username: str, password: str) -> tuple[Session
     if principal is None or not principal.is_active:
         raise AuthenticationError("User principal is inactive")
     principal_ids = repos.security.list_membership_principal_ids(principal.id)
+    return user, to_session_data(
+        user=user,
+        principal=principal,
+        principal_ids=principal_ids,
+        auth_method="password",
+    )
+
+
+def login_with_password(*, repos, username: str, password: str) -> tuple[SessionData, str]:
+    user, session = authenticate_user_credentials(
+        repos=repos,
+        username=username,
+        password=password,
+    )
     raw_token = generate_secret_token()
     repos.security.create_session(
         user_id=user.id,
         session_token_hash=hash_token(raw_token),
         expires_at=expires_at(),
     )
-    return (
-        to_session_data(
-            user=user,
-            principal=principal,
-            principal_ids=principal_ids,
-            auth_method="session",
-        ),
-        raw_token,
-    )
+    return session.model_copy(update={"auth_method": "session"}), raw_token
 
 
 def resolve_session(*, repos, session_token: str | None, api_token: str | None) -> SessionData:
@@ -95,6 +101,27 @@ def create_api_token_for_actor(*, repos, actor: ActorContext, token_label: str) 
     user = repos.security.get_user_by_principal_id(actor.principal_id)
     if user is None or not user.is_active:
         raise AuthenticationError("Authenticated user not found")
+    raw_secret = generate_secret_token()
+    token = repos.security.create_api_token(
+        user_id=user.id,
+        token_label=token_label,
+        token_hash=hash_token(raw_secret),
+    )
+    return token, raw_secret
+
+
+def create_api_token_with_password(
+    *,
+    repos,
+    username: str,
+    password: str,
+    token_label: str,
+) -> tuple[object, str]:
+    user, _session = authenticate_user_credentials(
+        repos=repos,
+        username=username,
+        password=password,
+    )
     raw_secret = generate_secret_token()
     token = repos.security.create_api_token(
         user_id=user.id,

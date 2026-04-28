@@ -1,6 +1,6 @@
 # Capabilities
 
-Status: current as of 2026-04-24.
+Status: current as of 2026-04-28.
 
 This matrix shows whether each application capability is visible through API,
 CLI, frontend, and tests. Use it before adding new behavior to avoid creating
@@ -16,13 +16,14 @@ Legend:
 
 | Capability | Application function | API | CLI | Frontend | Tests | Gap |
 | --- | --- | --- | --- | --- | --- | --- |
-| User login | `login_user` | yes | no | yes | partial | CLI auth flow missing |
+| User login | `login_user` | yes | no | yes | partial | CLI bootstrap still uses separate token-create flow |
 | User logout | `logout_user` | yes | no | yes | partial | CLI counterpart missing |
-| Current session | `get_current_session` | yes | no | yes | partial | CLI counterpart missing |
-| Create API token | `create_api_token` | yes | no | no | no | token creation is API-only |
+| Current session | `get_current_session` | yes | partial | yes | partial | used indirectly by CLI root auth, not exposed as a direct command |
+| Create API token | `create_api_token` | yes | no | no | partial | session-authenticated token create is still API-only |
+| Bootstrap CLI token | `create_api_token_with_password_flow` | no | yes | no | yes | local CLI bootstrap helper only |
 | Create note | `create_note` | yes | yes | yes | yes | well mirrored |
 | Get item detail | `get_item` | yes | yes | yes | yes | well mirrored |
-| List items | `list_items` | yes | yes | yes | partial | explicit CLI contract test missing |
+| List items | `list_items` | yes | yes | yes | yes | well mirrored |
 | Update item core | `update_item_core` | yes | yes | yes | partial | API/CLI contract tests should be stronger |
 | Replace content part | `replace_content_part` | yes | yes | yes | yes | well mirrored |
 | Search content | `search_content` | yes | yes | yes | yes | well mirrored |
@@ -56,9 +57,8 @@ Legend:
 
 ## Highest-Value Gaps
 
-1. `SEC-006`: replace CLI `--actor heiko` default with a real local token/auth
-   flow.
-2. `SEC-002`: implement shared ACL enforcement.
+1. `TEST-001`: keep expanding risk-driven auth/ACL/XSS/search/file coverage.
+2. Backfill or migrate legacy items that still have no explicit ACL rows.
 3. `FE-001`: add Settings/Labels and Settings/Categories frontend tests.
 4. Add contract tests for project commands, history, provenance, and ACL.
 

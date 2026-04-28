@@ -16,15 +16,29 @@ def _init_db(path: Path) -> None:
         initialize_database(connection)
 
 
-def _client(monkeypatch, tmp_path) -> TestClient:
-    db_path = tmp_path / "api.sqlite"
-    _init_db(db_path)
+def _client(
+    monkeypatch,
+    tmp_path,
+    *,
+    username: str = "heiko",
+    password: str = "heiko-local-dev",
+    login: bool = True,
+    db_name: str = "api.sqlite",
+) -> TestClient:
+    db_path = tmp_path / db_name
+    if not db_path.exists():
+        _init_db(db_path)
     session_module._session_factory = None
     monkeypatch.setenv("KBASE_DB_URL", f"sqlite:///{db_path}")
     client = TestClient(app)
-    login = client.post("/api/auth/login", json={"username": "heiko", "password": "heiko-local-dev"})
-    assert login.status_code == 200
+    if login:
+        response = client.post("/api/auth/login", json={"username": username, "password": password})
+        assert response.status_code == 200
     return client
+
+
+def _bearer_headers(token: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
 
 
 def test_api_health(monkeypatch, tmp_path) -> None:
@@ -520,3 +534,193 @@ def test_api_can_upload_file_item_into_project(monkeypatch, tmp_path) -> None:
     )
     assert project_items.status_code == 200
     assert [item["title"] for item in project_items.json()["items"]] == ["scan.txt"]
+
+
+def test_api_rejects_anonymous_domain_access(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path, login=False)
+
+    response = client.get("/api/items")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Authentication required"
+
+
+def test_api_bearer_token_auth_can_access_domain_endpoints(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+    token_response = client.post("/api/auth/tokens", json={"token_label": "api-contract"})
+    assert token_response.status_code == 200
+    token = token_response.json()["secret"]
+
+    bearer_client = _client(monkeypatch, tmp_path, login=False)
+    created = bearer_client.post(
+        "/api/notes",
+        json={
+            "title": "Bearer note",
+            "category_key": "research",
+            "markdown_body": "Token-authenticated note",
+        },
+        headers=_bearer_headers(token),
+    )
+    assert created.status_code == 200
+    item_id = created.json()["item"]["id"]
+
+    fetched = bearer_client.get(f"/api/items/{item_id}", headers=_bearer_headers(token))
+    assert fetched.status_code == 200
+    assert fetched.json()["item"]["title"] == "Bearer note"
+
+
+def test_api_enforces_acl_for_reads_writes_projects_and_files(monkeypatch, tmp_path) -> None:
+    heiko = _client(monkeypatch, tmp_path, db_name="shared-auth.sqlite")
+    wife = _client(
+        monkeypatch,
+        tmp_path,
+        username="wife",
+        password="wife-local-dev",
+        db_name="shared-auth.sqlite",
+    )
+    monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
+
+    project = heiko.post("/api/projects", json={"title": "Private Project"})
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
+    created = heiko.post(
+        "/api/notes",
+        json={
+            "title": "Private Note",
+            "category_key": "research",
+            "markdown_body": "Private body",
+            "project_ids": [project_id],
+        },
+    )
+    assert created.status_code == 200
+    item_id = created.json()["item"]["id"]
+
+    uploaded = heiko.post(
+        f"/api/items/{item_id}/attachments/upload",
+        files={"file": ("secret.txt", b"private attachment", "text/plain")},
+    )
+    assert uploaded.status_code == 200
+    file_item = uploaded.json()["related_items"][0]
+    file_detail = heiko.get(f"/api/items/{file_item['id']}")
+    assert file_detail.status_code == 200
+    file_id = file_detail.json()["files"][0]["id"]
+
+    detail = wife.get(f"/api/items/{item_id}")
+    assert detail.status_code == 403
+
+    listed = wife.get("/api/items", params={"item_kind": "note"})
+    assert listed.status_code == 200
+    assert [item["id"] for item in listed.json()["items"]] == []
+
+    search = wife.get("/api/search/content", params={"query": "Private"})
+    assert search.status_code == 200
+    assert search.json()["items"] == []
+
+    edit = wife.put(
+        f"/api/items/{item_id}/content",
+        json={"content_text": "unauthorized overwrite"},
+    )
+    assert edit.status_code == 403
+
+    relabel = wife.put(
+        f"/api/items/{item_id}/labels",
+        json={"label_paths": ["unauthorized/demo"]},
+    )
+    assert relabel.status_code == 403
+
+    attachment = wife.post(
+        f"/api/items/{item_id}/attachments/upload",
+        files={"file": ("blocked.txt", b"blocked", "text/plain")},
+    )
+    assert attachment.status_code == 403
+
+    download = wife.get(f"/api/items/{file_item['id']}/files/{file_id}/content")
+    assert download.status_code == 403
+
+    project_items = wife.get(f"/api/projects/{project_id}/items")
+    assert project_items.status_code == 403
+
+
+def test_api_item_detail_filters_inaccessible_related_items(monkeypatch, tmp_path) -> None:
+    heiko = _client(monkeypatch, tmp_path, db_name="shared-related.sqlite")
+    wife = _client(
+        monkeypatch,
+        tmp_path,
+        username="wife",
+        password="wife-local-dev",
+        db_name="shared-related.sqlite",
+    )
+    monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
+
+    shared_note = heiko.post(
+        "/api/notes",
+        json={
+            "title": "Shared shell",
+            "category_key": "research",
+            "markdown_body": "Visible to both",
+        },
+    )
+    assert shared_note.status_code == 200
+    item_id = shared_note.json()["item"]["id"]
+
+    acl = heiko.put(
+        f"/api/items/{item_id}/acl",
+        json={
+            "grants": [
+                {"principal_id": "heiko", "permission_key": "view"},
+                {"principal_id": "heiko", "permission_key": "edit"},
+                {"principal_id": "heiko", "permission_key": "manage"},
+                {"principal_id": "wife", "permission_key": "view"},
+            ]
+        },
+    )
+    assert acl.status_code == 200
+
+    private_project = heiko.post("/api/projects", json={"title": "Hidden project"})
+    assert private_project.status_code == 200
+    project_id = private_project.json()["id"]
+
+    update_shared = heiko.put(
+        f"/api/items/{item_id}/content",
+        json={"content_text": "Visible to both"},
+    )
+    assert update_shared.status_code == 200
+
+    shared_with_project = heiko.post(
+        "/api/notes",
+        json={
+            "title": "Shared shell 2",
+            "category_key": "research",
+            "markdown_body": "Visible to both",
+            "project_ids": [project_id],
+        },
+    )
+    assert shared_with_project.status_code == 200
+    second_item_id = shared_with_project.json()["item"]["id"]
+
+    acl_second = heiko.put(
+        f"/api/items/{second_item_id}/acl",
+        json={
+            "grants": [
+                {"principal_id": "heiko", "permission_key": "view"},
+                {"principal_id": "heiko", "permission_key": "edit"},
+                {"principal_id": "heiko", "permission_key": "manage"},
+                {"principal_id": "wife", "permission_key": "view"},
+            ]
+        },
+    )
+    assert acl_second.status_code == 200
+
+    uploaded = heiko.post(
+        f"/api/items/{second_item_id}/attachments/upload",
+        files={"file": ("hidden.txt", b"hidden related item", "text/plain")},
+    )
+    assert uploaded.status_code == 200
+
+    wife_detail = wife.get(f"/api/items/{second_item_id}")
+    assert wife_detail.status_code == 200
+    payload = wife_detail.json()
+    assert payload["related_items"] == []
+    assert payload["outgoing_links"] == []
+    assert payload["projects"] == []

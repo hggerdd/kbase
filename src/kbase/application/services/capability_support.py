@@ -84,6 +84,58 @@ def require_item_permission(
         raise AuthorizationError("Access to item is forbidden")
 
 
+def can_access_item(
+    repos: RepositoryBundle,
+    *,
+    item_id: str,
+    actor_principal_id: str,
+    permission_keys: list[str],
+) -> bool:
+    return repos.security.user_can_access_item(
+        item_id=item_id,
+        principal_ids=principal_scope(repos, actor_principal_id),
+        permission_keys=permission_keys,
+    )
+
+
+def filter_accessible_items(
+    repos: RepositoryBundle,
+    *,
+    items: list,
+    actor_principal_id: str,
+    permission_keys: list[str],
+) -> list:
+    return [
+        item
+        for item in items
+        if can_access_item(
+            repos,
+            item_id=item.id,
+            actor_principal_id=actor_principal_id,
+            permission_keys=permission_keys,
+        )
+    ]
+
+
+def filter_accessible_links(
+    repos: RepositoryBundle,
+    *,
+    links: list,
+    actor_principal_id: str,
+    permission_keys: list[str],
+) -> list:
+    return [
+        link
+        for link in links
+        if can_access_item(
+            repos,
+            item_id=link.to_item_id,
+            actor_principal_id=actor_principal_id,
+            permission_keys=permission_keys,
+        )
+    ]
+
+
 def require_item_read(repos: RepositoryBundle, *, item_id: str, actor_principal_id: str) -> None:
     require_item_permission(
         repos,

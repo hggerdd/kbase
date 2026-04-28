@@ -1,6 +1,6 @@
 # API
 
-Status: current as of 2026-04-26.
+Status: current as of 2026-04-28.
 
 The FastAPI layer is an adapter over application capabilities. It should not
 contain separate domain logic.
@@ -312,11 +312,13 @@ Search filter semantics:
 
 ## Known API Gaps
 
-- ACL endpoints exist, but broad ACL enforcement is still `SEC-002`.
+- Explicit ACL rows are enforced across the main item, content, file, project,
+  metadata, and link-reference paths, but legacy items with no ACL rows still
+  fall back to authenticated-user visibility until a migration/backfill exists.
 - Label API/UI lifecycle wording is tracked by `LAB-002`.
 - Saved queries are intentionally local-only in the frontend for now; the
   `saved_queries` table is reserved future storage.
-- CLI auth is separate and incomplete as `SEC-006`.
+- Frontend `403` handling still needs follow-up UX work.
 
 ## Error Behavior
 

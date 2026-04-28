@@ -48,8 +48,11 @@ Implemented:
 
 Known gaps:
 
-- ACL tables and endpoints exist, but runtime ACL enforcement is incomplete.
-- CLI still defaults to local `--actor heiko`; it is not token/session based yet.
+- Item/project/file ACL checks now gate the main read/write paths, but legacy
+  items with no explicit ACL rows still fall back to authenticated-user access.
+- CLI now resolves identity from `--api-token`, `--session-token`, or the
+  matching `KBASE_*` env vars. Explicit `--actor` use is local-dev only behind
+  `--allow-local-actor`.
 - Search history is intentionally browser-local for now; `saved_queries` exists
   in the schema as unused future storage.
 - OCR, derived previews, bulk import, tasks, events, measurements, MCP, and agent
@@ -184,13 +187,19 @@ Important current split:
   50 MiB.
 - The frontend top-right chrome shows the deployment label, Git branch, commit,
   and commit date so testing sessions can confirm which build is running.
-- CLI still accepts `--actor` and defaults to `heiko`; this gap is tracked as
-  `SEC-006` in [todo.md](todo.md).
+- CLI normal commands resolve identity from `--api-token` or
+  `--session-token`, or from `KBASE_API_TOKEN` / `KBASE_SESSION_TOKEN`.
+- Bootstrap a CLI token with
+  `uv run kbase auth token-create --username heiko --token-label cli-dev --json`.
+- The compatibility `--actor` override is disabled by default and only works
+  with `--allow-local-actor`.
 
 ## CLI Examples
 
 ```powershell
 uv run kbase --help
+uv run kbase auth token-create --username heiko --token-label cli-dev --json
+$env:KBASE_API_TOKEN="<TOKEN>"
 uv run kbase note create --title "Waschmaschine vergleichen" --category research --body "Bosch vs Siemens" --json
 uv run kbase item list --item-kind note --json
 uv run kbase category list --json

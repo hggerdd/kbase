@@ -93,9 +93,10 @@ Category decision:
 
 ## Current Gaps
 
-- ACL is modeled and has API endpoints, but enforcement is incomplete.
-- CLI identity is still local actor based, not token/session based.
-- Categories are API/frontend visible but not CLI visible.
+- Legacy items with no ACL rows still fall back to authenticated-user
+  visibility.
+- Global label/category administration is authenticated but not separately
+  admin-scoped.
 - Saved queries are in the schema but not implemented as a server-backed
   capability.
 - OCR, derived previews, bulk imports, tasks, events, measurements, and MCP are
