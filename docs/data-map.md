@@ -183,8 +183,8 @@ Python tests:
 frontend/src/**/*.test.js
 ```
 
-Frontend Node tests for layout, files, notes, and search state/workspace
-behavior.
+Frontend Node tests for layout, files, notes, settings, projects, and search
+state/workspace behavior.
 
 ```text
 scripts/seed_file_viewer_test_data.py

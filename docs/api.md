@@ -1,6 +1,6 @@
 # API
 
-Status: current as of 2026-04-28.
+Status: current as of 2026-04-29.
 
 The FastAPI layer is an adapter over application capabilities. It should not
 contain separate domain logic.
@@ -127,6 +127,7 @@ Notes and items:
 - `GET /api/items/{item_id}`
 - `PATCH /api/items/{item_id}`
 - `PUT /api/items/{item_id}/content`
+- `PUT /api/items/{item_id}/projects`
 - `PATCH /api/items/{item_id}/metadata`
 - `POST /api/items/{item_id}/classification`
 
@@ -167,6 +168,7 @@ Categories:
 - `GET /api/categories`
 - `POST /api/categories`
 - `PATCH /api/categories/{category_key}`
+- `DELETE /api/categories/{category_key}`
 
 Category model:
 
@@ -205,6 +207,9 @@ Current controls:
 - Browser upload MIME types are normalized before storage and download. Known
   browser-executable types such as `text/html`, `application/xhtml+xml`, and
   `image/svg+xml` are served as `application/octet-stream`.
+- Stored file responses are served with inline content disposition so supported
+  browser preview surfaces can render images and PDFs without forcing a
+  download. Unsafe browser-executable MIME types are still neutralized.
 - Item file paths are generated from item kind, item id, title slug, and original
   extension.
 - Path traversal outside storage, raw inbox, processing inbox, or rejected inbox
@@ -233,9 +238,18 @@ Links and projects:
 
 - `POST /api/links`
 - `GET /api/items/{item_id}/links`
+- `PUT /api/items/{item_id}/projects`
 - `POST /api/projects`
 - `POST /api/projects/{project_id}/items`
 - `GET /api/projects/{project_id}/items`
+
+`POST /api/links` creates an item-to-item relation through `link_items` and
+returns the updated source item detail. The notes frontend relies on this
+server-returned detail instead of synthesizing links locally.
+
+`PUT /api/items/{item_id}/projects` replaces the complete project membership
+set for an item and returns the updated item detail. The caller must be able to
+edit the item, all currently linked projects, and all target projects.
 
 Traceability and ACL:
 
@@ -315,7 +329,6 @@ Search filter semantics:
 - Explicit ACL rows are enforced across the main item, content, file, project,
   metadata, and link-reference paths, but legacy items with no ACL rows still
   fall back to authenticated-user visibility until a migration/backfill exists.
-- Label API/UI lifecycle wording is tracked by `LAB-002`.
 - Saved queries are intentionally local-only in the frontend for now; the
   `saved_queries` table is reserved future storage.
 - Frontend `403` handling still needs follow-up UX work.

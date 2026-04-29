@@ -1,6 +1,6 @@
 # Capabilities
 
-Status: current as of 2026-04-28.
+Status: current as of 2026-04-29.
 
 This matrix shows whether each application capability is visible through API,
 CLI, frontend, and tests. Use it before adding new behavior to avoid creating
@@ -30,14 +30,15 @@ Legend:
 | Assign labels | `assign_labels` | yes | yes | no | partial | frontend uses replace flow instead |
 | Replace labels | `replace_labels` | yes | no | yes | yes | CLI command missing |
 | List labels | `list_labels` | yes | yes | yes | yes | well mirrored |
-| Create label | `create_label` | yes | yes | yes | partial | frontend settings tests missing |
-| Rename/update label | `rename_label` / `update_label` | yes | yes | yes | partial | frontend settings tests missing |
-| Deactivate label | `deactivate_label` | yes | yes | yes | partial | frontend settings tests missing |
-| Reactivate label | `reactivate_label` | yes | yes | yes | partial | frontend settings tests missing |
-| Delete label subtree | `delete_label` | yes | yes | yes | partial | frontend settings tests missing |
+| Create label | `create_label` | yes | yes | yes | yes | well mirrored |
+| Rename/update label | `rename_label` / `update_label` | yes | yes | yes | yes | well mirrored |
+| Deactivate label | `deactivate_label` | yes | yes | yes | yes | well mirrored |
+| Reactivate label | `reactivate_label` | yes | yes | yes | yes | well mirrored |
+| Delete label subtree | `delete_label` | yes | yes | yes | yes | well mirrored |
 | List categories | `list_categories` | yes | yes | yes | yes | well mirrored |
-| Create category | `create_category` | yes | yes | yes | partial | frontend settings tests missing |
-| Update category | `update_category` | yes | yes | yes | partial | frontend settings tests missing |
+| Create category | `create_category` | yes | yes | yes | yes | well mirrored |
+| Update category | `update_category` | yes | yes | yes | yes | well mirrored |
+| Delete category | `delete_category` | yes | no | yes | yes | CLI command missing; blocked when category is still referenced |
 | Classify item | `classify_item` | yes | yes | no | yes | no dedicated frontend management UI |
 | Patch metadata | `patch_item_metadata` | yes | yes | no | yes | no frontend management UI |
 | Register asset | `register_asset` | yes | yes | no | partial | frontend uses upload flows instead |
@@ -45,10 +46,11 @@ Legend:
 | Import uploaded file | `import_file_as_item` | yes | yes | yes | yes | well mirrored |
 | List inbox files | `list_inbox_files` | yes | yes | yes | partial | frontend imports tests missing |
 | Import inbox file | `import_inbox_file` | yes | yes | yes | partial | frontend imports tests missing |
-| Link items | `link_items` | yes | yes | no | partial | no frontend link manager |
-| List related items | `list_related_items` | yes | yes | partial | yes | frontend consumes links indirectly |
+| Link items | `link_items` | yes | yes | yes | partial | frontend supports note and image/PDF linking from notes; unlink UI missing |
+| List related items | `list_related_items` | yes | yes | yes | yes | frontend consumes item detail links in the notes workspace |
 | Create project | `create_project` | yes | yes | yes | yes | well mirrored |
 | Add item to project | `add_item_to_project` | yes | yes | yes | partial | dedicated CLI contract test missing |
+| Replace item projects | `replace_item_projects` | yes | no | yes | yes | CLI command missing; currently used by note project picker |
 | List project items | `list_project_items` | yes | yes | yes | partial | dedicated CLI contract test missing |
 | Get item history | `get_item_history` | yes | yes | yes | partial | API/CLI contract tests missing |
 | Get item provenance | `get_item_provenance` | yes | yes | no | partial | no frontend surface; contract tests missing |
@@ -59,7 +61,8 @@ Legend:
 
 1. `TEST-001`: keep expanding risk-driven auth/ACL/XSS/search/file coverage.
 2. Backfill or migrate legacy items that still have no explicit ACL rows.
-3. `FE-001`: add Settings/Labels and Settings/Categories frontend tests.
+3. Add focused UI tests for note link cards, linked note modals, and image/PDF
+   previews.
 4. Add contract tests for project commands, history, provenance, and ACL.
 
 ## Rule For New Work

@@ -21,6 +21,9 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-002` | partial | high | acl | Enforce ACL for reads and writes |
 | `TEST-001` | partial | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
+| `FE-004` | open | high | frontend-tests | Add focused tests for note linked-resource UI |
+| `NOTE-002` | open | medium | notes | Add unlink support for item links |
+| `ARCH-003` | open | medium | architecture | Move linked-resource detail loading into feature state |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
 | `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
@@ -33,24 +36,22 @@ planning project before changing code. Start each group by reading the listed
 sources, writing a short implementation plan in the thread, and identifying the
 tests that will prove the behavior.
 
-1. Security and identity foundation: `SEC-002`, `SEC-006`, `TEST-001`,
-   `DOC-001`.
+1. Security and identity foundation: `SEC-002`, `TEST-001`, `DOC-001`.
 
    Goal: make runtime authorization and non-browser identity reliable before
    adding more integration surfaces. `SEC-002` should come before `MCP-001`
    because agent/API adapters must not expose operations that bypass ACL.
-   `SEC-006` should be planned with API token/session docs so CLI examples do
-   not keep normalizing the legacy actor default. `TEST-001` and `DOC-001` are
-   cross-cutting work and should be updated as part of each security change, not
-   left until the end.
+   `TEST-001` and `DOC-001` are cross-cutting work and should be updated as part
+   of each security change, not left until the end.
 
-2. File workspace performance and UX: `FILE-001`, `FILE-002`, `TEST-001`,
-   `DOC-001`.
+2. File and linked-resource performance and UX: `FILE-001`, `FILE-002`,
+   `FE-004`, `ARCH-003`, `TEST-001`, `DOC-001`.
 
    Goal: make the file explorer scalable and predictable before broadening file
    automation. `FILE-001` defines the backend contract and loading model;
    `FILE-002` should build on that contract so preview and summary behavior do
-   not depend on eager detail fetches for every file.
+   not depend on eager detail fetches for every file. `ARCH-003` should keep the
+   note linked-resource preview path aligned with the same state/loading model.
 
 3. Automation pipeline: `AUTO-001`, with follow-up updates to `FILE-001`,
    `FILE-002`, `TEST-001`, and `DOC-001` where needed.
@@ -60,8 +61,7 @@ tests that will prove the behavior.
    with a pipeline design and failure model before implementation because it
    touches files, metadata, provenance, audit, and background processing.
 
-4. Agent integration: `MCP-001`, after meaningful progress on `SEC-002` and
-   `SEC-006`.
+4. Agent integration: `MCP-001`, after meaningful progress on `SEC-002`.
 
    Goal: expose existing capabilities to agents without creating new business
    logic or an alternate permission model. The adapter should be thin, auditable,
@@ -405,6 +405,78 @@ Acceptance:
 - Project-scoped note creation keeps the active project context.
 - Frontend docs and focused tests reflect the new navigation and home behavior.
 
+### `FE-004` Add Focused Tests For Note Linked-Resource UI
+
+Source: `frontend/src/pages/notes/components/NoteMetaPanel.jsx`,
+`frontend/src/features/notes/workspace.test.js`,
+`frontend/src/features/files/api.js`, recent note-link and file-preview
+behavior.
+
+Planning:
+
+- Treat this as UI regression coverage for behavior that already exists, not as
+  a broad browser automation project.
+- Cover linked note cards, note detail modal loading, linked image cards, linked
+  PDF cards, unsupported file fallback states, and background scroll lock.
+- Use small component or workspace harnesses that mock API responses clearly.
+- Keep the tests independent of local runtime files.
+
+Acceptance:
+
+- Linked notes render with note affordance and open a modal with fetched note
+  content.
+- Linked image and PDF file items fetch file-item detail before building preview
+  URLs.
+- Image thumbnails preserve aspect ratio instead of cropping.
+- Unsupported file kinds render without a broken preview action.
+- Tests fail if links are rendered only as plain text again.
+
+### `NOTE-002` Add Unlink Support For Item Links
+
+Source: `link_items`, `item_links`, notes `Files and links` panel,
+`docs/product-model.md`.
+
+Planning:
+
+- Add a capability for removing an item link instead of deleting rows directly
+  from the API or frontend.
+- Define whether unlink uses link id, `(from_item_id, to_item_id, link_type)`,
+  or both.
+- Preserve audit/provenance and ACL checks on the source item and, where
+  appropriate, the target item.
+- Decide how the UI presents unlink for note links versus file links.
+
+Acceptance:
+
+- Backend capability removes a link with audit/provenance.
+- API exposes the capability and returns the updated source item detail.
+- Notes UI can remove linked notes and linked file items.
+- Tests cover allowed unlink, forbidden unlink, and UI state refresh.
+
+### `ARCH-003` Move Linked-Resource Detail Loading Into Feature State
+
+Source: `frontend/src/pages/notes/components/NoteMetaPanel.jsx`,
+`frontend/src/features/notes/hooks.js`, `frontend/src/features/files/api.js`.
+
+Planning:
+
+- The current linked file preview implementation is functional but the page
+  component directly fetches file-item detail. Move that orchestration into the
+  notes feature hook or a small feature helper so the component remains
+  presentation-oriented.
+- Align loading, error, cache invalidation, and selected-note changes with the
+  existing notes workspace state model.
+- Keep file content URL construction in a shared API helper.
+
+Acceptance:
+
+- `NoteMetaPanel` receives linked-resource preview state and actions from the
+  workspace instead of owning API detail fetches.
+- Loading and failed preview states are explicit in UI state.
+- Tests cover selected-note changes so stale linked file details do not leak
+  between notes.
+- Frontend docs still describe the final behavior.
+
 ### `DOC-001` Keep Canonical Docs Synced
 
 Source: README, docs map, architecture, API, frontend, data map, auth/ACL,
@@ -498,6 +570,7 @@ Acceptance:
 | `FE-SEARCH-001` | done | search | Global search state and explicit Search page exist. |
 | `FE-FILES-001` | done | files | Files page with configurable explorer tree and test seed files exists. |
 | `FE-NOTES-001` | done | notes | Notes autosave with debounce exists. |
+| `FE-NOTES-002` | done | notes | Notes can change project membership and link notes or image/PDF file items with modals and previews. |
 | `LAB-BASE-001` | done | labels | Hierarchical label nodes, label assignment, label replacement, and label settings exist. |
 | `CAT-BASE-001` | done | categories | Category API and Settings/Categories frontend exist. |
 | `PROJ-BASE-001` | done | projects | Project create/add/list capabilities, API endpoints, CLI commands, and page exist. |

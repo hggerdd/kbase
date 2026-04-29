@@ -22,6 +22,7 @@ Implemented pages:
 - Settings
   - Labels
   - Categories
+  - Projects
 
 Implemented app concerns:
 
@@ -41,6 +42,11 @@ Implemented app concerns:
   state for the user to reload or reconcile.
 - Home note filters use existing capabilities and endpoints for note search,
   category scoping, project scoping, and label subtree scoping.
+- Notes can change their project membership from the note header through
+  `PUT /api/items/{item_id}/projects`.
+- Notes can link other notes and file-backed items through `POST /api/links`.
+  Linked notes open in a modal, and linked images/PDFs open in a file preview
+  modal.
 - The top-right app chrome shows the deployment label, Git branch, short commit,
   and commit date from Vite build metadata.
 - Plain CSS styling in `frontend/src/styles.css`.
@@ -53,6 +59,7 @@ Not implemented or incomplete:
 - CLI/token account flow in the frontend.
 - Dedicated management UIs for metadata, provenance, and ACL.
 - OCR/preview generation pipeline.
+- Derived thumbnail/PDF preview generation pipeline.
 - Broad browser/E2E smoke coverage.
 
 Search history:
@@ -146,6 +153,8 @@ Notes:
 - `PUT /api/items/{item_id}/content`
 - `GET /api/items/{item_id}/history`
 - `PUT /api/items/{item_id}/labels`
+- `PUT /api/items/{item_id}/projects`
+- `POST /api/links`
 
 Home/notes workspace behavior:
 
@@ -157,6 +166,11 @@ Home/notes workspace behavior:
   hierarchy semantics that the backend does not support.
 - Label filters use subtree/prefix semantics through label path prefixes.
 - If a project is selected in Home, newly created notes keep that project scope.
+- The note editor exposes the current project under the title. Changing it
+  replaces the note's project membership through the backend capability.
+- The `Files and links` panel can add note links and image/PDF file-item links.
+  Existing linked notes are clickable cards; image/PDF file links are clickable
+  preview cards.
 
 Search:
 
@@ -187,12 +201,26 @@ Files and imports:
 - `GET /api/inbox/files`
 - `POST /api/inbox/import`
 
+Preview behavior:
+
+- The Files page currently renders PDFs in the preview frame.
+- The note link panel renders linked image and PDF file items in a modal. It
+  loads the linked file item detail before building the content URL.
+- Image thumbnails preserve aspect ratio with letterboxing instead of cropping.
+- Unsupported linked file formats show a file card without a preview action.
+
 Projects:
 
 - `POST /api/projects`
 - `POST /api/projects/{project_id}/items`
 - `GET /api/projects/{project_id}/items`
 - shared item/list/search endpoints
+
+Settings/Projects:
+
+- Settings exposes Projects alongside Labels and Categories.
+- Project deletion in settings archives the project from the active list; linked
+  items remain.
 
 Labels:
 

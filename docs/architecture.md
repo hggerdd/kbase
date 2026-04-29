@@ -86,6 +86,9 @@ Category decision:
 - Hierarchical organization belongs to labels.
 - `item_links`: relations between items.
 - `project_items`: project-to-item membership.
+- Item-to-project replacement is a capability (`replace_item_projects`) because
+  moving a note between projects affects shared project membership state and
+  must enforce permissions on the item and the touched projects.
 - `item_metadata`: typed metadata fields.
 - `audit_events` and `provenance_records`: traceability.
 - `users`, `user_sessions`, `api_tokens`, `principals`,
@@ -99,6 +102,8 @@ Category decision:
   admin-scoped.
 - Saved queries are in the schema but not implemented as a server-backed
   capability.
+- Note-linked image/PDF previews currently render originals inline. Generated
+  preview derivatives are not implemented yet.
 - OCR, derived previews, bulk imports, tasks, events, measurements, and MCP are
   future work.
 
