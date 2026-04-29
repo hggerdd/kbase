@@ -49,3 +49,10 @@ test("unsupported linked file formats render without a preview action", () => {
   assert.match(noteMetaPanelSource, /canPreview \? \(/);
   assert.match(noteMetaPanelSource, /<div className="linked-resource-card linked-file-card">\{body\}<\/div>/);
 });
+
+test("linked resources expose an unlink action through the workspace", () => {
+  assert.match(noteMetaPanelSource, /linked-resource-remove/);
+  assert.match(noteMetaPanelSource, /workspace\.handleUnlinkExistingItem/);
+  assert.match(hooksSource, /unlinkNoteItem\(linkId\)/);
+  assert.match(hooksSource, /setNotice\("Item unlinked"\)/);
+});

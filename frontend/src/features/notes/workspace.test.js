@@ -867,6 +867,16 @@ test("workspace keeps the current note title unchanged when linking another note
         related_items: [{ id: "note-b", title: "Beta", item_kind: "note", category_key: "decision", status: "active" }],
       });
     }
+    if (value.endsWith("/api/links/link-1") && method === "DELETE") {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [],
+        related_items: [],
+      });
+    }
     if (value.endsWith("/api/items/note-a")) {
       return createResponse({
         item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
@@ -908,6 +918,16 @@ test("workspace keeps the current note title unchanged when linking another note
     assert.equal(latestWorkspace.selectedNote.outgoing_links.length, 1);
     assert.equal(latestWorkspace.selectedNote.outgoing_links[0].to_item_id, "note-b");
     assert.equal(latestWorkspace.selectedNote.outgoing_links[0].link_type, "related");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleUnlinkExistingItem("link-1");
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.notice, "Item unlinked");
+    assert.equal(latestWorkspace.selectedNote.item.title, "Alpha");
+    assert.equal(latestWorkspace.selectedNote.related_items.length, 0);
+    assert.equal(latestWorkspace.selectedNote.outgoing_links.length, 0);
   });
 
   await act(async () => {

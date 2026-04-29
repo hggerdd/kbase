@@ -46,7 +46,7 @@ Implemented app concerns:
   `PUT /api/items/{item_id}/projects`.
 - Notes can link other notes and file-backed items through `POST /api/links`.
   Linked notes open in a modal, and linked images/PDFs open in a file preview
-  modal.
+  modal. Existing linked items can be unlinked from the same panel.
 - The top-right app chrome shows the deployment label, Git branch, short commit,
   and commit date from Vite build metadata.
 - Plain CSS styling in `frontend/src/styles.css`.
@@ -155,6 +155,7 @@ Notes:
 - `PUT /api/items/{item_id}/labels`
 - `PUT /api/items/{item_id}/projects`
 - `POST /api/links`
+- `DELETE /api/links/{link_id}`
 
 Home/notes workspace behavior:
 
@@ -170,7 +171,7 @@ Home/notes workspace behavior:
   replaces the note's project membership through the backend capability.
 - The `Files and links` panel can add note links and image/PDF file-item links.
   Existing linked notes are clickable cards; image/PDF file links are clickable
-  preview cards.
+  preview cards. Linked note and file-item cards expose an unlink action.
 
 Search:
 

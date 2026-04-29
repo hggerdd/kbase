@@ -28,6 +28,7 @@ from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
 from kbase.application.capabilities.update_item_core import update_item_core
+from kbase.application.capabilities.unlink_items import unlink_items
 from kbase.application.dto.capabilities import (
     AddItemToProjectInput,
     AssignLabelsInput,
@@ -53,6 +54,7 @@ from kbase.application.dto.capabilities import (
     ReplaceItemAclInput,
     ReplaceItemProjectsInput,
     SearchContentInput,
+    UnlinkItemsInput,
     UpdateItemCoreInput,
 )
 from kbase.core.value_objects.actor import ActorContext
@@ -446,6 +448,53 @@ def test_list_related_items_returns_linked_item_refs(session_factory) -> None:
     )
 
     assert [entry.title for entry in result.related_items] == ["Second"]
+
+
+def test_unlink_items_removes_existing_link(session_factory) -> None:
+    first = create_note(
+        CreateNoteInput(
+            title="First",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    second = create_note(
+        CreateNoteInput(
+            title="Second",
+            category_key="reference",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    link_items(
+        LinkItemsInput(
+            from_item_id=first.item.id,
+            to_item_id=second.item.id,
+            link_type="related",
+            actor=actor(),
+            provenance=provenance("test.link_items"),
+        ),
+        session_factory=session_factory,
+    )
+    linked_detail = get_item(GetItemInput(item_id=first.item.id, actor=actor()), session_factory=session_factory)
+    link_id = linked_detail.outgoing_links[0].id
+
+    result = unlink_items(
+        UnlinkItemsInput(link_id=link_id, actor=actor(), provenance=provenance("test.unlink_items")),
+        session_factory=session_factory,
+    )
+
+    assert result.id == first.item.id
+    related = list_related_items(
+        ListRelatedItemsInput(item_id=first.item.id, actor=actor()),
+        session_factory=session_factory,
+    )
+    assert related.related_items == []
 
 
 def test_list_project_items_returns_only_project_members(session_factory) -> None:

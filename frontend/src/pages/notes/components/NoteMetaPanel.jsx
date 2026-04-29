@@ -327,6 +327,7 @@ export function NoteMetaPanel({ workspace }) {
   const selectedNote = workspace.selectedNote;
   const [activeModal, setActiveModal] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const linkedLinksByItemId = new Map((selectedNote?.outgoing_links ?? []).map((link) => [link.to_item_id, link]));
   const linkedTypeByItemId = new Map(
     (selectedNote?.outgoing_links ?? []).map((link) => [link.to_item_id, link.link_type]),
   );
@@ -378,10 +379,21 @@ export function NoteMetaPanel({ workspace }) {
                   ) : (
                     <div className="linked-resource-card linked-file-card">{body}</div>
                   )}
+                  {link ? (
+                    <button
+                      className="secondary compact-button linked-resource-remove"
+                      type="button"
+                      disabled={workspace.linking}
+                      onClick={() => void workspace.handleUnlinkExistingItem(link.id)}
+                    >
+                      Unlink
+                    </button>
+                  ) : null}
                 </li>
               );
             })}
             {relatedFiles.map((linkedItem) => {
+              const link = linkedLinksByItemId.get(linkedItem.id);
               const detail = workspace.linkedFileDetails[linkedItem.id];
               const linkedFile = detail?.files?.[0] ?? null;
               const canPreview = Boolean(linkedFile) && (isImageFile(linkedFile) || isPdfFile(linkedFile));
@@ -436,6 +448,16 @@ export function NoteMetaPanel({ workspace }) {
                     </span>
                   </div>
                 </button>
+                {linkedLinksByItemId.get(linkedItem.id) ? (
+                  <button
+                    className="secondary compact-button linked-resource-remove"
+                    type="button"
+                    disabled={workspace.linking}
+                    onClick={() => void workspace.handleUnlinkExistingItem(linkedLinksByItemId.get(linkedItem.id).id)}
+                  >
+                    Unlink
+                  </button>
+                ) : null}
               </li>
             ))}
             {!hasLinks ? (

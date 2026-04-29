@@ -46,7 +46,8 @@ Legend:
 | Import uploaded file | `import_file_as_item` | yes | yes | yes | yes | well mirrored |
 | List inbox files | `list_inbox_files` | yes | yes | yes | partial | frontend imports tests missing |
 | Import inbox file | `import_inbox_file` | yes | yes | yes | partial | frontend imports tests missing |
-| Link items | `link_items` | yes | yes | yes | partial | frontend supports note and image/PDF linking from notes; unlink UI missing |
+| Link items | `link_items` | yes | yes | yes | partial | frontend supports note and image/PDF linking from notes |
+| Unlink items | `unlink_items` | yes | no | yes | yes | CLI command missing |
 | List related items | `list_related_items` | yes | yes | yes | yes | frontend consumes item detail links in the notes workspace |
 | Create project | `create_project` | yes | yes | yes | yes | well mirrored |
 | Add item to project | `add_item_to_project` | yes | yes | yes | partial | dedicated CLI contract test missing |

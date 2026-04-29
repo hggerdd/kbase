@@ -77,7 +77,7 @@ Item link:
 - Used by notes to make explicit relationships to other notes and file-backed
   items.
 - The current notes UI supports adding note links and image/PDF file links.
-  Removing links is still follow-up work.
+- The current notes UI supports removing existing note and file links.
 
 Principal:
 

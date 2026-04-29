@@ -180,6 +180,14 @@ class LinkItemsInput(BaseModel):
     provenance: ProvenanceInput
 
 
+class UnlinkItemsInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    link_id: str
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
 class ClassifyItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

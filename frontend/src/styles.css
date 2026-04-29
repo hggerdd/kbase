@@ -2148,6 +2148,11 @@ button:disabled {
   list-style: none;
 }
 
+.linked-resource-list li {
+  display: grid;
+  gap: 8px;
+}
+
 .linked-resource-card {
   width: 100%;
   display: grid;
@@ -2160,6 +2165,12 @@ button:disabled {
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   text-align: left;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.linked-resource-remove {
+  justify-self: end;
+  min-height: 32px;
+  padding: 6px 10px;
 }
 
 .linked-resource-card.interactive {

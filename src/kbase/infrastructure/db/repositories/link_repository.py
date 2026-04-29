@@ -50,3 +50,9 @@ class LinkRepository:
         )
         return list(self.session.scalars(stmt))
 
+    def get_link(self, link_id: str) -> ItemLinkModel | None:
+        return self.session.get(ItemLinkModel, link_id)
+
+    def delete_link(self, link: ItemLinkModel) -> None:
+        self.session.delete(link)
+        self.session.flush()

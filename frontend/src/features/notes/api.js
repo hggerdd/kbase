@@ -119,6 +119,12 @@ export async function linkNoteItem(fromItemId, toItemId, { linkType = "related",
   });
 }
 
+export async function unlinkNoteItem(linkId) {
+  return request(`/api/links/${linkId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function uploadAttachment(
   itemId,
   file,

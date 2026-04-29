@@ -525,6 +525,41 @@ def test_api_link_items_returns_updated_source_note_detail(monkeypatch, tmp_path
     assert [link["link_type"] for link in payload["outgoing_links"]] == ["related"]
 
 
+def test_api_unlink_items_returns_updated_source_note_detail(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    source = client.post(
+        "/api/notes",
+        json={"title": "Source note", "category_key": "research", "markdown_body": "Source body"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert source.status_code == 200
+    source_id = source.json()["item"]["id"]
+
+    target = client.post(
+        "/api/notes",
+        json={"title": "Target note", "category_key": "decision", "markdown_body": "Target body"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert target.status_code == 200
+    target_id = target.json()["item"]["id"]
+
+    linked = client.post(
+        "/api/links",
+        json={"from_item_id": source_id, "to_item_id": target_id, "link_type": "related"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert linked.status_code == 200
+    link_id = linked.json()["outgoing_links"][0]["id"]
+
+    unlinked = client.delete(f"/api/links/{link_id}", headers={"x-kbase-actor": "heiko"})
+    assert unlinked.status_code == 200
+    payload = unlinked.json()
+    assert payload["item"]["id"] == source_id
+    assert payload["related_items"] == []
+    assert payload["outgoing_links"] == []
+
+
 def test_api_can_replace_note_project_membership(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
 

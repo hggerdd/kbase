@@ -15,6 +15,7 @@ import {
   replaceNoteProjects,
   replaceNoteContent,
   searchLinkCandidates,
+  unlinkNoteItem,
   updateNoteCore,
   uploadAttachment,
 } from "./api.js";
@@ -814,6 +815,32 @@ export function useNotesWorkspace({
     }
   }
 
+  async function handleUnlinkExistingItem(linkId) {
+    const itemId = selectedIdRef.current;
+    if (!itemId || !linkId) {
+      return false;
+    }
+
+    setLinking(true);
+    setError("");
+    setNotice("");
+    try {
+      const [notePayload, historyPayload] = await Promise.all([
+        unlinkNoteItem(linkId),
+        fetchHistory(itemId),
+      ]);
+      commitSelectedNote(notePayload);
+      setHistory(historyPayload.events);
+      setNotice("Item unlinked");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLinking(false);
+    }
+  }
+
   async function openLinkedNotePreview(note) {
     const requestId = ++linkedNotePreviewRequestRef.current;
     setLinkedNotePreview({
@@ -883,6 +910,7 @@ export function useNotesWorkspace({
     handleSearchLinkCandidates,
     handleSearchSubmit,
     handleSelectNote,
+    handleUnlinkExistingItem,
     handleUploadAttachment,
     history,
     linkCandidateResults,

@@ -48,6 +48,7 @@ from kbase.application.capabilities.search_content import search_content
 from kbase.application.capabilities.update_label import update_label
 from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.update_item_core import update_item_core
+from kbase.application.capabilities.unlink_items import unlink_items
 from kbase.application.capabilities.login_user import login_user
 from kbase.application.capabilities.logout_user import logout_user
 from kbase.application.dto.capabilities import (
@@ -97,6 +98,7 @@ from kbase.application.dto.capabilities import (
     ReplaceItemProjectsInput,
     SearchContentInput,
     SearchContentResult,
+    UnlinkItemsInput,
     UpdateCategoryInput,
     UpdateLabelInput,
     UpdateItemCoreInput,
@@ -914,6 +916,20 @@ def create_app() -> FastAPI:
             )
         )
         return get_item(GetItemInput(item_id=payload.from_item_id, actor=actor))
+
+    @app.delete("/api/links/{link_id}", response_model=ItemDetailResult)
+    def unlink_items_endpoint(
+        link_id: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> ItemDetailResult:
+        source = unlink_items(
+            UnlinkItemsInput(
+                link_id=link_id,
+                actor=actor,
+                provenance=_provenance("api.unlink_items"),
+            )
+        )
+        return get_item(GetItemInput(item_id=source.id, actor=actor))
 
     @app.put("/api/items/{item_id}/projects", response_model=ItemDetailResult)
     def replace_item_projects_endpoint(
