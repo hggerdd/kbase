@@ -34,8 +34,12 @@ export async function fetchNotes(
   return payload.items;
 }
 
-export async function fetchNote(itemId) {
+export async function fetchItemDetail(itemId) {
   return request(`/api/items/${itemId}`);
+}
+
+export async function fetchNote(itemId) {
+  return fetchItemDetail(itemId);
 }
 
 export async function createNote(input) {

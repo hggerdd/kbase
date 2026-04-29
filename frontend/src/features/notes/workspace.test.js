@@ -765,6 +765,25 @@ test("workspace can load recent image candidates and link one to the selected no
         related_items: linkCreated ? [{ id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image" }] : [],
       });
     }
+    if (value.endsWith("/api/items/image-1")) {
+      return createResponse({
+        item: { id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image" },
+        primary_content_part: null,
+        labels: [],
+        files: [
+          {
+            id: "file-1",
+            original_filename: "whiteboard.png",
+            relative_path: "images/whiteboard.png",
+            mime_type: "image/png",
+            size_bytes: 1234,
+            file_role: "original",
+          },
+        ],
+        outgoing_links: [],
+        related_items: [],
+      });
+    }
     throw new Error(`Unhandled fetch: ${method} ${value}`);
   };
 
@@ -793,6 +812,7 @@ test("workspace can load recent image candidates and link one to the selected no
     assert.equal(latestWorkspace.selectedNote.related_items.length, 1);
     assert.equal(latestWorkspace.selectedNote.related_items[0].id, "image-1");
     assert.equal(latestWorkspace.selectedNote.outgoing_links[0].link_type, "attachment");
+    assert.equal(latestWorkspace.linkedFileDetails["image-1"].files[0].id, "file-1");
   });
 
   await act(async () => {
