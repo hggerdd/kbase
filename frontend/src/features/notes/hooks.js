@@ -3,6 +3,7 @@ import TurndownService from "turndown";
 import { renderMarkdownToSafeHtml, sanitizeRichHtml } from "../../shared/utils/rich-content.js";
 import {
   createNote,
+  fetchItemDetail,
   fetchHistory,
   fetchLabels,
   fetchNote,
@@ -32,6 +33,10 @@ function getAutosaveDelayMs() {
   return globalThis.__KBASE_AUTOSAVE_DELAY_MS__ ?? 700;
 }
 
+function isLinkedFileItem(item) {
+  return item?.item_kind !== "note";
+}
+
 export function useNotesWorkspace({
   createProjectId = null,
   externalSearch = "",
@@ -42,6 +47,8 @@ export function useNotesWorkspace({
   const noteRequestRef = useRef(0);
   const pendingSelectionLoadRef = useRef(null);
   const selectionActionRef = useRef(0);
+  const linkedFileDetailRequestRef = useRef(0);
+  const linkedNotePreviewRequestRef = useRef(0);
   const autosaveTimerRef = useRef(null);
   const lastPersistedEditorRef = useRef(serializeEditorState(emptyEditor()));
   const persistedEditorByNoteIdRef = useRef(new Map());
@@ -71,6 +78,15 @@ export function useNotesWorkspace({
   const [linkCandidateResults, setLinkCandidateResults] = useState([]);
   const [linkSearchLoading, setLinkSearchLoading] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [linkedFileDetails, setLinkedFileDetails] = useState({});
+  const [linkedFileDetailErrors, setLinkedFileDetailErrors] = useState({});
+  const [linkedNotePreview, setLinkedNotePreview] = useState({
+    detail: null,
+    error: "",
+    loading: false,
+    note: null,
+    renderedBody: "",
+  });
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -83,6 +99,11 @@ export function useNotesWorkspace({
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+
+  const linkedFileIds = (selectedNote?.related_items ?? [])
+    .filter((item) => isLinkedFileItem(item))
+    .map((item) => item.id);
+  const linkedFileIdsKey = linkedFileIds.join("|");
 
   function clearAutosaveTimer() {
     if (autosaveTimerRef.current) {
@@ -540,6 +561,9 @@ export function useNotesWorkspace({
     commitSelectedNote(null);
     setSelectedNoteLoading(false);
     setHistory([]);
+    setLinkedFileDetails({});
+    setLinkedFileDetailErrors({});
+    setLinkedNotePreview({ detail: null, error: "", loading: false, note: null, renderedBody: "" });
     const nextEditor = emptyEditor();
     commitEditor(nextEditor);
     lastPersistedEditorRef.current = serializeEditorState(nextEditor);
@@ -647,6 +671,72 @@ export function useNotesWorkspace({
     }
   }
 
+  useEffect(() => {
+    const requestId = ++linkedFileDetailRequestRef.current;
+    const fileIds = linkedFileIds;
+
+    setLinkedFileDetails((current) => {
+      const next = {};
+      for (const itemId of fileIds) {
+        if (current[itemId]) {
+          next[itemId] = current[itemId];
+        }
+      }
+      return next;
+    });
+    setLinkedFileDetailErrors((current) => {
+      const next = {};
+      for (const itemId of fileIds) {
+        if (current[itemId]) {
+          next[itemId] = current[itemId];
+        }
+      }
+      return next;
+    });
+
+    async function loadLinkedFileDetails() {
+      const entries = await Promise.all(
+        fileIds.map(async (itemId) => {
+          try {
+            const detail = await fetchItemDetail(itemId);
+            return [itemId, { detail, error: "" }];
+          } catch (err) {
+            return [itemId, { detail: null, error: err.message }];
+          }
+        }),
+      );
+
+      if (requestId !== linkedFileDetailRequestRef.current) {
+        return;
+      }
+
+      setLinkedFileDetails((current) => {
+        const next = {};
+        for (const [itemId, result] of entries) {
+          if (result.detail) {
+            next[itemId] = result.detail;
+          } else if (current[itemId]) {
+            next[itemId] = current[itemId];
+          }
+        }
+        return next;
+      });
+      setLinkedFileDetailErrors(() => {
+        const next = {};
+        for (const [itemId, result] of entries) {
+          if (result.error) {
+            next[itemId] = result.error;
+          }
+        }
+        return next;
+      });
+    }
+
+    if (fileIds.length > 0) {
+      void loadLinkedFileDetails();
+    }
+  }, [selectedId, linkedFileIdsKey]);
+
   async function updateSelectedNoteProjects(projectIds) {
     const itemId = selectedIdRef.current;
     if (!itemId) {
@@ -724,6 +814,57 @@ export function useNotesWorkspace({
     }
   }
 
+  async function openLinkedNotePreview(note) {
+    const requestId = ++linkedNotePreviewRequestRef.current;
+    setLinkedNotePreview({
+      detail: null,
+      error: "",
+      loading: true,
+      note,
+      renderedBody: "",
+    });
+
+    try {
+      const detail = await fetchNote(note.id);
+      const markdown = detail?.primary_content_part?.content_text ?? "";
+      const renderedBody = await renderMarkdownToSafeHtml(markdown);
+      if (requestId !== linkedNotePreviewRequestRef.current) {
+        return false;
+      }
+      setLinkedNotePreview({
+        detail,
+        error: "",
+        loading: false,
+        note,
+        renderedBody,
+      });
+      return true;
+    } catch (err) {
+      if (requestId !== linkedNotePreviewRequestRef.current) {
+        return false;
+      }
+      setLinkedNotePreview({
+        detail: null,
+        error: err.message,
+        loading: false,
+        note,
+        renderedBody: "",
+      });
+      return false;
+    }
+  }
+
+  function closeLinkedNotePreview() {
+    linkedNotePreviewRequestRef.current += 1;
+    setLinkedNotePreview({
+      detail: null,
+      error: "",
+      loading: false,
+      note: null,
+      renderedBody: "",
+    });
+  }
+
   return {
     attachmentFile,
     autosaveState,
@@ -745,6 +886,9 @@ export function useNotesWorkspace({
     handleUploadAttachment,
     history,
     linkCandidateResults,
+    linkedFileDetailErrors,
+    linkedFileDetails,
+    linkedNotePreview,
     linking,
     linkSearchLoading,
     loading,
@@ -756,6 +900,8 @@ export function useNotesWorkspace({
     selectedNote,
     selectedNoteLoading,
     runSearch,
+    closeLinkedNotePreview,
+    openLinkedNotePreview,
     setAttachmentFile,
     setDraft,
     setEditor: commitEditor,

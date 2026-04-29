@@ -1,7 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { fetchFileItemDetail, getFileContentUrl } from "../../../features/files/api.js";
-import { fetchNote } from "../../../features/notes/api.js";
-import { renderMarkdownToSafeHtml } from "../../../shared/utils/rich-content";
+import React, { useEffect, useState } from "react";
+import { getFileContentUrl } from "../../../features/files/api.js";
 import { ImageFileIcon, NoteIcon, PdfFileIcon, TextFileIcon } from "../../../shared/ui/Icons";
 import { formatDuration, formatFileSize } from "../../../shared/utils/format";
 
@@ -226,46 +224,9 @@ function LinkItemModal({ mode, workspace, onClose }) {
   );
 }
 
-function LinkedNoteModal({ note, onClose }) {
-  const [detail, setDetail] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [renderedBody, setRenderedBody] = useState("");
-  const requestRef = useRef(0);
+function LinkedNoteModal({ preview, onClose }) {
+  const { detail, error, loading, note, renderedBody } = preview;
   useBodyScrollLock(true);
-
-  useEffect(() => {
-    const requestId = requestRef.current + 1;
-    requestRef.current = requestId;
-    setDetail(null);
-    setError("");
-    setLoading(true);
-    setRenderedBody("");
-
-    async function load() {
-      try {
-        const payload = await fetchNote(note.id);
-        const markdown = payload?.primary_content_part?.content_text ?? "";
-        const safeHtml = await renderMarkdownToSafeHtml(markdown);
-        if (requestRef.current !== requestId) {
-          return;
-        }
-        setDetail(payload);
-        setRenderedBody(safeHtml);
-      } catch (loadError) {
-        if (requestRef.current !== requestId) {
-          return;
-        }
-        setError(loadError.message);
-      } finally {
-        if (requestRef.current === requestId) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void load();
-  }, [note.id]);
 
   return (
     <div className="modal-backdrop" role="presentation" onClick={onClose}>
@@ -365,9 +326,7 @@ function LinkedFileModal({ file, itemId, onClose }) {
 export function NoteMetaPanel({ workspace }) {
   const selectedNote = workspace.selectedNote;
   const [activeModal, setActiveModal] = useState(null);
-  const [previewNote, setPreviewNote] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
-  const [relatedFileDetails, setRelatedFileDetails] = useState({});
   const linkedTypeByItemId = new Map(
     (selectedNote?.outgoing_links ?? []).map((link) => [link.to_item_id, link.link_type]),
   );
@@ -377,66 +336,6 @@ export function NoteMetaPanel({ workspace }) {
   const relatedFiles = relatedItems.filter((item) => isPreviewableRelatedItem(item));
   const hasLinks = files.length > 0 || relatedItems.length > 0;
   const selectedItemId = selectedNote?.item?.id ?? "";
-
-  useEffect(() => {
-    let cancelled = false;
-    const fileItems = relatedItems.filter((item) => isPreviewableRelatedItem(item));
-
-    setRelatedFileDetails((current) => {
-      const next = {};
-      for (const item of fileItems) {
-        if (current[item.id]) {
-          next[item.id] = current[item.id];
-        }
-      }
-      const currentKeys = Object.keys(current);
-      const nextKeys = Object.keys(next);
-      if (
-        currentKeys.length === nextKeys.length &&
-        nextKeys.every((key) => current[key] === next[key])
-      ) {
-        return current;
-      }
-      return next;
-    });
-
-    async function loadDetails() {
-      const entries = await Promise.all(
-        fileItems.map(async (item) => {
-          try {
-            const detail = await fetchFileItemDetail(item.id);
-            return [item.id, detail];
-          } catch {
-            return [item.id, null];
-          }
-        }),
-      );
-
-      if (cancelled) {
-        return;
-      }
-
-      setRelatedFileDetails((current) => {
-        const next = {};
-        for (const [itemId, detail] of entries) {
-          if (detail) {
-            next[itemId] = detail;
-          } else if (current[itemId]) {
-            next[itemId] = current[itemId];
-          }
-        }
-        return next;
-      });
-    }
-
-    if (fileItems.length > 0) {
-      void loadDetails();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [relatedItems]);
 
   return (
     <>
@@ -472,7 +371,7 @@ export function NoteMetaPanel({ workspace }) {
                     <button
                       type="button"
                       className="linked-resource-card linked-file-card interactive"
-                      onClick={() => setPreviewFile(file)}
+                      onClick={() => setPreviewFile({ file, itemId: selectedItemId })}
                     >
                       {body}
                     </button>
@@ -483,7 +382,7 @@ export function NoteMetaPanel({ workspace }) {
               );
             })}
             {relatedFiles.map((linkedItem) => {
-              const detail = relatedFileDetails[linkedItem.id];
+              const detail = workspace.linkedFileDetails[linkedItem.id];
               const linkedFile = detail?.files?.[0] ?? null;
               const canPreview = Boolean(linkedFile) && (isImageFile(linkedFile) || isPdfFile(linkedFile));
               const body = (
@@ -525,7 +424,7 @@ export function NoteMetaPanel({ workspace }) {
                 <button
                   type="button"
                   className="linked-resource-card linked-note-card interactive"
-                  onClick={() => setPreviewNote(linkedItem)}
+                  onClick={() => void workspace.openLinkedNotePreview(linkedItem)}
                 >
                   <span className="linked-note-icon">
                     <NoteIcon />
@@ -572,7 +471,9 @@ export function NoteMetaPanel({ workspace }) {
         </div>
       </div>
       {activeModal ? <LinkItemModal mode={activeModal} workspace={workspace} onClose={() => setActiveModal(null)} /> : null}
-      {previewNote ? <LinkedNoteModal note={previewNote} onClose={() => setPreviewNote(null)} /> : null}
+      {workspace.linkedNotePreview.note ? (
+        <LinkedNoteModal preview={workspace.linkedNotePreview} onClose={workspace.closeLinkedNotePreview} />
+      ) : null}
       {previewFile ? (
         <LinkedFileModal file={previewFile.file} itemId={previewFile.itemId} onClose={() => setPreviewFile(null)} />
       ) : null}

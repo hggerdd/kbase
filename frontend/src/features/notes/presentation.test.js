@@ -7,6 +7,7 @@ const noteMetaPanelSource = readFileSync(
   resolve(process.cwd(), "src/pages/notes/components/NoteMetaPanel.jsx"),
   "utf8",
 );
+const hooksSource = readFileSync(resolve(process.cwd(), "src/features/notes/hooks.js"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 function cssRule(selector) {
@@ -17,15 +18,16 @@ function cssRule(selector) {
 test("linked notes render as clickable note cards with a detail modal", () => {
   assert.match(noteMetaPanelSource, /className="linked-resource-card linked-note-card interactive"/);
   assert.match(noteMetaPanelSource, /<NoteIcon \/>/);
-  assert.match(noteMetaPanelSource, /setPreviewNote\(linkedItem\)/);
+  assert.match(noteMetaPanelSource, /workspace\.openLinkedNotePreview\(linkedItem\)/);
   assert.match(noteMetaPanelSource, /function LinkedNoteModal/);
-  assert.match(noteMetaPanelSource, /fetchNote\(note\.id\)/);
-  assert.match(noteMetaPanelSource, /renderMarkdownToSafeHtml/);
+  assert.match(noteMetaPanelSource, /workspace\.linkedNotePreview\.note/);
+  assert.match(hooksSource, /fetchNote\(note\.id\)/);
+  assert.match(hooksSource, /renderMarkdownToSafeHtml/);
 });
 
 test("linked file items load file detail before building image or pdf previews", () => {
-  assert.match(noteMetaPanelSource, /fetchFileItemDetail\(item\.id\)/);
-  assert.match(noteMetaPanelSource, /relatedFileDetails\[linkedItem\.id\]/);
+  assert.match(hooksSource, /fetchItemDetail\(itemId\)/);
+  assert.match(noteMetaPanelSource, /workspace\.linkedFileDetails\[linkedItem\.id\]/);
   assert.match(noteMetaPanelSource, /<FilePreviewTile file=\{linkedFile\} itemId=\{linkedItem\.id\} \/>/);
   assert.match(noteMetaPanelSource, /setPreviewFile\(\{ file: linkedFile, itemId: linkedItem\.id/);
   assert.match(noteMetaPanelSource, /function LinkedFileModal/);
