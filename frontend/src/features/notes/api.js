@@ -73,10 +73,45 @@ export async function fetchNoteCategories() {
   return payload.categories ?? [];
 }
 
+export async function fetchProjects({ limit = 200 } = {}) {
+  const payload = await request(`/api/items?item_kind=project&limit=${limit}`);
+  return payload.items;
+}
+
 export async function replaceLabels(itemId, labelPaths) {
   return request(`/api/items/${itemId}/labels`, {
     method: "PUT",
     body: JSON.stringify({ label_paths: labelPaths }),
+  });
+}
+
+export async function replaceNoteProjects(itemId, projectIds) {
+  return request(`/api/items/${itemId}/projects`, {
+    method: "PUT",
+    body: JSON.stringify({ project_ids: projectIds }),
+  });
+}
+
+export async function searchLinkCandidates(query, { limit = 12, itemKinds = ["note", "image"] } = {}) {
+  const params = new URLSearchParams();
+  if (query) {
+    params.set("query", query);
+  }
+  itemKinds.forEach((itemKind) => params.append("item_kinds", itemKind));
+  params.set("limit", String(limit));
+  const payload = await request(`/api/search/content?${params.toString()}`);
+  return payload.items;
+}
+
+export async function linkNoteItem(fromItemId, toItemId, { linkType = "related", note = "" } = {}) {
+  return request("/api/links", {
+    method: "POST",
+    body: JSON.stringify({
+      from_item_id: fromItemId,
+      to_item_id: toItemId,
+      link_type: linkType,
+      note: note || null,
+    }),
   });
 }
 

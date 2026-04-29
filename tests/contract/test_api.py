@@ -451,6 +451,137 @@ def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> No
     assert download.content == b"hello attachment"
 
 
+def test_api_serves_pdf_file_content_inline(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    uploaded = client.post(
+        "/api/file-items/upload",
+        data={
+            "title": "Project spec",
+            "item_kind": "document",
+        },
+        files={"file": ("spec.pdf", b"%PDF-1.4 demo", "application/pdf")},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert uploaded.status_code == 200
+    item_id = uploaded.json()["item"]["id"]
+
+    file_item = client.get(f"/api/items/{item_id}", headers={"x-kbase-actor": "heiko"})
+    assert file_item.status_code == 200
+    file_payload = file_item.json()
+    file_id = file_payload["files"][0]["id"]
+
+    download = client.get(
+        f"/api/items/{item_id}/files/{file_id}/content",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert download.status_code == 200
+    assert download.headers["content-type"].startswith("application/pdf")
+    assert "inline" in download.headers["content-disposition"].lower()
+
+
+def test_api_link_items_returns_updated_source_note_detail(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    source = client.post(
+        "/api/notes",
+        json={
+            "title": "Source note",
+            "category_key": "research",
+            "markdown_body": "Source body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert source.status_code == 200
+    source_id = source.json()["item"]["id"]
+
+    target = client.post(
+        "/api/notes",
+        json={
+            "title": "Target note",
+            "category_key": "decision",
+            "markdown_body": "Target body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert target.status_code == 200
+    target_id = target.json()["item"]["id"]
+
+    linked = client.post(
+        "/api/links",
+        json={
+            "from_item_id": source_id,
+            "to_item_id": target_id,
+            "link_type": "related",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert linked.status_code == 200
+    payload = linked.json()
+    assert payload["item"]["id"] == source_id
+    assert payload["item"]["title"] == "Source note"
+    assert [item["id"] for item in payload["related_items"]] == [target_id]
+    assert [link["to_item_id"] for link in payload["outgoing_links"]] == [target_id]
+    assert [link["link_type"] for link in payload["outgoing_links"]] == ["related"]
+
+
+def test_api_can_replace_note_project_membership(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    first_project = client.post(
+        "/api/projects",
+        json={"title": "Inbox"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert first_project.status_code == 200
+    first_project_id = first_project.json()["id"]
+
+    second_project = client.post(
+        "/api/projects",
+        json={"title": "Launch"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert second_project.status_code == 200
+    second_project_id = second_project.json()["id"]
+
+    note = client.post(
+        "/api/notes",
+        json={
+            "title": "Project note",
+            "category_key": "research",
+            "markdown_body": "Body",
+            "project_ids": [first_project_id],
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert note.status_code == 200
+    item_id = note.json()["item"]["id"]
+
+    replaced = client.put(
+        f"/api/items/{item_id}/projects",
+        json={"project_ids": [second_project_id]},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert replaced.status_code == 200
+    payload = replaced.json()
+    assert payload["item"]["id"] == item_id
+    assert [project["id"] for project in payload["projects"]] == [second_project_id]
+
+    first_project_items = client.get(
+        f"/api/projects/{first_project_id}/items",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert first_project_items.status_code == 200
+    assert first_project_items.json()["items"] == []
+
+    second_project_items = client.get(
+        f"/api/projects/{second_project_id}/items",
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert second_project_items.status_code == 200
+    assert [item["id"] for item in second_project_items.json()["items"]] == [item_id]
+
+
 def test_api_rejects_uploads_over_configured_size(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
     monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))

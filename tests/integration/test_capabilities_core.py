@@ -21,6 +21,7 @@ from kbase.application.capabilities.list_related_items import list_related_items
 from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
 from kbase.application.capabilities.register_asset import register_asset
 from kbase.application.capabilities.reactivate_label import reactivate_label
+from kbase.application.capabilities.replace_item_projects import replace_item_projects
 from kbase.application.capabilities.rename_label import rename_label
 from kbase.application.capabilities.replace_item_acl import replace_item_acl
 from kbase.application.capabilities.replace_labels import replace_labels
@@ -50,6 +51,7 @@ from kbase.application.dto.capabilities import (
     RenameLabelInput,
     ReplaceContentPartInput,
     ReplaceItemAclInput,
+    ReplaceItemProjectsInput,
     SearchContentInput,
     UpdateItemCoreInput,
 )
@@ -518,6 +520,55 @@ def test_create_note_can_attach_project_during_create(session_factory) -> None:
 
     item = get_item(GetItemInput(item_id=note.item.id, actor=actor()), session_factory=session_factory)
     assert [project_ref.id for project_ref in item.projects] == [project.id]
+
+
+def test_replace_item_projects_swaps_project_membership(session_factory) -> None:
+    first_project = create_project(
+        CreateProjectInput(
+            title="Inbox",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+    second_project = create_project(
+        CreateProjectInput(
+            title="Launch",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+    note = create_note(
+        CreateNoteInput(
+            title="Project note",
+            category_key="research",
+            markdown_body="body",
+            project_ids=[first_project.id],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    replace_item_projects(
+        ReplaceItemProjectsInput(
+            item_id=note.item.id,
+            project_ids=[second_project.id],
+            actor=actor(),
+            provenance=provenance("test.replace_item_projects"),
+        ),
+        session_factory=session_factory,
+    )
+
+    item = get_item(GetItemInput(item_id=note.item.id, actor=actor()), session_factory=session_factory)
+    assert [project_ref.id for project_ref in item.projects] == [second_project.id]
+
+    first_project_items = list_project_items(
+        ListProjectItemsInput(project_id=first_project.id, actor=actor()),
+        session_factory=session_factory,
+    )
+    assert first_project_items.items == []
 
 
 def test_search_content_filters_by_status_and_creator(session_factory) -> None:

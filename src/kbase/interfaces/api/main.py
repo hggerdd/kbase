@@ -40,6 +40,7 @@ from kbase.application.capabilities.list_related_items import list_related_items
 from kbase.application.capabilities.patch_item_metadata import patch_item_metadata
 from kbase.application.capabilities.register_asset import register_asset
 from kbase.application.capabilities.reactivate_label import reactivate_label
+from kbase.application.capabilities.replace_item_projects import replace_item_projects
 from kbase.application.capabilities.replace_item_acl import replace_item_acl
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
@@ -80,6 +81,7 @@ from kbase.application.dto.capabilities import (
     ListInboxFilesResult,
     ListItemsInput,
     ListItemsResult,
+    LinkItemsInput,
     ListProjectItemsInput,
     ListProjectItemsResult,
     ListRelatedItemsInput,
@@ -92,6 +94,7 @@ from kbase.application.dto.capabilities import (
     RegisterAssetInput,
     ReplaceContentPartInput,
     ReplaceItemAclInput,
+    ReplaceItemProjectsInput,
     SearchContentInput,
     SearchContentResult,
     UpdateCategoryInput,
@@ -119,6 +122,7 @@ from kbase.interfaces.api.schemas import (
     LinkItemsRequest,
     PatchMetadataRequest,
     ReplaceItemAclRequest,
+    ReplaceItemProjectsRequest,
     RegisterAssetRequest,
     ReplaceContentRequest,
     UpdateCategoryRequest,
@@ -411,6 +415,7 @@ def create_app() -> FastAPI:
             path=target,
             media_type=_safe_file_mime_type(item_file.original_filename or target.name, item_file.mime_type),
             filename=item_file.original_filename or target.name,
+            content_disposition_type="inline",
         )
 
     @app.get("/api/items/{item_id}/acl", response_model=list[AclEntryData])
@@ -893,12 +898,12 @@ def create_app() -> FastAPI:
             )
         )
 
-    @app.post("/api/links", response_model=ItemSummary)
+    @app.post("/api/links", response_model=ItemDetailResult)
     def link_items_endpoint(
         payload: LinkItemsRequest,
         actor: ActorContext = Depends(_actor_context),
-    ) -> ItemSummary:
-        return link_items(
+    ) -> ItemDetailResult:
+        link_items(
             LinkItemsInput(
                 from_item_id=payload.from_item_id,
                 to_item_id=payload.to_item_id,
@@ -908,6 +913,24 @@ def create_app() -> FastAPI:
                 provenance=_provenance("api.link_items"),
             )
         )
+        return get_item(GetItemInput(item_id=payload.from_item_id, actor=actor))
+
+    @app.put("/api/items/{item_id}/projects", response_model=ItemDetailResult)
+    def replace_item_projects_endpoint(
+        item_id: str,
+        payload: ReplaceItemProjectsRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> ItemDetailResult:
+        replace_item_projects(
+            ReplaceItemProjectsInput(
+                item_id=item_id,
+                project_ids=payload.project_ids,
+                actor=actor,
+                provenance=_provenance("api.replace_item_projects"),
+            )
+        )
+        return get_item(GetItemInput(item_id=item_id, actor=actor))
+        return get_item(GetItemInput(item_id=payload.from_item_id, actor=actor))
 
     @app.get("/api/items/{item_id}/links", response_model=ListRelatedItemsResult)
     def list_related_items_endpoint(

@@ -8,8 +8,12 @@ import {
   fetchNote,
   fetchNoteCategories,
   fetchNotes,
+  fetchProjects,
+  linkNoteItem,
   replaceLabels,
+  replaceNoteProjects,
   replaceNoteContent,
+  searchLinkCandidates,
   updateNoteCore,
   uploadAttachment,
 } from "./api.js";
@@ -51,6 +55,7 @@ export function useNotesWorkspace({
   const [history, setHistory] = useState([]);
   const [availableLabels, setAvailableLabels] = useState([]);
   const [availableCategories, setAvailableCategories] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState([]);
   const [search, setSearch] = useState(externalSearch);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [editor, setEditor] = useState(emptyEditor);
@@ -63,6 +68,9 @@ export function useNotesWorkspace({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [attachmentFile, setAttachmentFile] = useState(null);
+  const [linkCandidateResults, setLinkCandidateResults] = useState([]);
+  const [linkSearchLoading, setLinkSearchLoading] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -325,6 +333,15 @@ export function useNotesWorkspace({
     }
   }
 
+  async function loadAvailableProjects() {
+    try {
+      const projects = await fetchProjects({ limit: 200 });
+      setAvailableProjects(projects);
+    } catch {
+      // Project management is optional for keeping existing notes editable.
+    }
+  }
+
   async function loadNote(itemId) {
     if (!itemId) {
       setSelectedNoteLoading(false);
@@ -415,6 +432,7 @@ export function useNotesWorkspace({
     void loadNotes(externalSearch);
     void loadAvailableLabels();
     void loadAvailableCategories();
+    void loadAvailableProjects();
     return () => clearAutosaveTimer();
   }, []);
 
@@ -629,23 +647,106 @@ export function useNotesWorkspace({
     }
   }
 
+  async function updateSelectedNoteProjects(projectIds) {
+    const itemId = selectedIdRef.current;
+    if (!itemId) {
+      return false;
+    }
+
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const [notePayload, historyPayload] = await Promise.all([
+        replaceNoteProjects(itemId, projectIds),
+        fetchHistory(itemId),
+      ]);
+      commitSelectedNote(notePayload);
+      setHistory(historyPayload.events);
+      setNotice("Project updated");
+      await loadAvailableProjects();
+      await loadNotes(search);
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSearchLinkCandidates({ query = "", itemKinds = ["note", "image"], limit = 12 } = {}) {
+    const normalizedQuery = query.trim();
+    setLinkSearchLoading(true);
+    setError("");
+    try {
+      const items = await searchLinkCandidates(normalizedQuery, { itemKinds, limit });
+      const currentSelectedId = selectedIdRef.current;
+      const existingLinkedIds = new Set(selectedNoteRef.current?.related_items?.map((item) => item.id) ?? []);
+      const filteredItems = items.filter(
+        (item) => item.id !== currentSelectedId && !existingLinkedIds.has(item.id),
+      );
+      setLinkCandidateResults(filteredItems);
+      return filteredItems;
+    } catch (err) {
+      setError(err.message);
+      setLinkCandidateResults([]);
+      return [];
+    } finally {
+      setLinkSearchLoading(false);
+    }
+  }
+
+  async function handleLinkExistingItem(targetItemId, { linkType = "related" } = {}) {
+    const itemId = selectedIdRef.current;
+    if (!itemId || !targetItemId) {
+      return false;
+    }
+
+    setLinking(true);
+    setError("");
+    setNotice("");
+    try {
+      const [notePayload, historyPayload] = await Promise.all([
+        linkNoteItem(itemId, targetItemId, { linkType }),
+        fetchHistory(itemId),
+      ]);
+      commitSelectedNote(notePayload);
+      setHistory(historyPayload.events);
+      setNotice("Item linked");
+      setLinkCandidateResults((current) => current.filter((item) => item.id !== targetItemId));
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLinking(false);
+    }
+  }
+
   return {
     attachmentFile,
     autosaveState,
     autosaving,
     availableCategories,
     availableLabels,
+    availableProjects,
     closeSelectedNote,
     deleteSelectedNote,
     draft,
     editor,
     error,
     handleCreateNote,
+    handleLinkExistingItem,
     handleSaveSelected,
+    handleSearchLinkCandidates,
     handleSearchSubmit,
     handleSelectNote,
     handleUploadAttachment,
     history,
+    linkCandidateResults,
+    linking,
+    linkSearchLoading,
     loading,
     notice,
     notes,
@@ -660,6 +761,7 @@ export function useNotesWorkspace({
     setEditor: commitEditor,
     setSearch,
     updateSelectedNoteLabels,
+    updateSelectedNoteProjects,
     updateSelectedNoteFields,
     uploading,
     uploadProgress,

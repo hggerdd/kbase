@@ -402,6 +402,15 @@ class AddItemToProjectInput(BaseModel):
     provenance: ProvenanceInput
 
 
+class ReplaceItemProjectsInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    project_ids: list[str] = Field(default_factory=list)
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
 class GetItemInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

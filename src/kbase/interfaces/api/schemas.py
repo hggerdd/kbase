@@ -176,6 +176,12 @@ class AddProjectItemRequest(BaseModel):
     sort_order: int | None = None
 
 
+class ReplaceItemProjectsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    project_ids: list[str] = Field(default_factory=list)
+
+
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

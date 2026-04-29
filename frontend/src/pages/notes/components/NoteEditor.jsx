@@ -39,14 +39,22 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
   const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [pendingTitle, setPendingTitle] = useState("");
   const selectedLabelPaths = workspace.editor.selected_labels;
   const editorInstanceKey = workspace.selectedId ?? "no-note";
+  const currentProject = workspace.selectedNote?.projects?.[0] ?? null;
+  const projectOptions = [
+    { value: "", label: "No project" },
+    ...workspace.availableProjects.map((project) => ({
+      value: project.id,
+      label: project.title,
+    })),
+  ];
   const summaryBits = [
     workspaceSummary?.categoryLabel ?? formatLabel(currentCategory),
-    workspaceSummary?.projectLabel ?? null,
     workspaceSummary?.labelPath ?? null,
   ].filter(Boolean);
 
@@ -90,6 +98,13 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
     const success = await workspace.updateSelectedNoteFields({ category_key: categoryKey });
     if (success) {
       setIsCategoryModalOpen(false);
+    }
+  }
+
+  async function handleProjectSelect(projectId) {
+    const success = await workspace.updateSelectedNoteProjects(projectId ? [projectId] : []);
+    if (success) {
+      setIsProjectModalOpen(false);
     }
   }
 
@@ -150,6 +165,25 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
               </div>
 
               <div className="note-taxonomy-row">
+                <div className="note-project-row">
+                  <button
+                    className={`note-project-pill ${currentProject ? "" : "empty"}`.trim()}
+                    type="button"
+                    onClick={() => setIsProjectModalOpen(true)}
+                  >
+                    {currentProject?.title ?? "No project selected"}
+                  </button>
+                  <button
+                    className="plain-icon-button small"
+                    type="button"
+                    aria-label="Edit note project"
+                    title="Edit note project"
+                    onClick={() => setIsProjectModalOpen(true)}
+                  >
+                    <PencilIcon />
+                  </button>
+                </div>
+
                 <div className="note-category-row">
                   <button
                     className="note-category-pill"
@@ -312,6 +346,16 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
               selectedValue={currentCategory}
               onSelect={handleCategorySelect}
               onClose={() => setIsCategoryModalOpen(false)}
+            />
+          ) : null}
+
+          {isProjectModalOpen ? (
+            <OptionSelectModal
+              title="Set project"
+              options={projectOptions}
+              selectedValue={currentProject?.id ?? ""}
+              onSelect={handleProjectSelect}
+              onClose={() => setIsProjectModalOpen(false)}
             />
           ) : null}
 

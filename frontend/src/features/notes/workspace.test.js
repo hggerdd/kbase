@@ -704,6 +704,278 @@ test("workspace persists note labels through the labels capability only", async 
   });
 });
 
+test("workspace can load recent image candidates and link one to the selected note", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  let linkCreated = false;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.includes("/api/search/content?")) {
+      assert.match(value, /item_kinds=image/);
+      assert.doesNotMatch(value, /query=/);
+      return createResponse({
+        items: [
+          { id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image", status: "active", updated_at: "2026-04-14T11:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/links") && method === "POST") {
+      const body = JSON.parse(options.body);
+      assert.deepEqual(body, {
+        from_item_id: "note-a",
+        to_item_id: "image-1",
+        link_type: "attachment",
+        note: null,
+      });
+      linkCreated = true;
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [{ id: "link-1", to_item_id: "image-1", link_type: "attachment", created_at: "2026-04-14T11:05:00Z" }],
+        related_items: [{ id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image" }],
+      });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: linkCreated ? [{ id: "link-1", to_item_id: "image-1", link_type: "attachment", created_at: "2026-04-14T11:05:00Z" }] : [],
+        related_items: linkCreated ? [{ id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image" }] : [],
+      });
+    }
+    throw new Error(`Unhandled fetch: ${method} ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleSearchLinkCandidates({ itemKinds: ["image"], query: "" });
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.linkCandidateResults.length, 1);
+    assert.equal(latestWorkspace.linkCandidateResults[0].id, "image-1");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleLinkExistingItem("image-1", { linkType: "attachment" });
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.notice, "Item linked");
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Alpha");
+    assert.equal(latestWorkspace.selectedNote.related_items.length, 1);
+    assert.equal(latestWorkspace.selectedNote.related_items[0].id, "image-1");
+    assert.equal(latestWorkspace.selectedNote.outgoing_links[0].link_type, "attachment");
+  });
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace keeps the current note title unchanged when linking another note", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.includes("/api/search/content?")) {
+      return createResponse({
+        items: [
+          { id: "note-b", title: "Beta", item_kind: "note", category_key: "decision", status: "active", updated_at: "2026-04-14T11:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/links") && method === "POST") {
+      const body = JSON.parse(options.body);
+      assert.deepEqual(body, {
+        from_item_id: "note-a",
+        to_item_id: "note-b",
+        link_type: "related",
+        note: null,
+      });
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [{ id: "link-1", to_item_id: "note-b", link_type: "related", created_at: "2026-04-14T11:05:00Z" }],
+        related_items: [{ id: "note-b", title: "Beta", item_kind: "note", category_key: "decision", status: "active" }],
+      });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [],
+        related_items: [],
+      });
+    }
+    throw new Error(`Unhandled fetch: ${method} ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleSearchLinkCandidates({ itemKinds: ["note"], query: "" });
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.linkCandidateResults.length, 1);
+    assert.equal(latestWorkspace.linkCandidateResults[0].id, "note-b");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleLinkExistingItem("note-b", { linkType: "related" });
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.notice, "Item linked");
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Alpha");
+    assert.equal(latestWorkspace.selectedNote.item.title, "Alpha");
+    assert.equal(latestWorkspace.selectedNote.related_items.length, 1);
+    assert.equal(latestWorkspace.selectedNote.related_items[0].id, "note-b");
+    assert.equal(latestWorkspace.selectedNote.outgoing_links.length, 1);
+    assert.equal(latestWorkspace.selectedNote.outgoing_links[0].to_item_id, "note-b");
+    assert.equal(latestWorkspace.selectedNote.outgoing_links[0].link_type, "related");
+  });
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace can replace the selected note project membership", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.includes("/api/items?item_kind=project&limit=200")) {
+      return createResponse({
+        items: [
+          { id: "project-1", title: "Inbox", item_kind: "project", category_key: "project_general", status: "active", updated_at: "2026-04-14T08:00:00Z" },
+          { id: "project-2", title: "Launch", item_kind: "project", category_key: "project_general", status: "active", updated_at: "2026-04-14T09:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [{ id: "hist-1", operation_key: "replace_item_projects", occurred_at: "2026-04-14T11:15:00Z" }] });
+    }
+    if (value.endsWith("/api/items/note-a/projects") && method === "PUT") {
+      assert.deepEqual(JSON.parse(options.body), { project_ids: ["project-2"] });
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [],
+        related_items: [],
+        projects: [{ id: "project-2", title: "Launch", item_kind: "project", category_key: "project_general" }],
+      });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [],
+        related_items: [],
+        projects: [{ id: "project-1", title: "Inbox", item_kind: "project", category_key: "project_general" }],
+      });
+    }
+    throw new Error(`Unhandled fetch: ${method} ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(latestWorkspace.selectedNote.projects[0].id, "project-1");
+  });
+
+  await act(async () => {
+    await latestWorkspace.updateSelectedNoteProjects(["project-2"]);
+  });
+  await waitFor(() => {
+    assert.equal(latestWorkspace.notice, "Project updated");
+    assert.equal(latestWorkspace.selectedNote.projects.length, 1);
+    assert.equal(latestWorkspace.selectedNote.projects[0].id, "project-2");
+    assert.equal(latestWorkspace.history[0].operation_key, "replace_item_projects");
+  });
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
 test("workspace marks autosave conflicts without updating note core or labels", async () => {
   const container = createDom();
   let latestWorkspace;

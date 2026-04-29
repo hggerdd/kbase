@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import and_, exists, literal, or_, select
+from sqlalchemy import and_, delete, exists, literal, or_, select
 from sqlalchemy.orm import Session
 
 from kbase.infrastructure.db.models.tables import ItemAclModel, ItemModel, ProjectItemModel
@@ -79,3 +79,21 @@ class ProjectRepository:
             .order_by(ItemModel.updated_at.desc())
         )
         return list(self.session.scalars(stmt))
+
+    def replace_item_projects(
+        self,
+        *,
+        item_id: str,
+        project_ids: list[str],
+        added_by_principal_id: str | None,
+    ) -> None:
+        self.session.execute(delete(ProjectItemModel).where(ProjectItemModel.item_id == item_id))
+        for sort_order, project_id in enumerate(project_ids):
+            self.add_item_to_project(
+                project_id=project_id,
+                item_id=item_id,
+                role=None,
+                sort_order=sort_order,
+                added_by_principal_id=added_by_principal_id,
+            )
+        self.session.flush()
