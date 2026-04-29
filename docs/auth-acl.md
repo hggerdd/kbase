@@ -1,6 +1,6 @@
 # Auth And ACL
 
-Status: current as of 2026-04-28.
+Status: current as of 2026-04-29.
 
 This document describes identity, trust boundaries, the current ACL behavior,
 and the remaining security gaps.

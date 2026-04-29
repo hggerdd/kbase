@@ -7,22 +7,26 @@ browser and for agents/tools through stable capabilities.
 ## Implemented Product Areas
 
 - Notes: create, edit, autosave, label, categorize, search, view history.
+- Note links: connect one note to other notes or file-backed items through
+  explicit item links.
 - Files: upload/import file-backed items, browse file tree, inspect metadata and
-  stored content.
+  stored content, and preview PDFs plus linked note image/PDF files.
 - Search: global and scoped search over content and metadata filters.
 - Projects: create project contexts and attach/list items.
+- Project membership: assign or replace the project context a note belongs to.
 - Imports: list inbox files and import them as items.
 - Labels: hierarchical label nodes with create/update/deactivate/reactivate,
   explicit hard-delete cleanup, and assignment flows.
 - Categories: flat category keys managed through API/frontend settings.
-- Auth: browser session login and bearer-token creation through API.
+- Auth: browser session login, bearer-token creation through API, and CLI token
+  bootstrap for local automation.
 
 ## Planned Product Areas
 
 - Effective ACL and permission-aware UI.
-- CLI auth/token flow.
 - Server-backed saved searches.
-- OCR, summaries, thumbnails, PDF/image/text previews.
+- OCR, summaries, derived thumbnails, text previews, and broader preview
+  coverage.
 - Bulk import and export.
 - Tasks and events.
 - Measurements/time-series.
@@ -65,6 +69,15 @@ Project:
 
 - A project is an item of kind `project`.
 - Membership lives in `project_items`.
+- A note may be moved between projects by replacing its project membership set.
+
+Item link:
+
+- A relation from one item to another item.
+- Used by notes to make explicit relationships to other notes and file-backed
+  items.
+- The current notes UI supports adding note links and image/PDF file links.
+  Removing links is still follow-up work.
 
 Principal:
 

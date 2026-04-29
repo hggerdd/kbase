@@ -36,6 +36,10 @@ Implemented:
 - React/Vite frontend with session login and hash-based navigation.
 - Home now serves as the primary notes workspace with category, project, and
   label filtering over the existing notes capabilities.
+- Notes can change project membership and link to other notes or file-backed
+  items through backend capabilities.
+- Linked note previews plus linked image/PDF file previews exist in the notes
+  workspace.
 - Typer CLI over the same application capability layer.
 - Relational schema for items, content, files, labels, categories, links,
   projects, ACL tables, audit, provenance, users, sessions, and API tokens.
@@ -55,8 +59,8 @@ Known gaps:
   `--allow-local-actor`.
 - Search history is intentionally browser-local for now; `saved_queries` exists
   in the schema as unused future storage.
-- OCR, derived previews, bulk import, tasks, events, measurements, MCP, and agent
-  adapters are later work.
+- OCR, generated preview derivatives, bulk import, tasks, events, measurements,
+  MCP, and agent adapters are later work.
 
 ## Project Map
 

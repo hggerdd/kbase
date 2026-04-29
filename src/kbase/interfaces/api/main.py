@@ -930,7 +930,6 @@ def create_app() -> FastAPI:
             )
         )
         return get_item(GetItemInput(item_id=item_id, actor=actor))
-        return get_item(GetItemInput(item_id=payload.from_item_id, actor=actor))
 
     @app.get("/api/items/{item_id}/links", response_model=ListRelatedItemsResult)
     def list_related_items_endpoint(
