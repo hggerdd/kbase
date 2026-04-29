@@ -237,6 +237,7 @@ Known file-security gaps:
 Links and projects:
 
 - `POST /api/links`
+- `DELETE /api/links/{link_id}`
 - `GET /api/items/{item_id}/links`
 - `PUT /api/items/{item_id}/projects`
 - `POST /api/projects`
@@ -246,6 +247,9 @@ Links and projects:
 `POST /api/links` creates an item-to-item relation through `link_items` and
 returns the updated source item detail. The notes frontend relies on this
 server-returned detail instead of synthesizing links locally.
+
+`DELETE /api/links/{link_id}` removes an item relation through `unlink_items`
+and returns the updated source item detail.
 
 `PUT /api/items/{item_id}/projects` replaces the complete project membership
 set for an item and returns the updated item detail. The caller must be able to

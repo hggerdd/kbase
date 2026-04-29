@@ -21,7 +21,6 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-002` | partial | high | acl | Enforce ACL for reads and writes |
 | `TEST-001` | partial | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
-| `NOTE-002` | open | medium | notes | Add unlink support for item links |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
 | `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
@@ -77,6 +76,7 @@ tests that will prove the behavior.
 | `CLI-001` | done | high | categories | Add category commands to CLI |
 | `FE-004` | done | high | frontend-tests | Add focused tests for note linked-resource UI |
 | `ARCH-003` | done | medium | architecture | Move linked-resource detail loading into feature state |
+| `NOTE-002` | done | medium | notes | Add unlink support for item links |
 | `LAB-001` | done | high | labels | Finalize label lifecycle decision |
 | `LAB-002` | done | high | labels | Align delete/deactivate implementation with lifecycle decision |
 | `SEARCH-001` | done | medium | search | Decide server-backed saved queries vs local-only search history |
