@@ -10,7 +10,7 @@
     "test:layout": "node --test src/app/layout.test.js src/shared/build-info.test.js",
     "test:files": "node --test src/features/files/state.test.js src/features/files/workspace.test.js",
     "test:files:ui": "node --test src/features/files/presentation.test.js src/shared/utils/rich-content.test.js",
-    "test:notes": "node --test src/features/notes/state.test.js src/features/notes/workspace.test.js",
+    "test:notes": "node --test src/features/notes/state.test.js src/features/notes/workspace.test.js src/features/notes/presentation.test.js",
     "test:settings": "node --test src/features/labels/workspace.test.js src/features/categories/workspace.test.js src/features/projects/workspace.test.js",
     "test:search": "node --test src/features/search/state.test.js"
   },

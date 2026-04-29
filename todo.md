@@ -21,7 +21,6 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-002` | partial | high | acl | Enforce ACL for reads and writes |
 | `TEST-001` | partial | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
-| `FE-004` | open | high | frontend-tests | Add focused tests for note linked-resource UI |
 | `NOTE-002` | open | medium | notes | Add unlink support for item links |
 | `ARCH-003` | open | medium | architecture | Move linked-resource detail loading into feature state |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
@@ -77,6 +76,7 @@ tests that will prove the behavior.
 | `SEC-005` | done | high | files-security | Complete upload/download threat model |
 | `SEC-006` | done | high | cli-auth | Replace CLI `--actor heiko` default with token/session-aware flow |
 | `CLI-001` | done | high | categories | Add category commands to CLI |
+| `FE-004` | done | high | frontend-tests | Add focused tests for note linked-resource UI |
 | `LAB-001` | done | high | labels | Finalize label lifecycle decision |
 | `LAB-002` | done | high | labels | Align delete/deactivate implementation with lifecycle decision |
 | `SEARCH-001` | done | medium | search | Decide server-backed saved queries vs local-only search history |
