@@ -25,7 +25,9 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
   const statusOptions = NOTE_STATUSES.includes(currentStatus) ? NOTE_STATUSES : [currentStatus, ...NOTE_STATUSES];
   const managedCategoryOptions = workspace.availableCategories.map((category) => ({
     value: category.key,
-    label: category.label || formatLabel(category.key),
+    label: category.full_path && category.full_path !== category.key
+      ? category.full_path.split("/").map(formatLabel).join(" / ")
+      : category.label || formatLabel(category.key),
   }));
   const fallbackCategoryOptions = NOTE_CATEGORIES.map((category) => ({
     value: category,

@@ -113,6 +113,9 @@ def to_category_data(category) -> CategoryData:  # type: ignore[no-untyped-def]
         label=category.label,
         description=category.description,
         applies_to_kind=category.applies_to_kind,
+        parent_key=category.parent_key,
+        full_path=category.full_path,
+        depth=category.depth,
         is_active=bool(category.is_active),
     )
 

@@ -243,13 +243,14 @@ Acceptance:
 
 ### `CAT-001` Decide Category Hierarchy
 
-Source: flat `item_categories` table and frontend wording.
+Source: hierarchical `item_categories` table and frontend category tree.
 
 Acceptance:
 
-- Architecture decision states categories are flat or hierarchical.
-- UI and docs stop implying unsupported hierarchy if categories stay flat.
-- If hierarchical, data-model/API/UI tasks are created.
+- Architecture decision states categories are hierarchical managed taxonomy
+  nodes.
+- API supports exact `category_keys` and subtree `category_path_prefixes`.
+- Home and Settings/Categories use the same managed category tree.
 
 ### `FILE-001` Server-Side File Filtering And Pagination
 

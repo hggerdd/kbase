@@ -43,6 +43,79 @@ function buildLabelTree(labels) {
   return roots;
 }
 
+function buildCategoryTree(categories) {
+  const nodesByKey = new Map(categories.map((category) => [category.key, { ...category, children: [] }]));
+  const roots = [];
+
+  for (const node of nodesByKey.values()) {
+    const parent = node.parent_key ? nodesByKey.get(node.parent_key) : null;
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  function sortNodes(nodes) {
+    nodes.sort((left, right) => (left.full_path || left.key).localeCompare(right.full_path || right.key));
+    nodes.forEach((node) => sortNodes(node.children));
+  }
+
+  sortNodes(roots);
+  return roots;
+}
+
+function countCategorySubtree(category, counts) {
+  const ownCount = counts.get(category.key) ?? 0;
+  return ownCount + category.children.reduce((total, child) => total + countCategorySubtree(child, counts), 0);
+}
+
+function CategoryTreeRow({ category, counts, expandedKeys, onSelect, onToggle, selectedKey }) {
+  const hasChildren = category.children.length > 0;
+  const isExpanded = expandedKeys.has(category.key);
+  const isSelected = selectedKey === category.key;
+
+  return (
+    <li role="treeitem" aria-expanded={hasChildren ? isExpanded : undefined}>
+      <button
+        type="button"
+        className={`workspace-tree-row ${isSelected ? "active" : ""}`.trim()}
+        onClick={() => onSelect(category)}
+      >
+        <span
+          className={`workspace-tree-caret ${isExpanded ? "expanded" : ""} ${hasChildren ? "" : "hidden"}`.trim()}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (hasChildren) {
+              onToggle(category.key);
+            }
+          }}
+        />
+        <span className="workspace-tree-icon">
+          <NoteIcon />
+        </span>
+        <span className="workspace-tree-label">{category.label || formatLabel(category.key)}</span>
+        <span className="workspace-tree-meta">{countCategorySubtree(category, counts)}</span>
+      </button>
+      {hasChildren && isExpanded ? (
+        <ul className="workspace-tree-list nested" role="group">
+          {category.children.map((child) => (
+            <CategoryTreeRow
+              key={child.key}
+              category={child}
+              counts={counts}
+              expandedKeys={expandedKeys}
+              onSelect={onSelect}
+              onToggle={onToggle}
+              selectedKey={selectedKey}
+            />
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
 function LabelTreeRow({ expandedIds, node, onSelect, onToggle, selectedPath }) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedIds.has(node.id);
@@ -101,12 +174,14 @@ function NoteCard({ isActive, note, onClick }) {
 
 export function HomePage() {
   const didSearchMountRef = useRef(false);
+  const [expandedCategoryKeys, setExpandedCategoryKeys] = useState(new Set());
   const [expandedLabelIds, setExpandedLabelIds] = useState(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
   const [labelQuery, setLabelQuery] = useState("");
   const [categoryCountNotes, setCategoryCountNotes] = useState(null);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
+  const [selectedCategoryPath, setSelectedCategoryPath] = useState("");
   const [selectedLabelPath, setSelectedLabelPath] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [projectsState, setProjectsState] = useState({
@@ -117,17 +192,18 @@ export function HomePage() {
 
   const noteFilters = useMemo(
     () => ({
-      categoryKeys: selectedCategoryKey ? [selectedCategoryKey] : [],
+      categoryPathPrefixes: selectedCategoryPath ? [selectedCategoryPath] : [],
       labelPathPrefixes: selectedLabelPath ? [selectedLabelPath] : [],
       projectId: selectedProjectId || null,
     }),
-    [selectedCategoryKey, selectedLabelPath, selectedProjectId],
+    [selectedCategoryPath, selectedLabelPath, selectedProjectId],
   );
 
   const workspace = useNotesWorkspace({
     createProjectId: selectedProjectId || null,
     filters: noteFilters,
   });
+  const selectedCategory = workspace.availableCategories.find((category) => category.key === selectedCategoryKey) ?? null;
 
   useEffect(() => {
     window.dispatchEvent(
@@ -223,6 +299,7 @@ export function HomePage() {
     [categoryCountNotes, selectedCategoryKey, workspace.notes],
   );
   const categoryCounts = useMemo(() => buildCategoryCounts(categoryCountSourceNotes), [categoryCountSourceNotes]);
+  const categoryTree = useMemo(() => buildCategoryTree(workspace.availableCategories), [workspace.availableCategories]);
   const activeProject = projectsState.projects.find((project) => project.id === selectedProjectId) ?? null;
   const visibleLabels = useMemo(() => {
     const normalizedQuery = labelQuery.trim().toLowerCase();
@@ -237,6 +314,18 @@ export function HomePage() {
     });
   }, [labelQuery, workspace.availableLabels]);
   const labelTree = useMemo(() => buildLabelTree(visibleLabels), [visibleLabels]);
+
+  useEffect(() => {
+    const nextExpandedKeys = new Set();
+    const visit = (nodes) => {
+      nodes.forEach((node) => {
+        nextExpandedKeys.add(node.key);
+        visit(node.children);
+      });
+    };
+    visit(categoryTree);
+    setExpandedCategoryKeys(nextExpandedKeys);
+  }, [categoryTree]);
 
   useEffect(() => {
     const nextExpandedIds = new Set();
@@ -269,8 +358,20 @@ export function HomePage() {
     });
   }
 
+  function toggleExpandedCategory(categoryKey) {
+    setExpandedCategoryKeys((current) => {
+      const next = new Set(current);
+      if (next.has(categoryKey)) {
+        next.delete(categoryKey);
+      } else {
+        next.add(categoryKey);
+      }
+      return next;
+    });
+  }
+
   const activeFilterChips = [
-    selectedCategoryKey ? `Category: ${formatLabel(selectedCategoryKey)}` : null,
+    selectedCategory ? `Category: ${selectedCategory.label || formatLabel(selectedCategory.key)}` : null,
     selectedProjectId ? `Project: ${activeProject?.title ?? "Selected"}` : null,
     selectedLabelPath ? `Label: ${selectedLabelPath}` : null,
     workspace.search ? `Search: ${workspace.search}` : null,
@@ -305,11 +406,15 @@ export function HomePage() {
 
           <section className="workspace-section">
             <div className="workspace-section-title">Category</div>
-            <div className="workspace-flat-list">
+            <ul className="workspace-tree-list" role="tree" aria-label="Category filters">
+              <li>
               <button
                 type="button"
                 className={`workspace-tree-row ${selectedCategoryKey === "" ? "active" : ""}`.trim()}
-                onClick={() => setSelectedCategoryKey("")}
+                onClick={() => {
+                  setSelectedCategoryKey("");
+                  setSelectedCategoryPath("");
+                }}
               >
                 <span className="workspace-tree-icon">
                   <NoteIcon />
@@ -317,21 +422,23 @@ export function HomePage() {
                 <span className="workspace-tree-label">All notes</span>
                 <span className="workspace-tree-meta">{categoryCountSourceNotes.length}</span>
               </button>
-              {workspace.availableCategories.map((category) => (
-                <button
+              </li>
+              {categoryTree.map((category) => (
+                <CategoryTreeRow
                   key={category.key}
-                  type="button"
-                  className={`workspace-tree-row ${selectedCategoryKey === category.key ? "active" : ""}`.trim()}
-                  onClick={() => setSelectedCategoryKey((current) => (current === category.key ? "" : category.key))}
-                >
-                  <span className="workspace-tree-icon">
-                    <NoteIcon />
-                  </span>
-                  <span className="workspace-tree-label">{category.label || formatLabel(category.key)}</span>
-                  <span className="workspace-tree-meta">{categoryCounts.get(category.key) ?? 0}</span>
-                </button>
+                  category={category}
+                  counts={categoryCounts}
+                  expandedKeys={expandedCategoryKeys}
+                  onSelect={(entry) => {
+                    const isCurrent = selectedCategoryKey === entry.key;
+                    setSelectedCategoryKey(isCurrent ? "" : entry.key);
+                    setSelectedCategoryPath(isCurrent ? "" : entry.full_path);
+                  }}
+                  onToggle={toggleExpandedCategory}
+                  selectedKey={selectedCategoryKey}
+                />
               ))}
-            </div>
+            </ul>
           </section>
 
           <section className="workspace-section">
@@ -450,7 +557,7 @@ export function HomePage() {
             onClose={() => setIsMobileEditorOpen(false)}
             onOpenCreate={() => setIsCreateOpen(true)}
             workspaceSummary={{
-              categoryLabel: selectedCategoryKey ? formatLabel(selectedCategoryKey) : "All categories",
+              categoryLabel: selectedCategory ? selectedCategory.label || formatLabel(selectedCategory.key) : "All categories",
               projectLabel: activeProject?.title ?? "All projects",
               labelPath: selectedLabelPath,
             }}

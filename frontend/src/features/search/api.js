@@ -11,6 +11,9 @@ export async function searchContent(input) {
   for (const categoryKey of input.categoryKeys ?? []) {
     params.append("category_keys", categoryKey);
   }
+  for (const categoryPathPrefix of input.categoryPathPrefixes ?? []) {
+    params.append("category_path_prefixes", categoryPathPrefix);
+  }
   for (const labelPath of input.labelPaths ?? []) {
     params.append("label_paths", labelPath);
   }

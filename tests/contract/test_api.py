@@ -324,6 +324,58 @@ def test_api_rejects_delete_of_used_category(monkeypatch, tmp_path) -> None:
     assert deleted.json()["detail"] == "Category 'research' is still in use and cannot be deleted"
 
 
+def test_api_category_hierarchy_and_subtree_search(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    parent = client.post(
+        "/api/categories",
+        json={"key": "knowledge", "label": "Knowledge", "applies_to_kind": "note"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert parent.status_code == 200
+
+    child = client.post(
+        "/api/categories",
+        json={
+            "key": "knowledge_research",
+            "label": "Knowledge Research",
+            "applies_to_kind": "note",
+            "parent_key": "knowledge",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert child.status_code == 200
+    assert child.json()["parent_key"] == "knowledge"
+    assert child.json()["full_path"] == "knowledge/knowledge_research"
+
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Hierarchy API Note",
+            "category_key": "knowledge_research",
+            "markdown_body": "Body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created.status_code == 200
+
+    exact_parent = client.get(
+        "/api/search/content",
+        params={"category_keys": "knowledge"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert exact_parent.status_code == 200
+    assert exact_parent.json()["items"] == []
+
+    subtree = client.get(
+        "/api/search/content",
+        params={"category_path_prefixes": "knowledge"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert subtree.status_code == 200
+    assert [item["title"] for item in subtree.json()["items"]] == ["Hierarchy API Note"]
+
+
 def test_api_delete_label_removes_subtree_and_item_assignments(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
     created = client.post(

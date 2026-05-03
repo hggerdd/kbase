@@ -28,6 +28,7 @@ test("buildSearchInput keeps page scope when no explicit item kinds are provided
     scopeRoute: "projects",
     filters: createSearchFilters({
       categoryKeysText: "project_general, roadmap",
+      categoryPathPrefixesText: "knowledge, knowledge/research",
       labelPathsText: "product/docs",
     }),
   });
@@ -35,6 +36,7 @@ test("buildSearchInput keeps page scope when no explicit item kinds are provided
   assert.equal(searchInput.query, "alpha");
   assert.deepEqual(searchInput.itemKinds, ["project"]);
   assert.deepEqual(searchInput.categoryKeys, ["project_general", "roadmap"]);
+  assert.deepEqual(searchInput.categoryPathPrefixes, ["knowledge", "knowledge/research"]);
   assert.deepEqual(searchInput.labelPaths, ["product/docs"]);
 });
 

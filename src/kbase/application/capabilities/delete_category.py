@@ -20,6 +20,14 @@ def delete_category(
         if category is None:
             raise ValueError(f"Category '{data.key}' not found")
 
+        child_categories = [
+            entry
+            for entry in repos.items.list_categories(full_path_prefix=category.full_path, include_inactive=True)
+            if entry.key != data.key
+        ]
+        if child_categories:
+            raise ValueError(f"Category '{data.key}' has child categories and cannot be deleted")
+
         item_count = repos.items.count_items_with_category(data.key)
         classification_count = repos.items.count_classifications_with_category(data.key)
         if item_count > 0 or classification_count > 0:

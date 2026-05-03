@@ -342,3 +342,55 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     deleted = _run_with_token(token, ["category", "delete", "meeting_note", "--json"])
     assert deleted.exit_code == 0
     assert json.loads(deleted.stdout) == {"key": "meeting_note", "deleted": True}
+
+
+def test_cli_category_hierarchy(monkeypatch, tmp_path) -> None:
+    token = _bootstrap_cli_token(monkeypatch, tmp_path)
+
+    parent = _run_with_token(
+        token,
+        [
+            "category",
+            "create",
+            "--key",
+            "knowledge",
+            "--label",
+            "Knowledge",
+            "--applies-to-kind",
+            "note",
+            "--json",
+        ],
+    )
+    assert parent.exit_code == 0
+
+    child = _run_with_token(
+        token,
+        [
+            "category",
+            "create",
+            "--key",
+            "knowledge_research",
+            "--label",
+            "Knowledge Research",
+            "--applies-to-kind",
+            "note",
+            "--parent-key",
+            "knowledge",
+            "--json",
+        ],
+    )
+    assert child.exit_code == 0
+    child_payload = json.loads(child.stdout)
+    assert child_payload["parent_key"] == "knowledge"
+    assert child_payload["full_path"] == "knowledge/knowledge_research"
+
+    listed = _run_with_token(
+        token,
+        ["category", "list", "--full-path-prefix", "knowledge", "--json"],
+    )
+    assert listed.exit_code == 0
+    listed_payload = json.loads(listed.stdout)
+    assert [category["full_path"] for category in listed_payload["categories"]] == [
+        "knowledge",
+        "knowledge/knowledge_research",
+    ]

@@ -6,6 +6,7 @@ export const EMPTY_CATEGORY_DRAFT = {
   label: "",
   description: "",
   applies_to_kind: "note",
+  parent_key: "",
   is_active: true,
 };
 
@@ -51,6 +52,7 @@ export function useCategoriesWorkspace() {
         label: input.label.trim(),
         description: input.description?.trim() || null,
         applies_to_kind: input.applies_to_kind || null,
+        parent_key: input.parent_key || null,
       });
       setNotice("Category created");
       await loadCategories();
@@ -72,6 +74,7 @@ export function useCategoriesWorkspace() {
         label: input.label?.trim(),
         description: input.description?.trim() || null,
         applies_to_kind: input.applies_to_kind || null,
+        parent_key: input.parent_key || null,
         is_active: input.is_active,
       });
       setNotice("Category updated");

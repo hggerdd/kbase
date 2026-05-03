@@ -5,6 +5,16 @@ import { NOTE_CATEGORIES } from "../../../features/notes/constants";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
+function formatCategoryLabel(category) {
+  if (category.full_path && category.full_path !== category.key) {
+    return category.full_path
+      .split("/")
+      .map((part) => part.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()))
+      .join(" / ");
+  }
+  return category.label || category.key;
+}
+
 export function CreateNotePanel({ workspace, isOpen, onClose }) {
   if (!isOpen) {
     return null;
@@ -12,7 +22,7 @@ export function CreateNotePanel({ workspace, isOpen, onClose }) {
   const categoryOptions = workspace.availableCategories.length > 0
     ? workspace.availableCategories.map((category) => ({
         value: category.key,
-        label: category.label || category.key,
+        label: formatCategoryLabel(category),
       }))
     : NOTE_CATEGORIES.map((category) => ({ value: category, label: category }));
 

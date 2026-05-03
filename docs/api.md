@@ -172,9 +172,12 @@ Categories:
 
 Category model:
 
-- Categories are flat reference keys.
-- There is no category parent, tree, or subtree API.
-- Use labels when hierarchy or branch filtering is needed.
+- Categories are managed reference keys with optional hierarchy.
+- `key` remains the stable item-facing value stored in `items.category_key`.
+- `parent_key`, `full_path`, and `depth` describe the category tree.
+- Child categories must use the same `applies_to_kind` as their parent.
+- Deleting a category is blocked while items/classifications or child
+  categories still reference it.
 
 Files, assets, and inbox:
 
@@ -285,6 +288,7 @@ Traceability and ACL:
 - `query`
 - `item_kinds`
 - `category_keys`
+- `category_path_prefixes`
 - `label_paths`
 - `label_path_prefixes`
 - `statuses`
@@ -300,8 +304,11 @@ Search filter semantics:
   text, label name, label full path, and label description.
 - `item_kinds`, `category_keys`, `statuses`, and `created_by_principal_ids` are
   exact-key filters. Multiple values inside one field are OR alternatives.
-- `category_keys=research&category_keys=decision` means category is
-  `research` OR `decision`; categories are flat keys, not prefixes.
+- `category_keys=research&category_keys=decision` means category is exactly
+  `research` OR exactly `decision`.
+- `category_path_prefixes` is a branch filter over category `full_path`.
+  `knowledge` matches `knowledge` and descendants such as
+  `knowledge/knowledge_research`.
 - `label_paths` is an exact full-path label filter. `finance/bank` does not
   match an item labeled only `finance/bank/depot/data`.
 - `label_path_prefixes` is a branch filter. `finance/bank` matches
@@ -324,6 +331,8 @@ Search filter semantics:
 
 - `query`
 - `applies_to_kind`
+- `parent_key`
+- `full_path_prefix`
 - `include_inactive`
 - `limit`
 - `offset`

@@ -306,6 +306,7 @@ export function useNotesWorkspace({
     try {
       const items = await fetchNotes(query, {
         categoryKeys: filters.categoryKeys ?? [],
+        categoryPathPrefixes: filters.categoryPathPrefixes ?? [],
         labelPathPrefixes: filters.labelPathPrefixes ?? [],
         projectId: filters.projectId ?? null,
       });
@@ -476,6 +477,7 @@ export function useNotesWorkspace({
     externalSearch,
     externalSearchVersion,
     filters.categoryKeys?.join(","),
+    filters.categoryPathPrefixes?.join(","),
     filters.labelPathPrefixes?.join(","),
     filters.projectId,
   ]);

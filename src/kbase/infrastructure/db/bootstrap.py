@@ -24,16 +24,23 @@ def initialize_database(connection: Connection) -> None:
 
     for statement in _split_sql_statements(schema_sql):
         connection.execute(text(statement))
+    _ensure_category_hierarchy_columns(connection)
     for statement in _split_sql_statements(seed_sql):
         connection.execute(text(statement))
+    _backfill_category_hierarchy(connection)
     _ensure_default_users(connection)
 
 
 def _normalize_schema_sql(sql_text: str, dialect: str) -> str:
+    lines = [
+        line
+        for line in sql_text.splitlines()
+        if not line.lstrip().startswith("CREATE INDEX IF NOT EXISTS idx_item_categories_")
+    ]
     if dialect == "sqlite":
-        return sql_text
+        return "\n".join(lines)
     return "\n".join(
-        line for line in sql_text.splitlines() if not line.lstrip().upper().startswith("PRAGMA ")
+        line for line in lines if not line.lstrip().upper().startswith("PRAGMA ")
     )
 
 
@@ -105,3 +112,30 @@ def _ensure_default_users(connection: Connection) -> None:
                 "updated_at": now,
             },
         )
+
+
+def _ensure_category_hierarchy_columns(connection: Connection) -> None:
+    dialect = connection.engine.dialect.name
+    if dialect == "sqlite":
+        columns = {
+            row[1]
+            for row in connection.execute(text("PRAGMA table_info(item_categories)")).fetchall()
+        }
+        if "parent_key" not in columns:
+            connection.execute(text("ALTER TABLE item_categories ADD COLUMN parent_key TEXT"))
+        if "full_path" not in columns:
+            connection.execute(text("ALTER TABLE item_categories ADD COLUMN full_path TEXT NOT NULL DEFAULT ''"))
+        if "depth" not in columns:
+            connection.execute(text("ALTER TABLE item_categories ADD COLUMN depth INTEGER NOT NULL DEFAULT 0"))
+    else:
+        connection.execute(text("ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS parent_key TEXT"))
+        connection.execute(text("ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS full_path TEXT NOT NULL DEFAULT ''"))
+        connection.execute(text("ALTER TABLE item_categories ADD COLUMN IF NOT EXISTS depth INTEGER NOT NULL DEFAULT 0"))
+    connection.execute(text("UPDATE item_categories SET full_path = key WHERE full_path = '' OR full_path IS NULL"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS idx_item_categories_parent ON item_categories(parent_key)"))
+    connection.execute(text("CREATE INDEX IF NOT EXISTS idx_item_categories_full_path ON item_categories(full_path)"))
+    connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_item_categories_full_path ON item_categories(full_path)"))
+
+
+def _backfill_category_hierarchy(connection: Connection) -> None:
+    connection.execute(text("UPDATE item_categories SET full_path = key, depth = 0 WHERE parent_key IS NULL"))

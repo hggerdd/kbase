@@ -78,6 +78,9 @@ test("categories workspace covers create update deactivate reactivate and delete
         label: body.label,
         description: body.description,
         applies_to_kind: body.applies_to_kind,
+        parent_key: body.parent_key,
+        full_path: body.parent_key ? `${body.parent_key}/${body.key}` : body.key,
+        depth: body.parent_key ? 1 : 0,
         is_active: true,
       };
       categories = [created];
@@ -90,6 +93,9 @@ test("categories workspace covers create update deactivate reactivate and delete
         label: body.label ?? category.label,
         description: body.description ?? category.description,
         applies_to_kind: body.applies_to_kind ?? category.applies_to_kind,
+        parent_key: body.parent_key ?? category.parent_key,
+        full_path: body.parent_key ? `${body.parent_key}/${category.key}` : category.key,
+        depth: body.parent_key ? 1 : 0,
         is_active: body.is_active ?? category.is_active,
       }));
       return createResponse(categories[0]);
@@ -113,6 +119,7 @@ test("categories workspace covers create update deactivate reactivate and delete
       label: "Meeting note",
       description: "Meetings",
       applies_to_kind: "note",
+      parent_key: "",
     });
   });
   await waitFor(() => {
@@ -125,6 +132,7 @@ test("categories workspace covers create update deactivate reactivate and delete
       label: "Meeting notes",
       description: "Meeting notes",
       applies_to_kind: "note",
+      parent_key: "",
       is_active: true,
     });
   });

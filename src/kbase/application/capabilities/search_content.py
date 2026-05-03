@@ -23,6 +23,7 @@ def search_content(
             query=data.query,
             item_kinds=data.item_kinds,
             category_keys=data.category_keys,
+            category_path_prefixes=data.category_path_prefixes,
             label_paths=data.label_paths,
             label_path_prefixes=data.label_path_prefixes,
             statuses=data.statuses,

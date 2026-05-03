@@ -68,6 +68,7 @@ class CreateCategoryRequest(BaseModel):
     label: str
     description: str | None = None
     applies_to_kind: str | None = None
+    parent_key: str | None = None
 
 
 class UpdateCategoryRequest(BaseModel):
@@ -76,6 +77,7 @@ class UpdateCategoryRequest(BaseModel):
     label: str | None = None
     description: str | None = None
     applies_to_kind: str | None = None
+    parent_key: str | None = None
     is_active: bool | None = None
 
 

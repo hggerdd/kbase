@@ -509,6 +509,7 @@ def create_app() -> FastAPI:
         query: str | None = Query(default=None),
         item_kinds: list[str] = Query(default=[]),
         category_keys: list[str] = Query(default=[]),
+        category_path_prefixes: list[str] = Query(default=[]),
         label_paths: list[str] = Query(default=[]),
         label_path_prefixes: list[str] = Query(default=[]),
         statuses: list[str] = Query(default=[]),
@@ -524,6 +525,7 @@ def create_app() -> FastAPI:
                 query=query,
                 item_kinds=item_kinds,
                 category_keys=category_keys,
+                category_path_prefixes=category_path_prefixes,
                 label_paths=label_paths,
                 label_path_prefixes=label_path_prefixes,
                 statuses=statuses,
@@ -664,6 +666,8 @@ def create_app() -> FastAPI:
     def list_categories_endpoint(
         query: str | None = Query(default=None),
         applies_to_kind: str | None = Query(default=None),
+        parent_key: str | None = Query(default=None),
+        full_path_prefix: str | None = Query(default=None),
         include_inactive: bool = Query(default=False),
         limit: int = Query(default=100, ge=1, le=500),
         offset: int = Query(default=0, ge=0),
@@ -673,6 +677,8 @@ def create_app() -> FastAPI:
             ListCategoriesInput(
                 query=query,
                 applies_to_kind=applies_to_kind,
+                parent_key=parent_key,
+                full_path_prefix=full_path_prefix,
                 include_inactive=include_inactive,
                 limit=limit,
                 offset=offset,
@@ -691,6 +697,7 @@ def create_app() -> FastAPI:
                 label=payload.label,
                 description=payload.description,
                 applies_to_kind=payload.applies_to_kind,
+                parent_key=payload.parent_key,
                 actor=actor,
                 provenance=_provenance("api.create_category"),
             )
@@ -706,6 +713,7 @@ def create_app() -> FastAPI:
             payload.label is None
             and "description" not in payload.model_fields_set
             and "applies_to_kind" not in payload.model_fields_set
+            and "parent_key" not in payload.model_fields_set
             and payload.is_active is None
         ):
             raise ValueError("At least one updatable field is required")
@@ -717,6 +725,8 @@ def create_app() -> FastAPI:
                 description_provided="description" in payload.model_fields_set,
                 applies_to_kind=payload.applies_to_kind,
                 applies_to_kind_provided="applies_to_kind" in payload.model_fields_set,
+                parent_key=payload.parent_key,
+                parent_key_provided="parent_key" in payload.model_fields_set,
                 is_active=payload.is_active,
                 actor=actor,
                 provenance=_provenance("api.update_category"),

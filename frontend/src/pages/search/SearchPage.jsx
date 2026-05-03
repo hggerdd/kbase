@@ -134,6 +134,15 @@ export function SearchPage({ searchRequest, onSearchStateChange }) {
               </label>
 
               <label className="search-field">
+                <span>Category branches</span>
+                <input
+                  value={workspace.filters.categoryPathPrefixesText}
+                  onChange={(event) => workspace.updateFilter("categoryPathPrefixesText", event.target.value)}
+                  placeholder="knowledge, documents/finance"
+                />
+              </label>
+
+              <label className="search-field">
                 <span>Item kinds</span>
                 <input
                   value={workspace.filters.itemKinds.join(", ")}

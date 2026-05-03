@@ -1,6 +1,6 @@
 # Capabilities
 
-Status: current as of 2026-04-29.
+Status: current as of 2026-05-03.
 
 This matrix shows whether each application capability is visible through API,
 CLI, frontend, and tests. Use it before adding new behavior to avoid creating
@@ -38,7 +38,7 @@ Legend:
 | List categories | `list_categories` | yes | yes | yes | yes | well mirrored |
 | Create category | `create_category` | yes | yes | yes | yes | well mirrored |
 | Update category | `update_category` | yes | yes | yes | yes | well mirrored |
-| Delete category | `delete_category` | yes | no | yes | yes | CLI command missing; blocked when category is still referenced |
+| Delete category | `delete_category` | yes | yes | yes | yes | blocked when category is still referenced or has children |
 | Classify item | `classify_item` | yes | yes | no | yes | no dedicated frontend management UI |
 | Patch metadata | `patch_item_metadata` | yes | yes | no | yes | no frontend management UI |
 | Register asset | `register_asset` | yes | yes | no | partial | frontend uses upload flows instead |

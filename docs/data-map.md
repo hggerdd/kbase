@@ -64,8 +64,9 @@ Canonical schema used by bootstrap for SQLite and PostgreSQL. It contains:
 src/kbase/infrastructure/db/sql/002_seed_reference_data.sql
 ```
 
-Reference data and dev principals/categories/metadata fields. Bootstrap adds
-default dev users separately.
+Reference data and dev principals/categories/metadata fields. Category seed
+rows include root `full_path` values so hierarchical category filtering works
+from a fresh database. Bootstrap adds default dev users separately.
 
 ```text
 src/kbase/infrastructure/db/bootstrap.py

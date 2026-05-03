@@ -5,12 +5,14 @@ export async function fetchNotes(
   {
     limit = 100,
     categoryKeys = [],
+    categoryPathPrefixes = [],
     labelPathPrefixes = [],
     projectId = null,
   } = {},
 ) {
   const hasScopedFilters =
     categoryKeys.length > 0 ||
+    categoryPathPrefixes.length > 0 ||
     labelPathPrefixes.length > 0 ||
     Boolean(projectId);
 
@@ -23,6 +25,7 @@ export async function fetchNotes(
         params.append("item_kinds", "note");
         params.set("limit", String(limit));
         categoryKeys.forEach((categoryKey) => params.append("category_keys", categoryKey));
+        categoryPathPrefixes.forEach((categoryPath) => params.append("category_path_prefixes", categoryPath));
         labelPathPrefixes.forEach((labelPath) => params.append("label_path_prefixes", labelPath));
         if (projectId) {
           params.set("project_id", projectId);

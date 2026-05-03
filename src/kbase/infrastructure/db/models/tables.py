@@ -13,6 +13,9 @@ class ItemCategoryModel(Base):
     label: Mapped[str] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     applies_to_kind: Mapped[str | None] = mapped_column(Text)
+    parent_key: Mapped[str | None] = mapped_column(ForeignKey("item_categories.key"))
+    full_path: Mapped[str] = mapped_column(Text, unique=True)
+    depth: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[int] = mapped_column(Integer, default=1)
 
 

@@ -10,6 +10,13 @@ from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
 
+def _clean_optional(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
 def create_category(
     data: CreateCategoryInput,
     *,
@@ -17,6 +24,8 @@ def create_category(
 ) -> CategoryData:
     key = data.key.strip()
     label = data.label.strip()
+    applies_to_kind = _clean_optional(data.applies_to_kind)
+    parent_key = _clean_optional(data.parent_key)
     if not key:
         raise ValueError("Category key is required")
     if not label:
@@ -27,11 +36,18 @@ def create_category(
         repos = build_repositories(uow.session)
         if repos.items.get_category(key) is not None:
             raise ValueError(f"Category '{key}' already exists")
+        if parent_key is not None:
+            parent = repos.items.get_category(parent_key)
+            if parent is None:
+                raise ValueError(f"Parent category '{parent_key}' not found")
+            if parent.applies_to_kind != applies_to_kind:
+                raise ValueError("Child category must use the same applies_to_kind as its parent")
         category = repos.items.create_category(
             key=key,
             label=label,
             description=data.description,
-            applies_to_kind=data.applies_to_kind,
+            applies_to_kind=applies_to_kind,
+            parent_key=parent_key,
         )
         record_write(
             repos=repos,

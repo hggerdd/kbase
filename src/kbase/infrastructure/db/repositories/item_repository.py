@@ -117,6 +117,8 @@ class ItemRepository:
         *,
         query: str | None = None,
         applies_to_kind: str | None = None,
+        parent_key: str | None = None,
+        full_path_prefix: str | None = None,
         include_inactive: bool = False,
     ) -> list[ItemCategoryModel]:
         stmt = select(ItemCategoryModel)
@@ -129,9 +131,20 @@ class ItemRepository:
             )
         if applies_to_kind:
             stmt = stmt.where(ItemCategoryModel.applies_to_kind == applies_to_kind)
+        if parent_key is not None:
+            stmt = stmt.where(ItemCategoryModel.parent_key == parent_key)
+        if full_path_prefix:
+            stmt = stmt.where(
+                (ItemCategoryModel.full_path == full_path_prefix)
+                | (ItemCategoryModel.full_path.like(f"{full_path_prefix}/%"))
+            )
         if not include_inactive:
             stmt = stmt.where(ItemCategoryModel.is_active == 1)
-        stmt = stmt.order_by(ItemCategoryModel.applies_to_kind.asc(), ItemCategoryModel.label.asc())
+        stmt = stmt.order_by(
+            ItemCategoryModel.applies_to_kind.asc(),
+            ItemCategoryModel.full_path.asc(),
+            ItemCategoryModel.label.asc(),
+        )
         return list(self.session.scalars(stmt))
 
     def create_category(
@@ -141,12 +154,17 @@ class ItemRepository:
         label: str,
         description: str | None,
         applies_to_kind: str | None,
+        parent_key: str | None,
     ) -> ItemCategoryModel:
+        full_path, depth = self._category_path_for(parent_key=parent_key, key=key)
         category = ItemCategoryModel(
             key=key,
             label=label,
             description=description,
             applies_to_kind=applies_to_kind,
+            parent_key=parent_key,
+            full_path=full_path,
+            depth=depth,
             is_active=1,
         )
         self.session.add(category)
@@ -162,14 +180,21 @@ class ItemRepository:
         description_provided: bool,
         applies_to_kind: str | None,
         applies_to_kind_provided: bool,
+        parent_key: str | None,
+        parent_key_provided: bool,
         is_active: bool | None,
     ) -> ItemCategoryModel:
+        old_full_path = category.full_path
         if label is not None:
             category.label = label
         if description_provided:
             category.description = description
         if applies_to_kind_provided:
             category.applies_to_kind = applies_to_kind
+        if parent_key_provided:
+            category.parent_key = parent_key
+            category.full_path, category.depth = self._category_path_for(parent_key=parent_key, key=category.key)
+            self._rewrite_category_descendant_paths(category, old_full_path)
         if is_active is not None:
             category.is_active = 1 if is_active else 0
         self.session.flush()
@@ -219,3 +244,24 @@ class ItemRepository:
             ItemClassificationModel.item_id == item_id
         )
         return list(self.session.scalars(stmt))
+
+    def _category_path_for(self, *, parent_key: str | None, key: str) -> tuple[str, int]:
+        if parent_key is None:
+            return key, 0
+        parent = self.get_category(parent_key)
+        if parent is None:
+            raise ValueError(f"Parent category '{parent_key}' not found")
+        return f"{parent.full_path}/{key}", parent.depth + 1
+
+    def _rewrite_category_descendant_paths(self, category: ItemCategoryModel, old_full_path: str) -> None:
+        descendants = list(
+            self.session.scalars(
+                select(ItemCategoryModel)
+                .where(ItemCategoryModel.full_path.like(f"{old_full_path}/%"))
+                .order_by(ItemCategoryModel.depth.asc())
+            )
+        )
+        for descendant in descendants:
+            suffix = descendant.full_path[len(old_full_path) :]
+            descendant.full_path = f"{category.full_path}{suffix}"
+            descendant.depth = category.depth + suffix.count("/")

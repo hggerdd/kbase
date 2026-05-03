@@ -406,6 +406,8 @@ def search_content_command(
 def list_categories_command(
     query: str | None = typer.Option(None, "--query"),
     applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
+    parent_key: str | None = typer.Option(None, "--parent-key"),
+    full_path_prefix: str | None = typer.Option(None, "--full-path-prefix"),
     include_inactive: bool = typer.Option(False, "--include-inactive"),
     limit: int = typer.Option(100, "--limit"),
     offset: int = typer.Option(0, "--offset"),
@@ -416,6 +418,8 @@ def list_categories_command(
         ListCategoriesInput(
             query=query,
             applies_to_kind=applies_to_kind,
+            parent_key=parent_key,
+            full_path_prefix=full_path_prefix,
             include_inactive=include_inactive,
             limit=limit,
             offset=offset,
@@ -431,6 +435,7 @@ def create_category_command(
     label: str = typer.Option(..., "--label"),
     description: str | None = typer.Option(None, "--description"),
     applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
+    parent_key: str | None = typer.Option(None, "--parent-key"),
     actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
@@ -440,6 +445,7 @@ def create_category_command(
             label=label,
             description=description,
             applies_to_kind=applies_to_kind,
+            parent_key=parent_key,
             actor=_actor_context(actor),
             provenance=_provenance("cli.create_category"),
         )
@@ -453,11 +459,12 @@ def update_category_command(
     label: str | None = typer.Option(None, "--label"),
     description: str | None = typer.Option(None, "--description"),
     applies_to_kind: str | None = typer.Option(None, "--applies-to-kind"),
+    parent_key: str | None = typer.Option(None, "--parent-key"),
     active: bool | None = typer.Option(None, "--active/--inactive"),
     actor: str | None = _actor_option(),
     as_json: bool = typer.Option(False, "--json"),
 ) -> None:
-    if label is None and description is None and applies_to_kind is None and active is None:
+    if label is None and description is None and applies_to_kind is None and parent_key is None and active is None:
         raise typer.BadParameter("At least one update option is required")
     result = update_category(
         UpdateCategoryInput(
@@ -467,6 +474,8 @@ def update_category_command(
             description_provided=description is not None,
             applies_to_kind=applies_to_kind,
             applies_to_kind_provided=applies_to_kind is not None,
+            parent_key=parent_key,
+            parent_key_provided=parent_key is not None,
             is_active=active,
             actor=_actor_context(actor),
             provenance=_provenance("cli.update_category"),

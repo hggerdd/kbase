@@ -60,7 +60,7 @@ test("file filter requires matching labels and category key prefix", () => {
   );
 });
 
-test("file tree treats category keys as flat values", () => {
+test("file tree groups files by assigned category key value", () => {
   const tree = buildFileTree(
     [makeDetail({ id: "a", title: "Alpha", categoryKey: "finance/income", labels: ["year/2025"], filename: "alpha.pdf" })],
     {

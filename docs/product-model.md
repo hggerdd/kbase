@@ -17,7 +17,8 @@ browser and for agents/tools through stable capabilities.
 - Imports: list inbox files and import them as items.
 - Labels: hierarchical label nodes with create/update/deactivate/reactivate,
   explicit hard-delete cleanup, and assignment flows.
-- Categories: flat category keys managed through API/frontend settings.
+- Categories: managed category taxonomy keys with optional parent/child
+  hierarchy.
 - Auth: browser session login, bearer-token creation through API, and CLI token
   bootstrap for local automation.
 
@@ -59,11 +60,15 @@ Label:
 
 Category:
 
-- Flat reference key such as `research`, `income_document`, or
+- Stable reference key such as `research`, `income_document`, or
   `project_general`.
 - Applies to an item kind when configured.
-- Categories are not hierarchical. Use labels for hierarchy and branch filters.
-- Category search and file filtering treat category keys as flat strings.
+- Can have a parent category of the same item kind; `full_path` is generated
+  from the parent chain.
+- Items store the exact primary `category_key`; branch filtering is an API/UI
+  convenience over category `full_path` prefixes.
+- Use labels for flexible multi-label hierarchy; use categories for one primary
+  item classification.
 
 Project:
 
@@ -146,7 +151,8 @@ Search behavior:
 - Subtree/prefix search matches descendants by `full_path` prefix.
 - Inactive labels are not returned by label picker/list calls unless requested
   with `include_inactive=true`.
-- Category search filters use exact flat category keys.
+- Category search filters use exact `category_keys` or subtree
+  `category_path_prefixes`.
 - Multiple values inside one filter dimension are alternatives; different
   dimensions combine to narrow results.
 

@@ -35,7 +35,7 @@ test("linked file items load file detail before building image or pdf previews",
 
 test("linked image and pdf previews preserve aspect ratio and render inline", () => {
   const thumbRule = cssRule(".linked-file-thumb");
-  const mediaRule = styles.match(/\.linked-file-thumb img,\n\.linked-file-thumb iframe\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+  const mediaRule = styles.match(/\.linked-file-thumb img,\r?\n\.linked-file-thumb iframe\s*\{[\s\S]*?\r?\n\}/)?.[0] ?? "";
 
   assert.match(thumbRule, /background:\s*#ffffff/);
   assert.match(thumbRule, /padding:\s*4px/);

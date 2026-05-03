@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from kbase.infrastructure.db.models.tables import (
     ContentPartModel,
     ItemAclModel,
+    ItemCategoryModel,
     ItemLabelModel,
     ItemModel,
     LabelNodeModel,
@@ -23,6 +24,7 @@ class SearchRepository:
         query: str | None,
         item_kinds: list[str],
         category_keys: list[str],
+        category_path_prefixes: list[str],
         label_paths: list[str],
         label_path_prefixes: list[str],
         statuses: list[str],
@@ -71,6 +73,18 @@ class SearchRepository:
             stmt = stmt.where(ItemModel.item_kind.in_(item_kinds))
         if category_keys:
             stmt = stmt.where(ItemModel.category_key.in_(category_keys))
+        if category_path_prefixes:
+            stmt = stmt.join(ItemCategoryModel, ItemCategoryModel.key == ItemModel.category_key)
+            category_predicates = []
+            for prefix in category_path_prefixes:
+                category_predicates.append(
+                    (ItemCategoryModel.full_path == prefix)
+                    | (ItemCategoryModel.full_path.like(f"{prefix}/%"))
+                )
+            predicate = category_predicates[0]
+            for current in category_predicates[1:]:
+                predicate = predicate | current
+            stmt = stmt.where(predicate)
         if statuses:
             stmt = stmt.where(ItemModel.status.in_(statuses))
         if created_by_principal_ids:

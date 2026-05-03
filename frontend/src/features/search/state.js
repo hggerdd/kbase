@@ -21,6 +21,7 @@ export function createSearchFilters(overrides = {}) {
   return {
     itemKinds: [],
     categoryKeysText: "",
+    categoryPathPrefixesText: "",
     labelPathsText: "",
     labelPathPrefixesText: "",
     statusesText: "",
@@ -66,6 +67,7 @@ export function buildSearchInput({
     query: query.trim() || null,
     itemKinds: explicitItemKinds.length > 0 ? explicitItemKinds : scope.itemKinds,
     categoryKeys: normalizeSearchTerms(normalizedFilters.categoryKeysText),
+    categoryPathPrefixes: normalizeSearchTerms(normalizedFilters.categoryPathPrefixesText),
     labelPaths: normalizeSearchTerms(normalizedFilters.labelPathsText),
     labelPathPrefixes: normalizeSearchTerms(normalizedFilters.labelPathPrefixesText),
     statuses: normalizeSearchTerms(normalizedFilters.statusesText),

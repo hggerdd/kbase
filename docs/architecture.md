@@ -76,14 +76,17 @@ Implemented core:
 - `item_files`: stored file records for file-backed items.
 - `label_nodes`: hierarchical labels.
 - `item_labels`: item-to-label assignments.
-- `item_categories`: flat category keys with optional `applies_to_kind`.
+- `item_categories`: managed category keys with optional `applies_to_kind`,
+  `parent_key`, `full_path`, and `depth`.
 
 Category decision:
 
-- Categories remain flat reference keys.
-- No category parent, path, subtree, or hierarchy semantics are part of the
-  current data model.
-- Hierarchical organization belongs to labels.
+- Categories are hierarchical reference taxonomy nodes.
+- Items still store one primary `category_key`; the hierarchy lives in
+  `item_categories` and is used for UI tree display and subtree search.
+- Exact category filters (`category_keys`) remain exact. Branch filters use
+  category `full_path` prefixes through `category_path_prefixes`.
+- Labels remain the more flexible user taxonomy for multi-label organization.
 - `item_links`: relations between items.
 - `project_items`: project-to-item membership.
 - Item-to-project replacement is a capability (`replace_item_projects`) because

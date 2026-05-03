@@ -7,6 +7,7 @@ from kbase.application.capabilities.classify_item import classify_item
 from kbase.application.capabilities.create_label import create_label
 from kbase.application.capabilities.create_note import create_note
 from kbase.application.capabilities.create_project import create_project
+from kbase.application.capabilities.create_category import create_category
 from kbase.application.capabilities.delete_category import delete_category
 from kbase.application.capabilities.delete_label import delete_label
 from kbase.application.capabilities.deactivate_label import deactivate_label
@@ -15,6 +16,7 @@ from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
 from kbase.application.capabilities.link_items import link_items
 from kbase.application.capabilities.list_labels import list_labels
+from kbase.application.capabilities.list_categories import list_categories
 from kbase.application.capabilities.list_items import list_items
 from kbase.application.capabilities.list_project_items import list_project_items
 from kbase.application.capabilities.list_related_items import list_related_items
@@ -28,12 +30,14 @@ from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
 from kbase.application.capabilities.update_item_core import update_item_core
+from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.unlink_items import unlink_items
 from kbase.application.dto.capabilities import (
     AddItemToProjectInput,
     AssignLabelsInput,
     AttachAssetToItemInput,
     ClassifyItemInput,
+    CreateCategoryInput,
     CreateLabelInput,
     CreateNoteInput,
     CreateProjectInput,
@@ -42,6 +46,7 @@ from kbase.application.dto.capabilities import (
     DeactivateLabelInput,
     GetItemInput,
     LinkItemsInput,
+    ListCategoriesInput,
     ListLabelsInput,
     ListItemsInput,
     ListProjectItemsInput,
@@ -55,6 +60,7 @@ from kbase.application.dto.capabilities import (
     ReplaceItemProjectsInput,
     SearchContentInput,
     UnlinkItemsInput,
+    UpdateCategoryInput,
     UpdateItemCoreInput,
 )
 from kbase.core.value_objects.actor import ActorContext
@@ -721,6 +727,142 @@ def test_delete_category_removes_unused_category_and_blocks_used_category(sessio
         assert str(error) == "Category 'research' is still in use and cannot be deleted"
     else:
         raise AssertionError("Expected delete_category to reject an in-use category")
+
+
+def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -> None:
+    parent = create_category(
+        CreateCategoryInput(
+            key="knowledge",
+            label="Knowledge",
+            applies_to_kind="note",
+            actor=actor(),
+            provenance=provenance("test.create_category"),
+        ),
+        session_factory=session_factory,
+    )
+    child = create_category(
+        CreateCategoryInput(
+            key="knowledge_research",
+            label="Knowledge Research",
+            applies_to_kind="note",
+            parent_key=parent.key,
+            actor=actor(),
+            provenance=provenance("test.create_category"),
+        ),
+        session_factory=session_factory,
+    )
+    assert child.parent_key == "knowledge"
+    assert child.full_path == "knowledge/knowledge_research"
+    assert child.depth == 1
+
+    create_note(
+        CreateNoteInput(
+            title="Hierarchy note",
+            category_key="knowledge_research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    exact_parent = search_content(
+        SearchContentInput(category_keys=["knowledge"], actor=actor()),
+        session_factory=session_factory,
+    )
+    subtree = search_content(
+        SearchContentInput(category_path_prefixes=["knowledge"], actor=actor()),
+        session_factory=session_factory,
+    )
+    assert exact_parent.items == []
+    assert [item.title for item in subtree.items] == ["Hierarchy note"]
+
+    listed = list_categories(
+        ListCategoriesInput(full_path_prefix="knowledge", actor=actor()),
+        session_factory=session_factory,
+    )
+    assert [category.full_path for category in listed.categories] == [
+        "knowledge",
+        "knowledge/knowledge_research",
+    ]
+
+    other_parent = create_category(
+        CreateCategoryInput(
+            key="archive_notes",
+            label="Archive Notes",
+            applies_to_kind="note",
+            actor=actor(),
+            provenance=provenance("test.create_category"),
+        ),
+        session_factory=session_factory,
+    )
+    moved = update_category(
+        UpdateCategoryInput(
+            key="knowledge_research",
+            parent_key=other_parent.key,
+            parent_key_provided=True,
+            actor=actor(),
+            provenance=provenance("test.update_category"),
+        ),
+        session_factory=session_factory,
+    )
+    assert moved.full_path == "archive_notes/knowledge_research"
+
+
+def test_category_hierarchy_rejects_cross_kind_parent_and_child_delete(session_factory) -> None:
+    create_category(
+        CreateCategoryInput(
+            key="note_parent",
+            label="Note Parent",
+            applies_to_kind="note",
+            actor=actor(),
+            provenance=provenance("test.create_category"),
+        ),
+        session_factory=session_factory,
+    )
+
+    try:
+        create_category(
+            CreateCategoryInput(
+                key="document_child",
+                label="Document Child",
+                applies_to_kind="document",
+                parent_key="note_parent",
+                actor=actor(),
+                provenance=provenance("test.create_category"),
+            ),
+            session_factory=session_factory,
+        )
+    except ValueError as error:
+        assert str(error) == "Child category must use the same applies_to_kind as its parent"
+    else:
+        raise AssertionError("Expected cross-kind category parent to be rejected")
+
+    create_category(
+        CreateCategoryInput(
+            key="note_child",
+            label="Note Child",
+            applies_to_kind="note",
+            parent_key="note_parent",
+            actor=actor(),
+            provenance=provenance("test.create_category"),
+        ),
+        session_factory=session_factory,
+    )
+
+    try:
+        delete_category(
+            DeleteCategoryInput(
+                key="note_parent",
+                actor=actor(),
+                provenance=provenance("test.delete_category"),
+            ),
+            session_factory=session_factory,
+        )
+    except ValueError as error:
+        assert str(error) == "Category 'note_parent' has child categories and cannot be deleted"
+    else:
+        raise AssertionError("Expected delete_category to reject categories with children")
 
 
 def test_replace_labels_replaces_existing_item_labels(session_factory) -> None:

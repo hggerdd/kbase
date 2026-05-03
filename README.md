@@ -34,8 +34,8 @@ Implemented:
 
 - FastAPI backend over shared application capabilities.
 - React/Vite frontend with session login and hash-based navigation.
-- Home now serves as the primary notes workspace with category, project, and
-  label filtering over the existing notes capabilities.
+- Home now serves as the primary notes workspace with hierarchical category,
+  project, and label filtering over the existing notes capabilities.
 - Notes can change project membership and link to other notes or file-backed
   items through backend capabilities.
 - Linked note previews plus linked image/PDF file previews exist in the notes
@@ -45,7 +45,7 @@ Implemented:
   projects, ACL tables, audit, provenance, users, sessions, and API tokens.
 - Hierarchical label nodes and label assignment/replacement.
 - Label deactivate/reactivate lifecycle plus explicit hard-delete subtree cleanup.
-- Category management in API, CLI, and frontend.
+- Hierarchical category management in API, CLI, and frontend.
 - File upload/import, inbox import, file-item storage, and file content delivery.
 - Docker Compose setups for development and production.
 - Python unit/integration/contract tests plus focused frontend Node tests.

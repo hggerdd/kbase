@@ -41,7 +41,7 @@ Implemented app concerns:
   from another editor returns `409` and leaves the workspace in a conflict
   state for the user to reload or reconcile.
 - Home note filters use existing capabilities and endpoints for note search,
-  category scoping, project scoping, and label subtree scoping.
+  category subtree scoping, project scoping, and label subtree scoping.
 - Notes can change their project membership from the note header through
   `PUT /api/items/{item_id}/projects`.
 - Notes can link other notes and file-backed items through `POST /api/links`.
@@ -163,8 +163,9 @@ Home/notes workspace behavior:
 - The legacy `notes` route renders the same workspace for compatibility.
 - Home search is note-scoped by default when the global search flow forwards
   into the Search page.
-- Category filters remain flat keys; the home UI must not imply category
-  hierarchy semantics that the backend does not support.
+- Category filters render the managed category tree. Selecting a parent category
+  filters notes by `category_path_prefixes`, so descendant categories are
+  included.
 - Label filters use subtree/prefix semantics through label path prefixes.
 - If a project is selected in Home, newly created notes keep that project scope.
 - The note editor exposes the current project under the title. Changing it
@@ -179,7 +180,8 @@ Search:
 
 Search filter wording:
 
-- Categories are exact category keys.
+- Categories can be exact keys or branch filters, depending on UI surface.
+- Home category branch filters use category `full_path` prefixes.
 - Exact labels are exact full label paths.
 - Label branches are subtree/prefix filters that include the selected path and
   its descendants.
@@ -246,10 +248,11 @@ Categories:
 
 Settings/Categories wording:
 
-- Categories are flat keys.
-- The UI must not present category parents, trees, or subcategories.
-- Category filtering may match key prefixes as string filtering, but those
-  prefixes are not hierarchy semantics.
+- Categories are managed taxonomy keys with optional parents.
+- Settings/Categories exposes parent selection and keeps child categories within
+  the same `applies_to_kind` tree.
+- Home uses category branch filtering; other file/search surfaces that only
+  have item summaries may still display the assigned exact `category_key`.
 
 ## Feature Modules
 

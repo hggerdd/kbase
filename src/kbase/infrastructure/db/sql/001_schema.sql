@@ -19,8 +19,12 @@ CREATE TABLE IF NOT EXISTS item_categories (
     label TEXT NOT NULL,
     description TEXT,
     applies_to_kind TEXT,
+    parent_key TEXT,
+    full_path TEXT NOT NULL UNIQUE,
+    depth INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1,
-    FOREIGN KEY (applies_to_kind) REFERENCES item_kinds(key)
+    FOREIGN KEY (applies_to_kind) REFERENCES item_kinds(key),
+    FOREIGN KEY (parent_key) REFERENCES item_categories(key)
 );
 
 CREATE TABLE IF NOT EXISTS content_part_kinds (
@@ -438,6 +442,8 @@ CREATE INDEX IF NOT EXISTS idx_items_archived ON items(is_archived);
 
 CREATE INDEX IF NOT EXISTS idx_item_classifications_category ON item_classifications(category_key);
 CREATE INDEX IF NOT EXISTS idx_item_classifications_created_by ON item_classifications(created_by_principal_id);
+CREATE INDEX IF NOT EXISTS idx_item_categories_parent ON item_categories(parent_key);
+CREATE INDEX IF NOT EXISTS idx_item_categories_full_path ON item_categories(full_path);
 
 CREATE INDEX IF NOT EXISTS idx_content_parts_item_id ON content_parts(item_id);
 CREATE INDEX IF NOT EXISTS idx_content_parts_part_kind ON content_parts(part_kind);

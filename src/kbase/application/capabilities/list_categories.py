@@ -20,6 +20,8 @@ def list_categories(
         categories = repos.items.list_categories(
             query=data.query,
             applies_to_kind=data.applies_to_kind,
+            parent_key=data.parent_key,
+            full_path_prefix=data.full_path_prefix,
             include_inactive=data.include_inactive,
         )
         sliced = categories[data.offset : data.offset + data.limit]

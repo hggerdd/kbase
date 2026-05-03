@@ -24,8 +24,20 @@ function normalizeKey(value) {
     .replace(/^_+|_+$/g, "");
 }
 
-function CategoryModal({ category, mode, saving, onClose, onSubmit }) {
+function CategoryModal({ category, categories, mode, saving, onClose, onSubmit }) {
   const [draft, setDraft] = useState(category ?? EMPTY_CATEGORY_DRAFT);
+  const parentOptions = useMemo(() => {
+    const currentPath = category?.full_path;
+    return categories.filter((entry) => {
+      if (entry.key === category?.key) {
+        return false;
+      }
+      if (currentPath && (entry.full_path === currentPath || entry.full_path.startsWith(`${currentPath}/`))) {
+        return false;
+      }
+      return (entry.applies_to_kind ?? "") === (draft.applies_to_kind ?? "");
+    });
+  }, [categories, category, draft.applies_to_kind]);
 
   useEffect(() => {
     setDraft(category ?? EMPTY_CATEGORY_DRAFT);
@@ -75,6 +87,17 @@ function CategoryModal({ category, mode, saving, onClose, onSubmit }) {
               {ITEM_KIND_OPTIONS.map((option) => (
                 <option key={option.value || "all"} value={option.value}>
                   {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Parent category</span>
+            <select value={draft.parent_key ?? ""} onChange={(event) => updateDraft({ parent_key: event.target.value })}>
+              <option value="">Root category</option>
+              {parentOptions.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {"\u00a0\u00a0".repeat(option.depth)}{option.label} ({option.key})
                 </option>
               ))}
             </select>
@@ -194,6 +217,7 @@ export function CategoriesSettingsPage() {
                 <button type="button" className="category-row-main" onClick={() => setSelectedKey(category.key)}>
                   <span className="category-row-title">{category.label}</span>
                   <span className="category-row-key">{category.key}</span>
+                  {category.full_path && category.full_path !== category.key ? <span className="category-row-key">{category.full_path}</span> : null}
                   {category.description ? <span className="category-row-description">{category.description}</span> : null}
                 </button>
                 <div className="category-row-meta">
@@ -229,10 +253,10 @@ export function CategoriesSettingsPage() {
       </Panel>
 
       {modalMode === "create" ? (
-        <CategoryModal mode="create" saving={workspace.saving} onClose={() => setModalMode(null)} onSubmit={submitCreate} />
+        <CategoryModal categories={workspace.categories} mode="create" saving={workspace.saving} onClose={() => setModalMode(null)} onSubmit={submitCreate} />
       ) : null}
       {modalMode === "edit" && selectedCategory ? (
-        <CategoryModal category={selectedCategory} mode="edit" saving={workspace.saving} onClose={() => setModalMode(null)} onSubmit={submitEdit} />
+        <CategoryModal category={selectedCategory} categories={workspace.categories} mode="edit" saving={workspace.saving} onClose={() => setModalMode(null)} onSubmit={submitEdit} />
       ) : null}
     </ResponsiveContainer>
   );

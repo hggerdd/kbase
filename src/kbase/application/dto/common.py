@@ -127,6 +127,9 @@ class CategoryData(BaseModel):
     label: str
     description: str | None = None
     applies_to_kind: str | None = None
+    parent_key: str | None = None
+    full_path: str
+    depth: int = 0
     is_active: bool = True
 
 

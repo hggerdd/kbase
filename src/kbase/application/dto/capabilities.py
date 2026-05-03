@@ -83,6 +83,7 @@ class SearchContentInput(PaginationInput):
     query: str | None = None
     item_kinds: list[str] = Field(default_factory=list)
     category_keys: list[str] = Field(default_factory=list)
+    category_path_prefixes: list[str] = Field(default_factory=list)
     label_paths: list[str] = Field(default_factory=list)
     label_path_prefixes: list[str] = Field(default_factory=list)
     statuses: list[str] = Field(default_factory=list)
@@ -222,6 +223,8 @@ class ListCategoriesInput(PaginationInput):
 
     query: str | None = None
     applies_to_kind: str | None = None
+    parent_key: str | None = None
+    full_path_prefix: str | None = None
     include_inactive: bool = False
     actor: ActorContext
 
@@ -241,6 +244,7 @@ class CreateCategoryInput(BaseModel):
     label: str
     description: str | None = None
     applies_to_kind: str | None = None
+    parent_key: str | None = None
     actor: ActorContext
     provenance: ProvenanceInput
 
@@ -254,6 +258,8 @@ class UpdateCategoryInput(BaseModel):
     description_provided: bool = False
     applies_to_kind: str | None = None
     applies_to_kind_provided: bool = False
+    parent_key: str | None = None
+    parent_key_provided: bool = False
     is_active: bool | None = None
     actor: ActorContext
     provenance: ProvenanceInput
