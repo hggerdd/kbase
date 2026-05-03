@@ -809,6 +809,49 @@ def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -
     assert moved.full_path == "archive_notes/knowledge_research"
 
 
+def test_global_categories_are_valid_for_kind_specific_items_and_lists(session_factory) -> None:
+    global_category = create_category(
+        CreateCategoryInput(
+            key="global_reference",
+            label="Global Reference",
+            applies_to_kind=None,
+            actor=actor(),
+            provenance=provenance("test.create_category"),
+        ),
+        session_factory=session_factory,
+    )
+    assert global_category.applies_to_kind is None
+
+    listed_for_notes = list_categories(
+        ListCategoriesInput(applies_to_kind="note", actor=actor()),
+        session_factory=session_factory,
+    )
+    assert "global_reference" in [category.key for category in listed_for_notes.categories]
+
+    created = create_note(
+        CreateNoteInput(
+            title="Global category note",
+            category_key="global_reference",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    assert created.item.category_key == "global_reference"
+
+    updated = update_item_core(
+        UpdateItemCoreInput(
+            item_id=created.item.id,
+            category_key="research",
+            actor=actor(),
+            provenance=provenance("test.update_item_core"),
+        ),
+        session_factory=session_factory,
+    )
+    assert updated.category_key == "research"
+
+
 def test_category_hierarchy_rejects_cross_kind_parent_and_child_delete(session_factory) -> None:
     create_category(
         CreateCategoryInput(
@@ -834,7 +877,7 @@ def test_category_hierarchy_rejects_cross_kind_parent_and_child_delete(session_f
             session_factory=session_factory,
         )
     except ValueError as error:
-        assert str(error) == "Child category must use the same applies_to_kind as its parent"
+        assert str(error) == "Child category must be compatible with its parent applies_to_kind"
     else:
         raise AssertionError("Expected cross-kind category parent to be rejected")
 

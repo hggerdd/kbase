@@ -11,6 +11,7 @@ from kbase.application.services.capability_support import (
     require_item_write,
 )
 from kbase.application.services.mappers import to_item_summary
+from kbase.core.policies.classification_policy import category_applies_to_item_kind
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -25,6 +26,12 @@ def update_item_core(
         repos = build_repositories(uow.session)
         item = require_item(repos.items, data.item_id)
         require_item_write(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
+        if data.category_key is not None:
+            category = repos.items.get_category(data.category_key)
+            if category is None:
+                raise ValueError(f"Unknown category '{data.category_key}'")
+            if not category_applies_to_item_kind(category.applies_to_kind, item.item_kind):
+                raise ValueError(f"Category '{data.category_key}' is not valid for {item.item_kind}")
         updated = repos.items.update_core(
             item,
             title=data.title,

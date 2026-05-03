@@ -15,6 +15,7 @@ from kbase.core.policies.metadata_policy import (
     ensure_metadata_field_matches_item_kind,
     ensure_metadata_key_allowed,
 )
+from kbase.core.policies.classification_policy import category_applies_to_item_kind
 from kbase.core.rules.modelling_rules import NOTE_ITEM_KIND, PRIMARY_CONTENT_PART_KIND
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -31,7 +32,7 @@ def create_note(
         category = repos.items.get_category(data.category_key)
         if category is None:
             raise ValueError(f"Unknown category '{data.category_key}'")
-        if category.applies_to_kind != NOTE_ITEM_KIND:
+        if not category_applies_to_item_kind(category.applies_to_kind, NOTE_ITEM_KIND):
             raise ValueError(f"Category '{data.category_key}' is not valid for notes")
 
         item = repos.items.create(

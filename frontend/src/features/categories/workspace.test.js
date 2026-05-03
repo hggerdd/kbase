@@ -175,3 +175,52 @@ test("categories workspace covers create update deactivate reactivate and delete
 
   await act(async () => root.unmount());
 });
+
+test("category workspace sends global categories without applies_to_kind", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const calls = [];
+
+  global.fetch = async (url, options = {}) => {
+    const value = pathAndQuery(url);
+    const method = options.method ?? "GET";
+    calls.push({ method, url: value, body: options.body ? JSON.parse(String(options.body)) : null });
+
+    if (value.startsWith("/api/categories") && method === "GET") {
+      return createResponse({ categories: [], limit: 300, offset: 0 });
+    }
+    if (value === "/api/categories" && method === "POST") {
+      return createResponse({
+        key: "global_reference",
+        label: "Global Reference",
+        applies_to_kind: null,
+        parent_key: null,
+        full_path: "global_reference",
+        depth: 0,
+        is_active: true,
+      });
+    }
+    throw new Error(`Unhandled fetch: ${method} ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness, { onWorkspace: (workspace) => { latestWorkspace = workspace; } }));
+  });
+  await waitFor(() => assert.equal(latestWorkspace.loading, false));
+
+  await act(async () => {
+    await latestWorkspace.handleCreateCategory({
+      key: "global_reference",
+      label: "Global Reference",
+      description: "",
+      applies_to_kind: "",
+      parent_key: "",
+    });
+  });
+
+  const postCall = calls.find((call) => call.method === "POST");
+  assert.equal(postCall.body.applies_to_kind, null);
+
+  await act(async () => root.unmount());
+});

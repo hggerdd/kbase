@@ -6,6 +6,7 @@ from kbase.application.dto.capabilities import CreateCategoryInput
 from kbase.application.dto.common import CategoryData
 from kbase.application.services.capability_support import build_repositories, record_write
 from kbase.application.services.mappers import to_category_data
+from kbase.core.policies.classification_policy import category_can_be_child_of_parent
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
 
@@ -40,8 +41,11 @@ def create_category(
             parent = repos.items.get_category(parent_key)
             if parent is None:
                 raise ValueError(f"Parent category '{parent_key}' not found")
-            if parent.applies_to_kind != applies_to_kind:
-                raise ValueError("Child category must use the same applies_to_kind as its parent")
+            if not category_can_be_child_of_parent(
+                child_applies_to_kind=applies_to_kind,
+                parent_applies_to_kind=parent.applies_to_kind,
+            ):
+                raise ValueError("Child category must be compatible with its parent applies_to_kind")
         category = repos.items.create_category(
             key=key,
             label=label,

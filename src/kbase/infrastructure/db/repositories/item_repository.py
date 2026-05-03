@@ -130,7 +130,9 @@ class ItemRepository:
                 | (ItemCategoryModel.description.ilike(like_query))
             )
         if applies_to_kind:
-            stmt = stmt.where(ItemCategoryModel.applies_to_kind == applies_to_kind)
+            stmt = stmt.where(
+                or_(ItemCategoryModel.applies_to_kind == applies_to_kind, ItemCategoryModel.applies_to_kind.is_(None))
+            )
         if parent_key is not None:
             stmt = stmt.where(ItemCategoryModel.parent_key == parent_key)
         if full_path_prefix:

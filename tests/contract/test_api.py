@@ -324,6 +324,38 @@ def test_api_rejects_delete_of_used_category(monkeypatch, tmp_path) -> None:
     assert deleted.json()["detail"] == "Category 'research' is still in use and cannot be deleted"
 
 
+def test_api_global_category_is_available_for_notes(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    created_category = client.post(
+        "/api/categories",
+        json={"key": "global_reference", "label": "Global Reference"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created_category.status_code == 200
+    assert created_category.json()["applies_to_kind"] is None
+
+    listed = client.get(
+        "/api/categories",
+        params={"applies_to_kind": "note"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert listed.status_code == 200
+    assert "global_reference" in [category["key"] for category in listed.json()["categories"]]
+
+    created_note = client.post(
+        "/api/notes",
+        json={
+            "title": "Global category note",
+            "category_key": "global_reference",
+            "markdown_body": "Body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created_note.status_code == 200
+    assert created_note.json()["item"]["category_key"] == "global_reference"
+
+
 def test_api_category_hierarchy_and_subtree_search(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
 

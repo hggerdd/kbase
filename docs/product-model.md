@@ -63,8 +63,11 @@ Category:
 - Stable reference key such as `research`, `income_document`, or
   `project_general`.
 - Applies to an item kind when configured.
-- Can have a parent category of the same item kind; `full_path` is generated
-  from the parent chain.
+- If no item kind is configured, it applies to all item kinds and is shown in
+  kind-specific pickers.
+- Can have a compatible parent category; `full_path` is generated from the
+  parent chain. A global parent can contain kind-specific children, but a
+  kind-specific parent cannot contain global or different-kind children.
 - Items store the exact primary `category_key`; branch filtering is an API/UI
   convenience over category `full_path` prefixes.
 - Use labels for flexible multi-label hierarchy; use categories for one primary

@@ -175,7 +175,10 @@ Category model:
 - Categories are managed reference keys with optional hierarchy.
 - `key` remains the stable item-facing value stored in `items.category_key`.
 - `parent_key`, `full_path`, and `depth` describe the category tree.
-- Child categories must use the same `applies_to_kind` as their parent.
+- `applies_to_kind=null` means the category is valid for all item kinds.
+- Child categories must be compatible with their parent scope: a global parent
+  can have global or kind-specific children; a kind-specific parent can only
+  have children of the same kind.
 - Deleting a category is blocked while items/classifications or child
   categories still reference it.
 
@@ -336,6 +339,9 @@ Search filter semantics:
 - `include_inactive`
 - `limit`
 - `offset`
+
+When `applies_to_kind` is provided, the result includes both categories for
+that exact item kind and global categories where `applies_to_kind` is `null`.
 
 ## Known API Gaps
 

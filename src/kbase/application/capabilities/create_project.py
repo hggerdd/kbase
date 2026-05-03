@@ -6,6 +6,7 @@ from kbase.application.dto.capabilities import CreateProjectInput
 from kbase.application.dto.common import ItemSummary
 from kbase.application.services.capability_support import build_repositories, ensure_owner_acl, record_write
 from kbase.application.services.mappers import to_item_summary
+from kbase.core.policies.classification_policy import category_applies_to_item_kind
 from kbase.core.policies.metadata_policy import build_typed_metadata_payload
 from kbase.core.rules.modelling_rules import PROJECT_ITEM_KIND
 from kbase.infrastructure.db.session import get_session_factory
@@ -23,7 +24,7 @@ def create_project(
         category = repos.items.get_category(data.category_key)
         if category is None:
             raise ValueError(f"Unknown category '{data.category_key}'")
-        if category.applies_to_kind != PROJECT_ITEM_KIND:
+        if not category_applies_to_item_kind(category.applies_to_kind, PROJECT_ITEM_KIND):
             raise ValueError(f"Category '{data.category_key}' is not valid for project items")
         project = repos.items.create(
             title=data.title,

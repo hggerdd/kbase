@@ -35,7 +35,7 @@ function CategoryModal({ category, categories, mode, saving, onClose, onSubmit }
       if (currentPath && (entry.full_path === currentPath || entry.full_path.startsWith(`${currentPath}/`))) {
         return false;
       }
-      return (entry.applies_to_kind ?? "") === (draft.applies_to_kind ?? "");
+      return !entry.applies_to_kind || entry.applies_to_kind === (draft.applies_to_kind ?? "");
     });
   }, [categories, category, draft.applies_to_kind]);
 

@@ -250,7 +250,9 @@ Settings/Categories wording:
 
 - Categories are managed taxonomy keys with optional parents.
 - Settings/Categories exposes parent selection and keeps child categories within
-  the same `applies_to_kind` tree.
+  a compatible `applies_to_kind` tree.
+- "All item types" categories are global and appear in kind-specific pickers
+  such as Notes alongside note-only categories.
 - Home uses category branch filtering; other file/search surfaces that only
   have item summaries may still display the assigned exact `category_key`.
 

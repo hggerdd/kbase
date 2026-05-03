@@ -25,6 +25,7 @@ from kbase.core.policies.metadata_policy import (
     ensure_metadata_field_matches_item_kind,
     ensure_metadata_key_allowed,
 )
+from kbase.core.policies.classification_policy import category_applies_to_item_kind
 from kbase.core.rules.modelling_rules import FILE_ITEM_KINDS, ITEM_FILE_ROLE_PRIMARY
 from kbase.infrastructure.db.models.tables import ItemMetadataModel, MetadataFieldModel
 from kbase.infrastructure.db.repositories.helpers import metadata_value_from_row
@@ -55,7 +56,7 @@ def import_file_as_item(
             category = repos.items.get_category(data.category_key)
             if category is None:
                 raise ValueError(f"Unknown category '{data.category_key}'")
-            if category.applies_to_kind != data.item_kind:
+            if not category_applies_to_item_kind(category.applies_to_kind, data.item_kind):
                 raise ValueError(f"Category '{data.category_key}' is not valid for {data.item_kind}")
 
         if data.link_to_item_id is not None:
