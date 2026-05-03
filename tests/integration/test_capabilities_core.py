@@ -732,8 +732,8 @@ def test_delete_category_removes_unused_category_and_blocks_used_category(sessio
 def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -> None:
     parent = create_category(
         CreateCategoryInput(
-            key="knowledge",
-            label="Knowledge",
+            key="knowledge_test",
+            label="Knowledge Test",
             applies_to_kind="note",
             actor=actor(),
             provenance=provenance("test.create_category"),
@@ -742,7 +742,7 @@ def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -
     )
     child = create_category(
         CreateCategoryInput(
-            key="knowledge_research",
+            key="knowledge_test_research",
             label="Knowledge Research",
             applies_to_kind="note",
             parent_key=parent.key,
@@ -751,14 +751,14 @@ def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -
         ),
         session_factory=session_factory,
     )
-    assert child.parent_key == "knowledge"
-    assert child.full_path == "knowledge/knowledge_research"
+    assert child.parent_key == "knowledge_test"
+    assert child.full_path == "knowledge_test/knowledge_test_research"
     assert child.depth == 1
 
     create_note(
         CreateNoteInput(
             title="Hierarchy note",
-            category_key="knowledge_research",
+            category_key="knowledge_test_research",
             markdown_body="body",
             actor=actor(),
             provenance=provenance("test.create_note"),
@@ -767,23 +767,23 @@ def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -
     )
 
     exact_parent = search_content(
-        SearchContentInput(category_keys=["knowledge"], actor=actor()),
+        SearchContentInput(category_keys=["knowledge_test"], actor=actor()),
         session_factory=session_factory,
     )
     subtree = search_content(
-        SearchContentInput(category_path_prefixes=["knowledge"], actor=actor()),
+        SearchContentInput(category_path_prefixes=["knowledge_test"], actor=actor()),
         session_factory=session_factory,
     )
     assert exact_parent.items == []
     assert [item.title for item in subtree.items] == ["Hierarchy note"]
 
     listed = list_categories(
-        ListCategoriesInput(full_path_prefix="knowledge", actor=actor()),
+        ListCategoriesInput(full_path_prefix="knowledge_test", actor=actor()),
         session_factory=session_factory,
     )
     assert [category.full_path for category in listed.categories] == [
-        "knowledge",
-        "knowledge/knowledge_research",
+        "knowledge_test",
+        "knowledge_test/knowledge_test_research",
     ]
 
     other_parent = create_category(
@@ -798,7 +798,7 @@ def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -
     )
     moved = update_category(
         UpdateCategoryInput(
-            key="knowledge_research",
+            key="knowledge_test_research",
             parent_key=other_parent.key,
             parent_key_provided=True,
             actor=actor(),
@@ -806,7 +806,7 @@ def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -
         ),
         session_factory=session_factory,
     )
-    assert moved.full_path == "archive_notes/knowledge_research"
+    assert moved.full_path == "archive_notes/knowledge_test_research"
 
 
 def test_global_categories_are_valid_for_kind_specific_items_and_lists(session_factory) -> None:

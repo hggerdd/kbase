@@ -253,7 +253,7 @@ def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
     created = client.post(
         "/api/categories",
         json={
-            "key": "meeting_note",
+            "key": "meeting_note_test",
             "label": "Meeting note",
             "description": "Notes captured from meetings",
             "applies_to_kind": "note",
@@ -261,7 +261,7 @@ def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
         headers={"x-kbase-actor": "heiko"},
     )
     assert created.status_code == 200
-    assert created.json()["key"] == "meeting_note"
+    assert created.json()["key"] == "meeting_note_test"
 
     listed = client.get(
         "/api/categories",
@@ -269,10 +269,10 @@ def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
         headers={"x-kbase-actor": "heiko"},
     )
     assert listed.status_code == 200
-    assert "meeting_note" in [category["key"] for category in listed.json()["categories"]]
+    assert "meeting_note_test" in [category["key"] for category in listed.json()["categories"]]
 
     updated = client.patch(
-        "/api/categories/meeting_note",
+        "/api/categories/meeting_note_test",
         json={"label": "Meeting notes", "is_active": False},
         headers={"x-kbase-actor": "heiko"},
     )
@@ -285,21 +285,21 @@ def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
         params={"applies_to_kind": "note"},
         headers={"x-kbase-actor": "heiko"},
     )
-    assert "meeting_note" not in [category["key"] for category in active_only.json()["categories"]]
+    assert "meeting_note_test" not in [category["key"] for category in active_only.json()["categories"]]
 
     include_inactive = client.get(
         "/api/categories",
         params={"applies_to_kind": "note", "include_inactive": "true"},
         headers={"x-kbase-actor": "heiko"},
     )
-    assert "meeting_note" in [category["key"] for category in include_inactive.json()["categories"]]
+    assert "meeting_note_test" in [category["key"] for category in include_inactive.json()["categories"]]
 
     deleted = client.delete(
-        "/api/categories/meeting_note",
+        "/api/categories/meeting_note_test",
         headers={"x-kbase-actor": "heiko"},
     )
     assert deleted.status_code == 200
-    assert deleted.json() == {"key": "meeting_note", "deleted": True}
+    assert deleted.json() == {"key": "meeting_note_test", "deleted": True}
 
 
 def test_api_rejects_delete_of_used_category(monkeypatch, tmp_path) -> None:
@@ -361,7 +361,7 @@ def test_api_category_hierarchy_and_subtree_search(monkeypatch, tmp_path) -> Non
 
     parent = client.post(
         "/api/categories",
-        json={"key": "knowledge", "label": "Knowledge", "applies_to_kind": "note"},
+        json={"key": "knowledge_test", "label": "Knowledge Test", "applies_to_kind": "note"},
         headers={"x-kbase-actor": "heiko"},
     )
     assert parent.status_code == 200
@@ -369,22 +369,22 @@ def test_api_category_hierarchy_and_subtree_search(monkeypatch, tmp_path) -> Non
     child = client.post(
         "/api/categories",
         json={
-            "key": "knowledge_research",
+            "key": "knowledge_test_research",
             "label": "Knowledge Research",
             "applies_to_kind": "note",
-            "parent_key": "knowledge",
+            "parent_key": "knowledge_test",
         },
         headers={"x-kbase-actor": "heiko"},
     )
     assert child.status_code == 200
-    assert child.json()["parent_key"] == "knowledge"
-    assert child.json()["full_path"] == "knowledge/knowledge_research"
+    assert child.json()["parent_key"] == "knowledge_test"
+    assert child.json()["full_path"] == "knowledge_test/knowledge_test_research"
 
     created = client.post(
         "/api/notes",
         json={
             "title": "Hierarchy API Note",
-            "category_key": "knowledge_research",
+            "category_key": "knowledge_test_research",
             "markdown_body": "Body",
         },
         headers={"x-kbase-actor": "heiko"},
@@ -393,7 +393,7 @@ def test_api_category_hierarchy_and_subtree_search(monkeypatch, tmp_path) -> Non
 
     exact_parent = client.get(
         "/api/search/content",
-        params={"category_keys": "knowledge"},
+        params={"category_keys": "knowledge_test"},
         headers={"x-kbase-actor": "heiko"},
     )
     assert exact_parent.status_code == 200
@@ -401,7 +401,7 @@ def test_api_category_hierarchy_and_subtree_search(monkeypatch, tmp_path) -> Non
 
     subtree = client.get(
         "/api/search/content",
-        params={"category_path_prefixes": "knowledge"},
+        params={"category_path_prefixes": "knowledge_test"},
         headers={"x-kbase-actor": "heiko"},
     )
     assert subtree.status_code == 200

@@ -73,6 +73,13 @@ Category:
 - Use labels for flexible multi-label hierarchy; use categories for one primary
   item classification.
 
+Default note category roots:
+
+- `capture`: quick notes, meeting notes, observations, inbox notes.
+- `thinking`: research, comparison, analysis, decisions.
+- `knowledge`: references, learning notes, processes, how-to material.
+- `planning`: plans, ideas, review notes, follow-up notes.
+
 Project:
 
 - A project is an item of kind `project`.

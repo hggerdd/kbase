@@ -1,10 +1,24 @@
 export const NOTE_CATEGORIES = [
+  "capture",
+  "thinking",
+  "knowledge",
+  "planning",
+  "quick_note",
+  "meeting_note",
+  "observation",
+  "inbox_note",
   "research",
-  "decision",
-  "learning",
-  "reference",
-  "process",
   "comparison_note",
+  "analysis",
+  "decision",
+  "reference",
+  "learning",
+  "process",
+  "how_to",
+  "plan",
+  "idea",
+  "review_note",
+  "follow_up",
 ];
 
 export const NOTE_STATUSES = ["draft", "active", "done", "archived"];

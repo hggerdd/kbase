@@ -286,7 +286,7 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
             "category",
             "create",
             "--key",
-            "meeting_note",
+            "meeting_note_test",
             "--label",
             "Meeting note",
             "--description",
@@ -298,7 +298,7 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     )
     assert created.exit_code == 0
     created_payload = json.loads(created.stdout)
-    assert created_payload["key"] == "meeting_note"
+    assert created_payload["key"] == "meeting_note_test"
     assert created_payload["label"] == "Meeting note"
 
     listed = _run_with_token(
@@ -307,14 +307,14 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     )
     assert listed.exit_code == 0
     listed_payload = json.loads(listed.stdout)
-    assert "meeting_note" in [category["key"] for category in listed_payload["categories"]]
+    assert "meeting_note_test" in [category["key"] for category in listed_payload["categories"]]
 
     updated = _run_with_token(
         token,
         [
             "category",
             "update",
-            "meeting_note",
+            "meeting_note_test",
             "--label",
             "Meeting notes",
             "--inactive",
@@ -329,7 +329,7 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     active_only = _run_with_token(token, ["category", "list", "--applies-to-kind", "note", "--json"])
     assert active_only.exit_code == 0
     active_payload = json.loads(active_only.stdout)
-    assert "meeting_note" not in [category["key"] for category in active_payload["categories"]]
+    assert "meeting_note_test" not in [category["key"] for category in active_payload["categories"]]
 
     include_inactive = _run_with_token(
         token,
@@ -337,11 +337,11 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
     )
     assert include_inactive.exit_code == 0
     inactive_payload = json.loads(include_inactive.stdout)
-    assert "meeting_note" in [category["key"] for category in inactive_payload["categories"]]
+    assert "meeting_note_test" in [category["key"] for category in inactive_payload["categories"]]
 
-    deleted = _run_with_token(token, ["category", "delete", "meeting_note", "--json"])
+    deleted = _run_with_token(token, ["category", "delete", "meeting_note_test", "--json"])
     assert deleted.exit_code == 0
-    assert json.loads(deleted.stdout) == {"key": "meeting_note", "deleted": True}
+    assert json.loads(deleted.stdout) == {"key": "meeting_note_test", "deleted": True}
 
 
 def test_cli_category_hierarchy(monkeypatch, tmp_path) -> None:
@@ -353,9 +353,9 @@ def test_cli_category_hierarchy(monkeypatch, tmp_path) -> None:
             "category",
             "create",
             "--key",
-            "knowledge",
+            "knowledge_test",
             "--label",
-            "Knowledge",
+            "Knowledge Test",
             "--applies-to-kind",
             "note",
             "--json",
@@ -369,28 +369,28 @@ def test_cli_category_hierarchy(monkeypatch, tmp_path) -> None:
             "category",
             "create",
             "--key",
-            "knowledge_research",
+            "knowledge_test_research",
             "--label",
             "Knowledge Research",
             "--applies-to-kind",
             "note",
             "--parent-key",
-            "knowledge",
+            "knowledge_test",
             "--json",
         ],
     )
     assert child.exit_code == 0
     child_payload = json.loads(child.stdout)
-    assert child_payload["parent_key"] == "knowledge"
-    assert child_payload["full_path"] == "knowledge/knowledge_research"
+    assert child_payload["parent_key"] == "knowledge_test"
+    assert child_payload["full_path"] == "knowledge_test/knowledge_test_research"
 
     listed = _run_with_token(
         token,
-        ["category", "list", "--full-path-prefix", "knowledge", "--json"],
+        ["category", "list", "--full-path-prefix", "knowledge_test", "--json"],
     )
     assert listed.exit_code == 0
     listed_payload = json.loads(listed.stdout)
     assert [category["full_path"] for category in listed_payload["categories"]] == [
-        "knowledge",
-        "knowledge/knowledge_research",
+        "knowledge_test",
+        "knowledge_test/knowledge_test_research",
     ]
