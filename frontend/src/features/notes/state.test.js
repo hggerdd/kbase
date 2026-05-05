@@ -1,12 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  DEFAULT_NOTE_SORT_MODE,
   buildCategoryCounts,
   combineLabelPaths,
   deriveSelectionTransition,
   editorFromItemDetail,
+  normalizeNoteSortMode,
   resolveCategoryCountNotes,
+  serializeEditorCoreState,
   serializeEditorState,
+  sortWorkspaceNotes,
 } from "./state.js";
 
 test("same note selection does not reset the editor and triggers a reload", () => {
@@ -106,6 +110,31 @@ test("editor serialization is stable for semantically identical states", () => {
   assert.equal(left, right);
 });
 
+test("core editor serialization ignores label-only changes", () => {
+  const left = serializeEditorCoreState({
+    item_id: "note-a",
+    title: "Alpha",
+    category_key: "research",
+    status: "draft",
+    markdown_body: "Body",
+    html_body: "<p>Body</p>",
+    label_paths: "",
+    selected_labels: [],
+  });
+  const right = serializeEditorCoreState({
+    item_id: "note-a",
+    title: "Alpha",
+    category_key: "research",
+    status: "draft",
+    markdown_body: "Body",
+    html_body: "<p>Body</p>",
+    label_paths: "",
+    selected_labels: ["work/alpha", "private/home"],
+  });
+
+  assert.equal(left, right);
+});
+
 test("category counts include every category from the provided note source", () => {
   const counts = buildCategoryCounts([
     { id: "note-1", category_key: "research" },
@@ -131,4 +160,21 @@ test("category sidebar counts use the unfiltered note source while a category is
     resolveCategoryCountNotes("research", visibleNotes, unfilteredCategoryNotes),
     unfilteredCategoryNotes,
   );
+});
+
+test("workspace notes can be sorted by recent update, alphabetically, or creation date", () => {
+  const notes = [
+    { id: "note-1", title: "Bravo", created_at: "2026-04-14T08:00:00Z", updated_at: "2026-04-14T10:00:00Z" },
+    { id: "note-2", title: "Alpha", created_at: "2026-04-14T12:00:00Z", updated_at: "2026-04-14T09:00:00Z" },
+    { id: "note-3", title: "Charlie", created_at: "2026-04-14T11:00:00Z", updated_at: "2026-04-14T11:00:00Z" },
+  ];
+
+  assert.deepEqual(sortWorkspaceNotes(notes, "recent").map((note) => note.id), ["note-3", "note-1", "note-2"]);
+  assert.deepEqual(sortWorkspaceNotes(notes, "alphabetical").map((note) => note.id), ["note-2", "note-1", "note-3"]);
+  assert.deepEqual(sortWorkspaceNotes(notes, "created_on").map((note) => note.id), ["note-2", "note-3", "note-1"]);
+});
+
+test("unknown note sort preferences fall back to the default sort mode", () => {
+  assert.equal(normalizeNoteSortMode("alphabetical"), "alphabetical");
+  assert.equal(normalizeNoteSortMode("something-else"), DEFAULT_NOTE_SORT_MODE);
 });

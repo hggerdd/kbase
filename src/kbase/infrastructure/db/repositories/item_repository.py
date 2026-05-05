@@ -218,6 +218,31 @@ class ItemRepository:
         )
         return int(self.session.scalar(stmt) or 0)
 
+    def clear_items_with_category(self, category_key: str) -> int:
+        now = utc_now()
+        affected = (
+            self.session.query(ItemModel)
+            .filter(ItemModel.category_key == category_key)
+            .update(
+                {
+                    ItemModel.category_key: None,
+                    ItemModel.updated_at: now,
+                },
+                synchronize_session=False,
+            )
+        )
+        self.session.flush()
+        return int(affected or 0)
+
+    def clear_classifications_with_category(self, category_key: str) -> int:
+        affected = (
+            self.session.query(ItemClassificationModel)
+            .filter(ItemClassificationModel.category_key == category_key)
+            .delete(synchronize_session=False)
+        )
+        self.session.flush()
+        return int(affected or 0)
+
     def set_classifications(
         self,
         *,

@@ -105,18 +105,28 @@ export function useCategoriesWorkspace() {
     }
   }
 
-  async function handleDeleteCategory(categoryKey) {
+  async function handleDeleteCategory(categoryKey, { force = false } = {}) {
     setSaving(true);
     setError("");
     setNotice("");
     try {
-      await deleteCategory(categoryKey);
-      setNotice("Category deleted");
+      const result = await deleteCategory(categoryKey, { force });
+      if (force && (result.cleared_item_count > 0 || result.cleared_classification_count > 0)) {
+        setNotice(
+          `Category deleted and cleared ${result.cleared_item_count} item category assignment${result.cleared_item_count === 1 ? "" : "s"}`,
+        );
+      } else {
+        setNotice("Category deleted");
+      }
       await loadCategories();
-      return true;
+      return { ok: true, result };
     } catch (err) {
       setError(err.message);
-      return false;
+      return {
+        ok: false,
+        error: err,
+        requiresForce: err.status === 409 && String(err.message || "").includes("still in use"),
+      };
     } finally {
       setSaving(false);
     }

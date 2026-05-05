@@ -14,6 +14,7 @@ from kbase.application.capabilities.deactivate_label import deactivate_label
 from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
+from kbase.application.capabilities.get_user_preference import get_user_preference
 from kbase.application.capabilities.link_items import link_items
 from kbase.application.capabilities.list_labels import list_labels
 from kbase.application.capabilities.list_categories import list_categories
@@ -29,6 +30,7 @@ from kbase.application.capabilities.replace_item_acl import replace_item_acl
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
+from kbase.application.capabilities.set_user_preference import set_user_preference
 from kbase.application.capabilities.update_item_core import update_item_core
 from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.unlink_items import unlink_items
@@ -45,6 +47,7 @@ from kbase.application.dto.capabilities import (
     DeleteLabelInput,
     DeactivateLabelInput,
     GetItemInput,
+    GetUserPreferenceInput,
     LinkItemsInput,
     ListCategoriesInput,
     ListLabelsInput,
@@ -59,10 +62,12 @@ from kbase.application.dto.capabilities import (
     ReplaceItemAclInput,
     ReplaceItemProjectsInput,
     SearchContentInput,
+    SetUserPreferenceInput,
     UnlinkItemsInput,
     UpdateCategoryInput,
     UpdateItemCoreInput,
 )
+from kbase.application.services.errors import ConflictError
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
 
@@ -219,6 +224,43 @@ def test_asset_link_project_and_search_flow(session_factory) -> None:
 
     assert len(search_result.items) == 1
     assert search_result.items[0].title == "Waschmaschine"
+
+
+def test_user_preference_roundtrip(session_factory) -> None:
+    missing = get_user_preference(
+        GetUserPreferenceInput(
+            preference_key="notes.home.sort_order",
+            actor=actor(),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert missing.is_set is False
+    assert missing.value is None
+
+    saved = set_user_preference(
+        SetUserPreferenceInput(
+            preference_key="notes.home.sort_order",
+            value="alphabetical",
+            actor=actor(),
+            provenance=provenance("test.set_user_preference"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert saved.preference.is_set is True
+    assert saved.preference.value == "alphabetical"
+
+    loaded = get_user_preference(
+        GetUserPreferenceInput(
+            preference_key="notes.home.sort_order",
+            actor=actor(),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert loaded.is_set is True
+    assert loaded.value == "alphabetical"
 
 
 def test_linked_items_are_returned(session_factory) -> None:
@@ -723,10 +765,70 @@ def test_delete_category_removes_unused_category_and_blocks_used_category(sessio
             ),
             session_factory=session_factory,
         )
-    except ValueError as error:
-        assert str(error) == "Category 'research' is still in use and cannot be deleted"
+    except ConflictError as error:
+        assert str(error) == "Category 'research' is still in use and cannot be deleted without clearing related item categories"
     else:
         raise AssertionError("Expected delete_category to reject an in-use category")
+
+
+def test_force_delete_category_clears_item_and_classification_usage(session_factory) -> None:
+    primary_note = create_note(
+        CreateNoteInput(
+            title="Uses research directly",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    classified_note = create_note(
+        CreateNoteInput(
+            title="Uses research as secondary classification",
+            category_key="decision",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    classify_item(
+        ClassifyItemInput(
+            item_id=classified_note.item.id,
+            primary_category_key="decision",
+            secondary_category_keys=["learning", "research"],
+            actor=actor(),
+            provenance=provenance("test.classify_item"),
+        ),
+        session_factory=session_factory,
+    )
+
+    deleted = delete_category(
+        DeleteCategoryInput(
+            key="research",
+            force=True,
+            actor=actor(),
+            provenance=provenance("test.delete_category"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert deleted.deleted is True
+    assert deleted.cleared_item_count == 1
+    assert deleted.cleared_classification_count == 1
+
+    cleared_primary = get_item(GetItemInput(item_id=primary_note.item.id, actor=actor()), session_factory=session_factory)
+    assert cleared_primary.item.category_key is None
+
+    cleared_secondary = get_item(GetItemInput(item_id=classified_note.item.id, actor=actor()), session_factory=session_factory)
+    assert cleared_secondary.item.category_key == "decision"
+    assert cleared_secondary.classifications == ["learning"]
+
+    listed = list_categories(
+        ListCategoriesInput(actor=actor(), include_inactive=True, limit=100),
+        session_factory=session_factory,
+    )
+    assert "research" not in [category.key for category in listed.categories]
 
 
 def test_category_hierarchy_lists_moves_and_searches_subtrees(session_factory) -> None:
@@ -902,7 +1004,7 @@ def test_category_hierarchy_rejects_cross_kind_parent_and_child_delete(session_f
             ),
             session_factory=session_factory,
         )
-    except ValueError as error:
+    except ConflictError as error:
         assert str(error) == "Category 'note_parent' has child categories and cannot be deleted"
     else:
         raise AssertionError("Expected delete_category to reject categories with children")
@@ -934,6 +1036,42 @@ def test_replace_labels_replaces_existing_item_labels(session_factory) -> None:
     assert [label.full_path for label in result] == ["beta/two", "gamma/three"]
     item = get_item(GetItemInput(item_id=created.item.id, actor=actor()), session_factory=session_factory)
     assert [label.full_path for label in item.labels] == ["beta/two", "gamma/three"]
+
+
+def test_replace_labels_roundtrip_preserves_complete_label_set(session_factory) -> None:
+    created = create_note(
+        CreateNoteInput(
+            title="Label roundtrip",
+            category_key="research",
+            markdown_body="body",
+            label_paths=["work/alpha"],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    replace_labels(
+        AssignLabelsInput(
+            item_id=created.item.id,
+            label_paths=["work/alpha", "private/home"],
+            actor=actor(),
+            provenance=provenance("test.replace_labels.first"),
+        ),
+        session_factory=session_factory,
+    )
+    replace_labels(
+        AssignLabelsInput(
+            item_id=created.item.id,
+            label_paths=["work/alpha", "private/home", "team/shared"],
+            actor=actor(),
+            provenance=provenance("test.replace_labels.second"),
+        ),
+        session_factory=session_factory,
+    )
+
+    item = get_item(GetItemInput(item_id=created.item.id, actor=actor()), session_factory=session_factory)
+    assert [label.full_path for label in item.labels] == ["private/home", "team/shared", "work/alpha"]
 
 
 def test_list_labels_returns_known_labels(session_factory) -> None:

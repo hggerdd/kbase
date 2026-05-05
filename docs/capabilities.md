@@ -21,6 +21,8 @@ Legend:
 | Current session | `get_current_session` | yes | partial | yes | partial | used indirectly by CLI root auth, not exposed as a direct command |
 | Create API token | `create_api_token` | yes | no | no | partial | session-authenticated token create is still API-only |
 | Bootstrap CLI token | `create_api_token_with_password_flow` | no | yes | no | yes | local CLI bootstrap helper only |
+| Get user preference | `get_user_preference` | yes | no | yes | yes | currently used for Home note sort restore |
+| Set user preference | `set_user_preference` | yes | no | yes | yes | first use stores Home note sort order |
 | Create note | `create_note` | yes | yes | yes | yes | well mirrored |
 | Get item detail | `get_item` | yes | yes | yes | yes | well mirrored |
 | List items | `list_items` | yes | yes | yes | yes | well mirrored |

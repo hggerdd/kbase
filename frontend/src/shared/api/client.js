@@ -22,8 +22,11 @@ export function buildApiUrl(path) {
 
 export async function request(path, options = {}) {
   const isFormData = options.body instanceof FormData;
+  const method = String(options.method ?? "GET").toUpperCase();
+  const cache = options.cache ?? (method === "GET" || method === "HEAD" ? "no-store" : undefined);
   const response = await fetch(buildApiUrl(path), {
     credentials: "include",
+    cache,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers ?? {}),

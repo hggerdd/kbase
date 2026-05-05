@@ -23,6 +23,7 @@ from kbase.infrastructure.db.repositories.project_repository import ProjectRepos
 from kbase.infrastructure.db.repositories.provenance_repository import ProvenanceRepository
 from kbase.infrastructure.db.repositories.search_repository import SearchRepository
 from kbase.infrastructure.db.repositories.security_repository import SecurityRepository
+from kbase.infrastructure.db.repositories.user_preference_repository import UserPreferenceRepository
 
 
 @dataclass(slots=True)
@@ -39,6 +40,7 @@ class RepositoryBundle:
     provenance: ProvenanceRepository
     search: SearchRepository
     security: SecurityRepository
+    preferences: UserPreferenceRepository
 
 
 def build_repositories(session: Session) -> RepositoryBundle:
@@ -55,6 +57,7 @@ def build_repositories(session: Session) -> RepositoryBundle:
         provenance=ProvenanceRepository(session),
         search=SearchRepository(session),
         security=SecurityRepository(session),
+        preferences=UserPreferenceRepository(session),
     )
 
 

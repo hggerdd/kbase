@@ -21,8 +21,12 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-002` | partial | high | acl | Enforce ACL for reads and writes |
 | `TEST-001` | partial | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
+| `FE-005` | open | medium | notes-ui | Make notes workspace metadata filters denser and scrollable |
+| `SET-001` | open | medium | settings-ui | Align Settings pages with the notes workspace layout |
+| `CAT-002` | open | medium | categories-ui | Improve hierarchical category editing UI |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
+| `CAP-001` | open | low | capabilities | Audit capability coverage and generalization opportunities |
 | `AUTO-001` | open | low | automation | Add OCR, derivative previews, and bulk import pipeline |
 | `MCP-001` | open | low | agents | Add MCP/agent adapter over existing capabilities |
 
@@ -63,6 +67,24 @@ tests that will prove the behavior.
    Goal: expose existing capabilities to agents without creating new business
    logic or an alternate permission model. The adapter should be thin, auditable,
    and constrained by the same identity and ACL decisions as HTTP and CLI.
+
+5. Workspace and settings UI consistency: `FE-005`, `SET-001`, `CAT-002`,
+   `TEST-001`, `DOC-001`.
+
+   Goal: make the day-to-day note and settings workflows denser, more
+   consistent, and easier to scan without changing backend behavior. Start with
+   the notes workspace because Settings should reuse its layout language rather
+   than inventing a second shell. Category editing should build on the
+   hierarchical category model already documented by `CAT-001`.
+
+6. Capability model review: `CAP-001`, with follow-up updates to `DOC-001`,
+   `TEST-001`, and `MCP-001` where needed.
+
+   Goal: verify that important user and automation workflows are reachable
+   through application capabilities before expanding agent integrations. This is
+   primarily an architecture and documentation audit; implementation changes
+   should be split into separate concrete tasks if the review finds missing or
+   overly specific capabilities.
 
 ## Completed Current Priorities
 
@@ -432,6 +454,134 @@ Acceptance:
 - Unsupported file kinds render without a broken preview action.
 - Tests fail if links are rendered only as plain text again.
 
+### `FE-005` Make Notes Workspace Metadata Filters Denser And Scrollable
+
+Source: Home/notes workspace layout in
+`frontend/src/pages/home/HomePage.jsx`, shared note workspace components under
+`frontend/src/pages/notes/components/`, note feature state under
+`frontend/src/features/notes/`, category/label/project filter UI, and
+`frontend/src/styles.css`.
+
+Planning:
+
+- Treat this as a layout and interaction refinement for the existing notes
+  workspace, not a new notes feature. Preserve current filtering, selection,
+  note creation, autosave, project assignment, and link behavior.
+- Review how category, project, and label filters are currently arranged in the
+  Home/notes workspace. Allocate bounded space to each metadata filter region so
+  the combined filter UI remains within the available panel height instead of
+  pushing important note/editor content away.
+- Make each metadata tree/list region independently scrollable when its content
+  exceeds its assigned space. Keep headers and primary actions visible while
+  scrolling long category, project, or label lists.
+- Add compact tree controls for expanding and collapsing all nodes in tree-based
+  filters. Use small icon buttons with accessible labels/tooltips; do not use
+  large text buttons for these controls.
+- Increase density by reducing empty vertical gaps and oversized headers in
+  filter panels, but keep hit targets usable and text readable on desktop and
+  mobile.
+- Check responsive behavior explicitly so compact metadata panels do not overlap
+  the notes list, editor, or app navigation.
+
+Acceptance:
+
+- Category, project, and label filter areas have bounded heights whose combined
+  layout fits the available notes workspace panel without forcing unrelated
+  content off screen.
+- Long category, project, and label lists scroll inside their own regions while
+  their section headers and add/filter controls remain reachable.
+- Tree-based filters expose compact expand-all and collapse-all icon controls
+  with accessible names.
+- The notes workspace is visibly denser, with reduced unused whitespace around
+  metadata filters and no loss of existing filtering behavior.
+- Focused frontend tests or layout/state tests cover expand/collapse-all
+  behavior and preservation of current filters after scrolling or resizing where
+  feasible.
+- `docs/frontend.md` describes the updated notes metadata filter layout if the
+  user-facing behavior changes.
+
+### `SET-001` Align Settings Pages With The Notes Workspace Layout
+
+Source: Settings pages under `frontend/src/pages/settings/`, shared app layout
+components under `frontend/src/app/` and `frontend/src/shared/ui/`, Home/notes
+workspace layout in `frontend/src/pages/home/HomePage.jsx`, settings feature
+tests under `frontend/src/features/labels/`, `frontend/src/features/categories/`,
+and `frontend/src/features/projects/`, plus `frontend/src/styles.css`.
+
+Planning:
+
+- Treat this as a visual and structural alignment task. Do not change label,
+  category, or project lifecycle semantics unless a separate task calls for it.
+- Compare the Home/notes workspace layout with Settings/Labels,
+  Settings/Categories, and Settings/Projects. Identify reusable layout patterns:
+  workspace shell, left navigation/list panel, detail/editor panel, compact
+  headers, status banners, empty states, and primary action placement.
+- Bring all three settings pages into the same general layout language as the
+  notes workspace so Settings does not feel like a separate application. Prefer
+  shared components or shared CSS classes where this reduces duplication.
+- Keep settings workflows efficient: selecting an entity should reveal its
+  editable detail area; create actions should be visible but compact; inactive
+  or archived states should remain inspectable where already supported.
+- Verify mobile and narrow desktop behavior. Settings pages should not require
+  horizontal scrolling, and action controls should remain reachable.
+
+Acceptance:
+
+- Settings/Labels, Settings/Categories, and Settings/Projects use a consistent
+  workspace layout aligned with the Home/notes page.
+- Each settings page has a predictable list/tree region and a detail/edit region
+  with compact headers and consistent empty/loading/error states.
+- Existing label lifecycle actions, category create/update/delete behavior, and
+  project create/archive behavior still work.
+- Frontend tests cover at least one representative settings workflow after the
+  layout change for labels, categories, and projects.
+- `docs/frontend.md` reflects the updated Settings layout and still lists the
+  correct settings workflows.
+
+### `CAT-002` Improve Hierarchical Category Editing UI
+
+Source: `frontend/src/pages/settings/CategoriesSettingsPage.jsx`,
+`frontend/src/features/categories/hooks.js`,
+`frontend/src/features/categories/state.js`,
+`frontend/src/features/categories/workspace.test.js`,
+category endpoints documented in `docs/api.md`, category model documentation in
+`docs/frontend.md`, and `CAT-001`.
+
+Planning:
+
+- Build on the completed `CAT-001` decision that categories are hierarchical
+  managed taxonomy nodes. The UI should present and edit that hierarchy
+  directly instead of treating categories as a flat list with parent metadata.
+- Replace or adapt the category list into a tree view that supports selecting a
+  category, inspecting its definition, and editing fields in a detail pane.
+- Keep the category tree area fixed or bounded in height with internal
+  scrolling so the page header and primary actions remain visible while browsing
+  large trees.
+- Make the page header more compact. The create action should be a small round
+  plus icon button with an accessible label, placed consistently with the
+  settings layout from `SET-001`.
+- Preserve category constraints from the backend: stable `key`, optional
+  `parent_key`, `applies_to_kind`, active/inactive state, and delete blocking
+  when children or items still reference a category.
+- Show hierarchy-sensitive validation and error states clearly, especially when
+  moving or editing a category would conflict with parent scope rules.
+
+Acceptance:
+
+- Settings/Categories displays categories as a hierarchical tree with clear
+  expand/collapse affordances and selected-node state.
+- Selecting a category opens or updates a detail editor for that category
+  without losing the current tree position.
+- Long category trees scroll inside a bounded tree area while the page header
+  and create action remain visible.
+- The create category action is compact, icon-based, accessible, and consistent
+  with the updated settings layout.
+- Tests cover tree rendering, selecting a nested category, editing a selected
+  category, creating a category from the compact action, and preserving tree
+  state after an update where feasible.
+- `docs/frontend.md` describes category tree editing behavior and any remaining
+  known UI gaps.
+
 ### `NOTE-002` Add Unlink Support For Item Links
 
 Source: `link_items`, `item_links`, notes `Files and links` panel,
@@ -477,6 +627,47 @@ Acceptance:
 - Tests cover selected-note changes so stale linked file details do not leak
   between notes.
 - Frontend docs still describe the final behavior.
+
+### `CAP-001` Audit Capability Coverage And Generalization Opportunities
+
+Source: `docs/capabilities.md`, application capabilities under
+`src/kbase/application/capabilities/`, capability DTOs under
+`src/kbase/application/dto/`, API adapter in
+`src/kbase/interfaces/api/main.py`, CLI adapter in
+`src/kbase/interfaces/cli/main.py`, frontend feature API wrappers under
+`frontend/src/features/`, and upcoming agent work in `MCP-001`.
+
+Planning:
+
+- Treat this as an architecture audit first. Do not immediately merge or delete
+  capabilities just because names look similar; compare behavior, inputs,
+  authorization needs, audit/provenance effects, and client contracts.
+- Start from real workflows rather than file names: note create/edit/search,
+  file upload/import/preview, labels, categories, projects, links, metadata,
+  history, provenance, ACL, auth/session/token flow, and future agent access.
+- Update or extend the capability matrix with any missing important operations,
+  one-interface-only operations, or unclear test coverage.
+- Identify capabilities that might be too narrow or duplicative. For each
+  candidate, write the exact reason it could be generalized and the risk of
+  doing so.
+- Identify capabilities that should remain separate because they have different
+  permissions, invariants, side effects, or user-facing contracts.
+- Split implementation follow-ups into concrete tasks. Avoid making a broad
+  refactor directly under this task unless the audit shows a small, low-risk
+  cleanup.
+
+Acceptance:
+
+- `docs/capabilities.md` contains an updated coverage audit of important user,
+  CLI, API, frontend, and future agent workflows.
+- The audit explicitly lists missing capabilities or missing interface exposure
+  that blocks important workflows.
+- The audit explicitly lists any capability-generalization candidates, including
+  which functions are involved and why they can or cannot be unified safely.
+- Any recommended implementation work is represented by stable follow-up tasks
+  in `todo.md` with source files and acceptance criteria.
+- `MCP-001` planning can rely on the audited matrix to choose agent-visible
+  tools without inventing new business logic.
 
 ### `DOC-001` Keep Canonical Docs Synced
 

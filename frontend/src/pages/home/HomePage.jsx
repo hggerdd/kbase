@@ -1,8 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { fetchNotes } from "../../features/notes/api.js";
+import { buildCategoryTree, collectCategoryKeys } from "../../features/categories/state.js";
 import { fetchProjects } from "../../features/projects/api.js";
+import { fetchUserPreference, saveUserPreference } from "../../features/preferences/api.js";
 import { useNotesWorkspace } from "../../features/notes/hooks";
-import { buildCategoryCounts, resolveCategoryCountNotes } from "../../features/notes/state.js";
+import {
+  buildCategoryCounts,
+  DEFAULT_NOTE_SORT_MODE,
+  normalizeNoteSortMode,
+  resolveCategoryCountNotes,
+  sortWorkspaceNotes,
+} from "../../features/notes/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { FolderIcon, NoteIcon, SearchIcon, TagIcon } from "../../shared/ui/Icons";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
@@ -16,10 +24,12 @@ function formatLabel(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function getTimestamp(value) {
-  const time = new Date(value ?? 0).getTime();
-  return Number.isNaN(time) ? 0 : time;
-}
+const NOTE_SORT_OPTIONS = [
+  { value: "recent", label: "Recent (last changed)" },
+  { value: "alphabetical", label: "Alphabetical" },
+  { value: "created_on", label: "Created on" },
+];
+const NOTE_SORT_PREFERENCE_KEY = "notes.home.sort_order";
 
 function buildLabelTree(labels) {
   const nodesById = new Map(labels.map((label) => [label.id, { ...label, children: [] }]));
@@ -43,31 +53,13 @@ function buildLabelTree(labels) {
   return roots;
 }
 
-function buildCategoryTree(categories) {
-  const nodesByKey = new Map(categories.map((category) => [category.key, { ...category, children: [] }]));
-  const roots = [];
-
-  for (const node of nodesByKey.values()) {
-    const parent = node.parent_key ? nodesByKey.get(node.parent_key) : null;
-    if (parent) {
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  function sortNodes(nodes) {
-    nodes.sort((left, right) => (left.full_path || left.key).localeCompare(right.full_path || right.key));
-    nodes.forEach((node) => sortNodes(node.children));
-  }
-
-  sortNodes(roots);
-  return roots;
-}
-
 function countCategorySubtree(category, counts) {
   const ownCount = counts.get(category.key) ?? 0;
   return ownCount + category.children.reduce((total, child) => total + countCategorySubtree(child, counts), 0);
+}
+
+function collectLabelIds(nodes) {
+  return nodes.flatMap((node) => [node.id, ...collectLabelIds(node.children)]);
 }
 
 function CategoryTreeRow({ category, counts, expandedKeys, onSelect, onToggle, selectedKey }) {
@@ -174,11 +166,17 @@ function NoteCard({ isActive, note, onClick }) {
 
 export function HomePage() {
   const didSearchMountRef = useRef(false);
+  const categoryExpansionInitializedRef = useRef(false);
+  const labelExpansionInitializedRef = useRef(false);
+  const hasUserChosenSortRef = useRef(false);
+  const sortMenuRef = useRef(null);
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState(new Set());
   const [expandedLabelIds, setExpandedLabelIds] = useState(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [labelQuery, setLabelQuery] = useState("");
+  const [noteSortMode, setNoteSortMode] = useState(DEFAULT_NOTE_SORT_MODE);
   const [categoryCountNotes, setCategoryCountNotes] = useState(null);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
   const [selectedCategoryPath, setSelectedCategoryPath] = useState("");
@@ -260,6 +258,27 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
+    async function loadSortPreference() {
+      try {
+        const preference = await fetchUserPreference(NOTE_SORT_PREFERENCE_KEY);
+        if (!active || hasUserChosenSortRef.current || !preference?.is_set) {
+          return;
+        }
+        setNoteSortMode(normalizeNoteSortMode(preference.value));
+      } catch {
+        // Ignore preference bootstrap errors and keep the default order.
+      }
+    }
+
+    void loadSortPreference();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedCategoryKey) {
       setCategoryCountNotes(null);
       return undefined;
@@ -290,16 +309,14 @@ export function HomePage() {
     };
   }, [selectedCategoryKey, selectedLabelPath, selectedProjectId, workspace.search]);
 
-  const sortedNotes = useMemo(
-    () => [...workspace.notes].sort((left, right) => getTimestamp(right.updated_at) - getTimestamp(left.updated_at)),
-    [workspace.notes],
-  );
+  const sortedNotes = useMemo(() => sortWorkspaceNotes(workspace.notes, noteSortMode), [noteSortMode, workspace.notes]);
   const categoryCountSourceNotes = useMemo(
     () => resolveCategoryCountNotes(selectedCategoryKey, workspace.notes, categoryCountNotes),
     [categoryCountNotes, selectedCategoryKey, workspace.notes],
   );
   const categoryCounts = useMemo(() => buildCategoryCounts(categoryCountSourceNotes), [categoryCountSourceNotes]);
   const categoryTree = useMemo(() => buildCategoryTree(workspace.availableCategories), [workspace.availableCategories]);
+  const categoryKeys = useMemo(() => collectCategoryKeys(categoryTree), [categoryTree]);
   const activeProject = projectsState.projects.find((project) => project.id === selectedProjectId) ?? null;
   const visibleLabels = useMemo(() => {
     const normalizedQuery = labelQuery.trim().toLowerCase();
@@ -314,30 +331,44 @@ export function HomePage() {
     });
   }, [labelQuery, workspace.availableLabels]);
   const labelTree = useMemo(() => buildLabelTree(visibleLabels), [visibleLabels]);
+  const labelIds = useMemo(() => collectLabelIds(labelTree), [labelTree]);
 
   useEffect(() => {
-    const nextExpandedKeys = new Set();
-    const visit = (nodes) => {
-      nodes.forEach((node) => {
-        nextExpandedKeys.add(node.key);
-        visit(node.children);
-      });
-    };
-    visit(categoryTree);
-    setExpandedCategoryKeys(nextExpandedKeys);
-  }, [categoryTree]);
+    const availableKeys = new Set(categoryKeys);
+    setExpandedCategoryKeys((current) => {
+      if (!categoryExpansionInitializedRef.current) {
+        categoryExpansionInitializedRef.current = true;
+        return new Set(categoryKeys);
+      }
+      return new Set([...current].filter((key) => availableKeys.has(key)));
+    });
+  }, [categoryKeys]);
 
   useEffect(() => {
-    const nextExpandedIds = new Set();
-    const visit = (nodes) => {
-      nodes.forEach((node) => {
-        nextExpandedIds.add(node.id);
-        visit(node.children);
-      });
-    };
-    visit(labelTree);
-    setExpandedLabelIds(nextExpandedIds);
-  }, [labelTree]);
+    const availableIds = new Set(labelIds);
+    setExpandedLabelIds((current) => {
+      if (!labelExpansionInitializedRef.current) {
+        labelExpansionInitializedRef.current = true;
+        return new Set(labelIds);
+      }
+      return new Set([...current].filter((id) => availableIds.has(id)));
+    });
+  }, [labelIds]);
+
+  useEffect(() => {
+    if (!isSortMenuOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(event.target)) {
+        setIsSortMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isSortMenuOpen]);
 
   async function handleSelectNote(note) {
     const selected = await workspace.handleSelectNote(note, { saveCurrent: true });
@@ -370,12 +401,39 @@ export function HomePage() {
     });
   }
 
+  function expandAllCategories() {
+    setExpandedCategoryKeys(new Set(categoryKeys));
+  }
+
+  function collapseAllCategories() {
+    setExpandedCategoryKeys(new Set());
+  }
+
+  function expandAllLabels() {
+    setExpandedLabelIds(new Set(labelIds));
+  }
+
+  function collapseAllLabels() {
+    setExpandedLabelIds(new Set());
+  }
+
+  function handleSelectSortMode(nextSortMode) {
+    const normalizedSortMode = normalizeNoteSortMode(nextSortMode);
+    hasUserChosenSortRef.current = true;
+    setNoteSortMode(normalizedSortMode);
+    setIsSortMenuOpen(false);
+    void saveUserPreference(NOTE_SORT_PREFERENCE_KEY, normalizedSortMode).catch(() => {});
+  }
+
   const activeFilterChips = [
     selectedCategory ? `Category: ${selectedCategory.label || formatLabel(selectedCategory.key)}` : null,
     selectedProjectId ? `Project: ${activeProject?.title ?? "Selected"}` : null,
     selectedLabelPath ? `Label: ${selectedLabelPath}` : null,
     workspace.search ? `Search: ${workspace.search}` : null,
   ].filter(Boolean);
+  const normalizedNoteSortMode = normalizeNoteSortMode(noteSortMode);
+  const selectedSortOption =
+    NOTE_SORT_OPTIONS.find((option) => option.value === normalizedNoteSortMode) ?? NOTE_SORT_OPTIONS[0];
 
   return (
     <ResponsiveContainer>
@@ -404,46 +462,60 @@ export function HomePage() {
             </label>
           </section>
 
-          <section className="workspace-section">
-            <div className="workspace-section-title">Category</div>
-            <ul className="workspace-tree-list" role="tree" aria-label="Category filters">
-              <li>
-              <button
-                type="button"
-                className={`workspace-tree-row ${selectedCategoryKey === "" ? "active" : ""}`.trim()}
-                onClick={() => {
-                  setSelectedCategoryKey("");
-                  setSelectedCategoryPath("");
-                }}
-              >
-                <span className="workspace-tree-icon">
-                  <NoteIcon />
-                </span>
-                <span className="workspace-tree-label">All notes</span>
-                <span className="workspace-tree-meta">{categoryCountSourceNotes.length}</span>
-              </button>
-              </li>
-              {categoryTree.map((category) => (
-                <CategoryTreeRow
-                  key={category.key}
-                  category={category}
-                  counts={categoryCounts}
-                  expandedKeys={expandedCategoryKeys}
-                  onSelect={(entry) => {
-                    const isCurrent = selectedCategoryKey === entry.key;
-                    setSelectedCategoryKey(isCurrent ? "" : entry.key);
-                    setSelectedCategoryPath(isCurrent ? "" : entry.full_path);
-                  }}
-                  onToggle={toggleExpandedCategory}
-                  selectedKey={selectedCategoryKey}
-                />
-              ))}
-            </ul>
+          <section className="workspace-section workspace-filter-section">
+            <div className="workspace-section-head">
+              <div className="workspace-section-title">Category</div>
+              <div className="workspace-tree-tools">
+                <button type="button" className="workspace-tree-action" aria-label="Expand all categories" title="Expand all categories" onClick={expandAllCategories}>
+                  +
+                </button>
+                <button type="button" className="workspace-tree-action" aria-label="Collapse all categories" title="Collapse all categories" onClick={collapseAllCategories}>
+                  -
+                </button>
+              </div>
+            </div>
+            <div className="workspace-tree-scroll">
+              <ul className="workspace-tree-list" role="tree" aria-label="Category filters">
+                <li>
+                  <button
+                    type="button"
+                    className={`workspace-tree-row ${selectedCategoryKey === "" ? "active" : ""}`.trim()}
+                    onClick={() => {
+                      setSelectedCategoryKey("");
+                      setSelectedCategoryPath("");
+                    }}
+                  >
+                    <span className="workspace-tree-icon">
+                      <NoteIcon />
+                    </span>
+                    <span className="workspace-tree-label">All notes</span>
+                    <span className="workspace-tree-meta">{categoryCountSourceNotes.length}</span>
+                  </button>
+                </li>
+                {categoryTree.map((category) => (
+                  <CategoryTreeRow
+                    key={category.key}
+                    category={category}
+                    counts={categoryCounts}
+                    expandedKeys={expandedCategoryKeys}
+                    onSelect={(entry) => {
+                      const isCurrent = selectedCategoryKey === entry.key;
+                      setSelectedCategoryKey(isCurrent ? "" : entry.key);
+                      setSelectedCategoryPath(isCurrent ? "" : entry.full_path);
+                    }}
+                    onToggle={toggleExpandedCategory}
+                    selectedKey={selectedCategoryKey}
+                  />
+                ))}
+              </ul>
+            </div>
           </section>
 
-          <section className="workspace-section">
-            <div className="workspace-section-title">Projects</div>
-            <div className="workspace-flat-list">
+          <section className="workspace-section workspace-filter-section">
+            <div className="workspace-section-head">
+              <div className="workspace-section-title">Projects</div>
+            </div>
+            <div className="workspace-flat-scroll workspace-flat-list">
               <button
                 type="button"
                 className={`workspace-tree-row ${selectedProjectId === "" ? "active" : ""}`.trim()}
@@ -472,8 +544,18 @@ export function HomePage() {
             </div>
           </section>
 
-          <section className="workspace-section">
-            <div className="workspace-section-title">Labels</div>
+          <section className="workspace-section workspace-filter-section">
+            <div className="workspace-section-head">
+              <div className="workspace-section-title">Labels</div>
+              <div className="workspace-tree-tools">
+                <button type="button" className="workspace-tree-action" aria-label="Expand all labels" title="Expand all labels" onClick={expandAllLabels}>
+                  +
+                </button>
+                <button type="button" className="workspace-tree-action" aria-label="Collapse all labels" title="Collapse all labels" onClick={collapseAllLabels}>
+                  -
+                </button>
+              </div>
+            </div>
             <label className="workspace-search-shell">
               <span className="workspace-search-icon">
                 <SearchIcon />
@@ -486,32 +568,34 @@ export function HomePage() {
                 placeholder="Search labels..."
               />
             </label>
-            <ul className="workspace-tree-list" role="tree" aria-label="Label filters">
-              <li>
-                <button
-                  type="button"
-                  className={`workspace-tree-row ${selectedLabelPath === "" ? "active" : ""}`.trim()}
-                  onClick={() => setSelectedLabelPath("")}
-                >
-                  <span className="workspace-tree-icon">
-                    <TagIcon />
-                  </span>
-                  <span className="workspace-tree-label">All labels</span>
-                </button>
-              </li>
-              {labelTree.map((node) => (
-                <LabelTreeRow
-                  key={node.id}
-                  expandedIds={expandedLabelIds}
-                  node={node}
-                  onSelect={(labelPath) =>
-                    setSelectedLabelPath((current) => (current === labelPath ? "" : labelPath))
-                  }
-                  onToggle={toggleExpandedLabel}
-                  selectedPath={selectedLabelPath}
-                />
-              ))}
-            </ul>
+            <div className="workspace-tree-scroll">
+              <ul className="workspace-tree-list" role="tree" aria-label="Label filters">
+                <li>
+                  <button
+                    type="button"
+                    className={`workspace-tree-row ${selectedLabelPath === "" ? "active" : ""}`.trim()}
+                    onClick={() => setSelectedLabelPath("")}
+                  >
+                    <span className="workspace-tree-icon">
+                      <TagIcon />
+                    </span>
+                    <span className="workspace-tree-label">All labels</span>
+                  </button>
+                </li>
+                {labelTree.map((node) => (
+                  <LabelTreeRow
+                    key={node.id}
+                    expandedIds={expandedLabelIds}
+                    node={node}
+                    onSelect={(labelPath) =>
+                      setSelectedLabelPath((current) => (current === labelPath ? "" : labelPath))
+                    }
+                    onToggle={toggleExpandedLabel}
+                    selectedPath={selectedLabelPath}
+                  />
+                ))}
+              </ul>
+            </div>
           </section>
         </aside>
 
@@ -524,13 +608,39 @@ export function HomePage() {
           </header>
 
           <div className="workspace-filter-chips">
+            <div className="workspace-sort-control" ref={sortMenuRef}>
+              <button
+                type="button"
+                className="workspace-filter-chip workspace-filter-chip-button"
+                aria-haspopup="menu"
+                aria-expanded={isSortMenuOpen}
+                onClick={() => setIsSortMenuOpen((current) => !current)}
+              >
+                {selectedSortOption.label}
+              </button>
+              {isSortMenuOpen ? (
+                <div className="workspace-sort-menu" role="menu" aria-label="Notes order options">
+                  {NOTE_SORT_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={normalizedNoteSortMode === option.value}
+                      className={`workspace-sort-option ${normalizedNoteSortMode === option.value ? "active" : ""}`.trim()}
+                      onClick={() => handleSelectSortMode(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             {activeFilterChips.length > 0 ? (
               activeFilterChips.map((chip) => (
                 <span key={chip} className="workspace-filter-chip">{chip}</span>
               ))
             ) : (
               <>
-                <span className="workspace-filter-chip">Recent</span>
                 <span className="workspace-filter-chip">Active workspace</span>
                 <span className="workspace-filter-chip">All notes</span>
               </>

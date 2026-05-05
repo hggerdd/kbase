@@ -28,6 +28,7 @@ from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_acl import get_item_acl
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
+from kbase.application.capabilities.get_user_preference import get_user_preference
 from kbase.application.capabilities.import_file_as_item import import_file_as_item
 from kbase.application.capabilities.import_inbox_file import import_inbox_file
 from kbase.application.capabilities.link_items import link_items
@@ -45,6 +46,7 @@ from kbase.application.capabilities.replace_item_acl import replace_item_acl
 from kbase.application.capabilities.replace_labels import replace_labels
 from kbase.application.capabilities.replace_content_part import replace_content_part
 from kbase.application.capabilities.search_content import search_content
+from kbase.application.capabilities.set_user_preference import set_user_preference
 from kbase.application.capabilities.update_label import update_label
 from kbase.application.capabilities.update_category import update_category
 from kbase.application.capabilities.update_item_core import update_item_core
@@ -74,6 +76,7 @@ from kbase.application.dto.capabilities import (
     GetItemInput,
     GetItemProvenanceResult,
     GetSessionInput,
+    GetUserPreferenceInput,
     ImportInboxFileInput,
     ItemDetailResult,
     ListCategoriesInput,
@@ -98,12 +101,14 @@ from kbase.application.dto.capabilities import (
     ReplaceItemProjectsInput,
     SearchContentInput,
     SearchContentResult,
+    SetUserPreferenceInput,
+    SetUserPreferenceResult,
     UnlinkItemsInput,
     UpdateCategoryInput,
     UpdateLabelInput,
     UpdateItemCoreInput,
 )
-from kbase.application.dto.common import AclEntryData, AssetData, CategoryData, ItemSummary, LabelData, MetadataEntryData, SessionData
+from kbase.application.dto.common import AclEntryData, AssetData, CategoryData, ItemSummary, LabelData, MetadataEntryData, SessionData, UserPreferenceData
 from kbase.application.services.errors import ConflictError
 from kbase.application.services.security import AuthenticationError, AuthorizationError, build_authenticated_actor
 from kbase.core.value_objects.actor import ActorContext
@@ -118,6 +123,7 @@ from kbase.interfaces.api.schemas import (
     CreateCategoryRequest,
     CreateLabelRequest,
     LoginRequest,
+    UpdateUserPreferenceRequest,
     CreateNoteRequest,
     CreateProjectRequest,
     ImportInboxFileRequest,
@@ -365,6 +371,33 @@ def create_app() -> FastAPI:
         actor: ActorContext = Depends(_actor_context),
     ) -> CreateApiTokenResult:
         return create_api_token(CreateApiTokenInput(token_label=payload.token_label, actor=actor))
+
+    @app.get("/api/user-preferences/{preference_key}", response_model=UserPreferenceData)
+    def get_user_preference_endpoint(
+        preference_key: str,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> UserPreferenceData:
+        return get_user_preference(
+            GetUserPreferenceInput(
+                preference_key=preference_key,
+                actor=actor,
+            )
+        )
+
+    @app.put("/api/user-preferences/{preference_key}", response_model=SetUserPreferenceResult)
+    def set_user_preference_endpoint(
+        preference_key: str,
+        payload: UpdateUserPreferenceRequest,
+        actor: ActorContext = Depends(_actor_context),
+    ) -> SetUserPreferenceResult:
+        return set_user_preference(
+            SetUserPreferenceInput(
+                preference_key=preference_key,
+                value=payload.value,
+                actor=actor,
+                provenance=_provenance("api.set_user_preference"),
+            )
+        )
 
     @app.post("/api/notes", response_model=CreateNoteResult)
     def create_note_endpoint(
@@ -736,11 +769,13 @@ def create_app() -> FastAPI:
     @app.delete("/api/categories/{category_key}", response_model=DeleteCategoryResult)
     def delete_category_endpoint(
         category_key: str,
+        force: bool = Query(default=False),
         actor: ActorContext = Depends(_actor_context),
     ) -> DeleteCategoryResult:
         return delete_category(
             DeleteCategoryInput(
                 key=category_key,
+                force=force,
                 actor=actor,
                 provenance=_provenance("api.delete_category"),
             )

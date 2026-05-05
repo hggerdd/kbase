@@ -36,8 +36,13 @@ export async function updateCategory(categoryKey, input) {
   });
 }
 
-export async function deleteCategory(categoryKey) {
-  return request(`/api/categories/${encodeURIComponent(categoryKey)}`, {
+export async function deleteCategory(categoryKey, { force = false } = {}) {
+  const params = new URLSearchParams();
+  if (force) {
+    params.set("force", "true");
+  }
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  return request(`/api/categories/${encodeURIComponent(categoryKey)}${suffix}`, {
     method: "DELETE",
   });
 }

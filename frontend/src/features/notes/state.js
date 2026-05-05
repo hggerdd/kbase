@@ -92,6 +92,17 @@ export function serializeEditorState(editor) {
   });
 }
 
+export function serializeEditorCoreState(editor) {
+  return JSON.stringify({
+    item_id: editor.item_id ?? null,
+    title: editor.title,
+    category_key: editor.category_key ?? "research",
+    status: editor.status ?? "",
+    markdown_body: editor.markdown_body ?? "",
+    html_body: editor.html_body ?? "",
+  });
+}
+
 export function deriveSelectionTransition(currentSelectedId, note, { isDirty = false } = {}) {
   const isSameSelection = currentSelectedId === note.id;
   return {
@@ -102,4 +113,48 @@ export function deriveSelectionTransition(currentSelectedId, note, { isDirty = f
     shouldClearHistory: !isSameSelection,
     shouldReloadImmediately: isSameSelection && !isDirty,
   };
+}
+
+export const DEFAULT_NOTE_SORT_MODE = "recent";
+export const NOTE_SORT_MODES = new Set(["recent", "alphabetical", "created_on"]);
+
+export function normalizeNoteSortMode(value) {
+  return NOTE_SORT_MODES.has(value) ? value : DEFAULT_NOTE_SORT_MODE;
+}
+
+function getTimestamp(value) {
+  const time = new Date(value ?? 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+export function sortWorkspaceNotes(notes, sortMode = DEFAULT_NOTE_SORT_MODE) {
+  const normalizedSortMode = normalizeNoteSortMode(sortMode);
+  const items = [...notes];
+  if (normalizedSortMode === "alphabetical") {
+    return items.sort((left, right) => {
+      const titleOrder = String(left.title ?? "").localeCompare(String(right.title ?? ""));
+      if (titleOrder !== 0) {
+        return titleOrder;
+      }
+      return getTimestamp(right.updated_at ?? right.created_at) - getTimestamp(left.updated_at ?? left.created_at);
+    });
+  }
+
+  if (normalizedSortMode === "created_on") {
+    return items.sort((left, right) => {
+      const createdOrder = getTimestamp(right.created_at) - getTimestamp(left.created_at);
+      if (createdOrder !== 0) {
+        return createdOrder;
+      }
+      return String(left.title ?? "").localeCompare(String(right.title ?? ""));
+    });
+  }
+
+  return items.sort((left, right) => {
+    const updatedOrder = getTimestamp(right.updated_at) - getTimestamp(left.updated_at);
+    if (updatedOrder !== 0) {
+      return updatedOrder;
+    }
+    return String(left.title ?? "").localeCompare(String(right.title ?? ""));
+  });
 }

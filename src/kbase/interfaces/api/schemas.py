@@ -197,6 +197,12 @@ class CreateApiTokenRequest(BaseModel):
     token_label: str
 
 
+class UpdateUserPreferenceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    value: Any
+
+
 class ReplaceItemAclRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

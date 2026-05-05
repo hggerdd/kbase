@@ -42,6 +42,14 @@ Implemented app concerns:
   state for the user to reload or reconcile.
 - Home note filters use existing capabilities and endpoints for note search,
   category subtree scoping, project scoping, and label subtree scoping.
+- Home metadata filters now use denser bounded panels. Category, project, and
+  label lists scroll inside their own regions, and category/label trees expose
+  compact expand-all and collapse-all controls.
+- The notes results column now has a clickable sort chip with `Recent (last changed)`,
+  `Alphabetical`, and `Created on` ordering for the visible note list.
+- The Home notes sort selection is now saved through the backend user-preferences
+  capability under `notes.home.sort_order` and restored as the initial order
+  when the page opens again.
 - Notes can change their project membership from the note header through
   `PUT /api/items/{item_id}/projects`.
 - Notes can link other notes and file-backed items through `POST /api/links`.
@@ -222,6 +230,9 @@ Projects:
 Settings/Projects:
 
 - Settings exposes Projects alongside Labels and Categories.
+- Settings/Labels, Settings/Categories, and Settings/Projects share the same
+  two-pane workspace layout: a bounded list/tree panel on the left and a
+  detail/edit panel on the right.
 - Project deletion in settings archives the project from the active list; linked
   items remain.
 
@@ -239,6 +250,8 @@ Settings/Labels lifecycle wording:
 - Deactivate/reactivate are the normal lifecycle actions.
 - Hard delete is presented as irreversible subtree cleanup.
 - The page can include inactive labels so they can be inspected and reactivated.
+- The label settings tree now shares the same bounded explorer/detail layout as
+  Categories and Projects, including inline search in the header area.
 
 Categories:
 
@@ -249,6 +262,17 @@ Categories:
 Settings/Categories wording:
 
 - Categories are managed taxonomy keys with optional parents.
+- Settings/Categories now edits categories directly through a hierarchical tree
+  plus inline detail form instead of a flat list.
+- Selecting a category keeps the current tree position while updating the
+  detail editor for that node.
+- The compact create action is an icon button in the page header, and the
+  category tree has bounded internal scrolling plus expand/collapse-all
+  controls.
+- Settings/Categories now uses one delete modal for all category deletions. If
+  the backend reports that the category is still in use, that same modal
+  upgrades into a force-delete warning and requires an explicit checkbox before
+  clearing the category from affected items and deleting it.
 - Settings/Categories exposes parent selection and keeps child categories within
   a compatible `applies_to_kind` tree.
 - "All item types" categories are global and appear in kind-specific pickers

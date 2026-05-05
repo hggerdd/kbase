@@ -22,6 +22,7 @@ from kbase.application.dto.common import (
     PaginationInput,
     ProvenanceRecordData,
     SessionData,
+    UserPreferenceData,
 )
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
@@ -269,6 +270,7 @@ class DeleteCategoryInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     key: str
+    force: bool = False
     actor: ActorContext
     provenance: ProvenanceInput
 
@@ -278,6 +280,8 @@ class DeleteCategoryResult(BaseModel):
 
     key: str
     deleted: bool
+    cleared_item_count: int = 0
+    cleared_classification_count: int = 0
 
 
 class CreateLabelInput(BaseModel):
@@ -388,6 +392,28 @@ class CreateApiTokenInput(BaseModel):
 
     token_label: str
     actor: ActorContext
+
+
+class GetUserPreferenceInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preference_key: str
+    actor: ActorContext
+
+
+class SetUserPreferenceInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preference_key: str
+    value: Any
+    actor: ActorContext
+    provenance: ProvenanceInput
+
+
+class SetUserPreferenceResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preference: UserPreferenceData
 
 
 class CreateApiTokenWithPasswordInput(BaseModel):

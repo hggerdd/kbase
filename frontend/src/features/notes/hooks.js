@@ -24,8 +24,10 @@ import {
   combineLabelPaths,
   deriveSelectionTransition,
   editorFromItemDetail,
+  editorFromItemSummary,
   emptyEditor,
-  serializeEditorState,
+  provisionalNoteFromSummary,
+  serializeEditorCoreState,
 } from "./state.js";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
@@ -50,8 +52,13 @@ export function useNotesWorkspace({
   const selectionActionRef = useRef(0);
   const linkedFileDetailRequestRef = useRef(0);
   const linkedNotePreviewRequestRef = useRef(0);
+  const labelUpdateStateRef = useRef({
+    inFlight: false,
+    itemId: null,
+    pendingPaths: null,
+  });
   const autosaveTimerRef = useRef(null);
-  const lastPersistedEditorRef = useRef(serializeEditorState(emptyEditor()));
+  const lastPersistedEditorRef = useRef(serializeEditorCoreState(emptyEditor()));
   const persistedEditorByNoteIdRef = useRef(new Map());
   const selectedIdRef = useRef(null);
   const selectedNoteRef = useRef(null);
@@ -106,6 +113,28 @@ export function useNotesWorkspace({
     .map((item) => item.id);
   const linkedFileIdsKey = linkedFileIds.join("|");
 
+  function createEmptyLinkedNotePreview() {
+    return {
+      detail: null,
+      error: "",
+      loading: false,
+      note: null,
+      renderedBody: "",
+    };
+  }
+
+  function resetLinkedResourceState() {
+    setLinkCandidateResults([]);
+    setLinkedFileDetails({});
+    setLinkedFileDetailErrors({});
+    linkedNotePreviewRequestRef.current += 1;
+    setLinkedNotePreview(createEmptyLinkedNotePreview());
+  }
+
+  useEffect(() => {
+    resetLinkedResourceState();
+  }, [selectedId]);
+
   function clearAutosaveTimer() {
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
@@ -145,14 +174,12 @@ export function useNotesWorkspace({
   function buildPersistedEditor(editorSnapshot) {
     const safeHtmlBody = sanitizeRichHtml(editorSnapshot.html_body || "");
     const markdownBody = turndown.turndown(safeHtmlBody);
-    const labelPaths = combineLabelPaths(editorSnapshot.selected_labels, editorSnapshot.label_paths);
     return {
       title: editorSnapshot.title,
       category_key: editorSnapshot.category_key,
       status: editorSnapshot.status || null,
       html_body: safeHtmlBody,
       markdown_body: markdownBody,
-      label_paths: labelPaths,
     };
   }
 
@@ -180,11 +207,6 @@ export function useNotesWorkspace({
               updated_at: persistedContentPart?.updated_at ?? current.primary_content_part.updated_at,
             }
           : null,
-        labels: persistedEditor.label_paths.map((fullPath) => ({
-          id: fullPath,
-          name: fullPath.split("/").at(-1) ?? fullPath,
-          full_path: fullPath,
-        })),
       };
     });
 
@@ -227,10 +249,85 @@ export function useNotesWorkspace({
         label_paths: "",
         selected_labels: labelPaths,
       };
-      persistedEditorByNoteIdRef.current.set(itemId, serializeEditorState(nextEditor));
-      lastPersistedEditorRef.current = serializeEditorState(nextEditor);
       return nextEditor;
     });
+  }
+
+  function normalizeLabelPaths(labelPaths) {
+    return [...new Set((labelPaths ?? []).map((entry) => String(entry).trim()).filter(Boolean))];
+  }
+
+  function applyOptimisticNoteLabels(itemId, labelPaths) {
+    commitSelectedNote((current) => {
+      if (!current || current.item.id !== itemId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        labels: labelPaths.map((fullPath) => ({
+          id: fullPath,
+          name: fullPath.split("/").at(-1) ?? fullPath,
+          full_path: fullPath,
+          is_active: true,
+        })),
+      };
+    });
+
+    commitEditor((current) => {
+      if (selectedIdRef.current !== itemId) {
+        return current;
+      }
+      return {
+        ...current,
+        item_id: itemId,
+        label_paths: "",
+        selected_labels: labelPaths,
+      };
+    });
+  }
+
+  async function flushPendingLabelUpdates() {
+    if (labelUpdateStateRef.current.inFlight) {
+      return true;
+    }
+
+    labelUpdateStateRef.current.inFlight = true;
+    let lastSucceeded = true;
+
+    try {
+      while (labelUpdateStateRef.current.pendingPaths && labelUpdateStateRef.current.itemId) {
+        const itemId = labelUpdateStateRef.current.itemId;
+        const labelPaths = labelUpdateStateRef.current.pendingPaths;
+        labelUpdateStateRef.current.itemId = null;
+        labelUpdateStateRef.current.pendingPaths = null;
+
+        try {
+          const labels = await replaceLabels(itemId, labelPaths);
+          const hasNewerPendingPaths =
+            labelUpdateStateRef.current.itemId === itemId && Array.isArray(labelUpdateStateRef.current.pendingPaths);
+          if (hasNewerPendingPaths) {
+            continue;
+          }
+          syncLocalNoteLabels(itemId, labels);
+          await loadAvailableLabels();
+          setAutosaveState("saved");
+          lastSucceeded = true;
+        } catch (err) {
+          setError(err.message);
+          setAutosaveState("error");
+          lastSucceeded = false;
+          if (!labelUpdateStateRef.current.pendingPaths) {
+            break;
+          }
+        }
+      }
+    } finally {
+      labelUpdateStateRef.current.inFlight = false;
+      setAutosaving(false);
+    }
+
+    return lastSucceeded;
   }
 
   async function persistEditor(itemId, editorSnapshot, { source }) {
@@ -241,7 +338,7 @@ export function useNotesWorkspace({
       return false;
     }
 
-    const snapshotKey = serializeEditorState(editorSnapshot);
+    const snapshotKey = serializeEditorCoreState(editorSnapshot);
     if (snapshotKey === persistedEditorByNoteIdRef.current.get(itemId)) {
       return true;
     }
@@ -268,7 +365,6 @@ export function useNotesWorkspace({
         category_key: persistedEditor.category_key,
         status: persistedEditor.status,
       });
-      await replaceLabels(itemId, persistedEditor.label_paths);
       persistedEditorByNoteIdRef.current.set(itemId, snapshotKey);
       if (selectedIdRef.current === itemId) {
         lastPersistedEditorRef.current = snapshotKey;
@@ -299,7 +395,7 @@ export function useNotesWorkspace({
     }
   }
 
-  async function loadNotes(query = "", { autoSelect = true } = {}) {
+  async function loadNotes(query = "", { autoSelect = true, refreshCurrentDetail = false } = {}) {
     const requestId = ++notesRequestRef.current;
     setLoading(true);
     setError("");
@@ -314,18 +410,31 @@ export function useNotesWorkspace({
         return;
       }
       setNotes(items);
-      setSelectedId((currentId) => {
-        let nextId = currentId;
-        if (!autoSelect && !currentId) {
-          nextId = null;
-        } else if (!currentId && items.length > 0) {
-          nextId = items[0].id;
-        } else if (currentId && !items.some((item) => item.id === currentId)) {
-          nextId = autoSelect ? items[0]?.id ?? null : null;
+      const previousSelectedId = selectedIdRef.current;
+      let nextSelectedId = previousSelectedId;
+      if (!autoSelect && !previousSelectedId) {
+        nextSelectedId = null;
+      } else if (!previousSelectedId && items.length > 0) {
+        nextSelectedId = items[0].id;
+      } else if (previousSelectedId && !items.some((item) => item.id === previousSelectedId)) {
+        nextSelectedId = autoSelect ? items[0]?.id ?? null : null;
+      }
+
+      const nextSummary = items.find((item) => item.id === nextSelectedId) ?? null;
+      if (nextSelectedId !== previousSelectedId) {
+        commitSelectedId(nextSelectedId);
+        commitSelectedNote(nextSummary ? provisionalNoteFromSummary(nextSummary) : null);
+        commitEditor(nextSummary ? editorFromItemSummary(nextSummary) : emptyEditor());
+        setHistory([]);
+        setAutosaveState("idle");
+        setSelectedNoteLoading(Boolean(nextSelectedId));
+        if (nextSelectedId) {
+          pendingSelectionLoadRef.current = nextSelectedId;
+          void loadNote(nextSelectedId);
         }
-        selectedIdRef.current = nextId;
-        return nextId;
-      });
+      } else if (refreshCurrentDetail && nextSelectedId && nextSummary) {
+        void loadNote(nextSelectedId);
+      }
     } catch (err) {
       if (requestId !== notesRequestRef.current) {
         return;
@@ -383,7 +492,7 @@ export function useNotesWorkspace({
       commitSelectedNote(notePayload);
       setHistory(historyPayload.events);
       commitEditor(nextEditor);
-      const persistedKey = serializeEditorState(nextEditor);
+      const persistedKey = serializeEditorCoreState(nextEditor);
       persistedEditorByNoteIdRef.current.set(itemId, persistedKey);
       lastPersistedEditorRef.current = persistedKey;
       setAutosaveState("idle");
@@ -403,10 +512,10 @@ export function useNotesWorkspace({
     const actionId = ++selectionActionRef.current;
     const currentSelectedId = selectedIdRef.current;
     const currentEditor = editorRef.current;
-    const currentSnapshot = serializeEditorState(currentEditor);
+    const currentSnapshot = serializeEditorCoreState(currentEditor);
     const currentPersistedSnapshot = currentSelectedId
       ? persistedEditorByNoteIdRef.current.get(currentSelectedId)
-      : serializeEditorState(emptyEditor());
+      : serializeEditorCoreState(emptyEditor());
     const currentIsDirty = currentSnapshot !== currentPersistedSnapshot;
 
     if (saveCurrent && currentSelectedId && currentIsDirty) {
@@ -419,10 +528,10 @@ export function useNotesWorkspace({
 
     const activeSelectedId = selectedIdRef.current;
     const activeEditor = editorRef.current;
-    const activeSnapshot = serializeEditorState(activeEditor);
+    const activeSnapshot = serializeEditorCoreState(activeEditor);
     const activePersistedSnapshot = activeSelectedId
       ? persistedEditorByNoteIdRef.current.get(activeSelectedId)
-      : serializeEditorState(emptyEditor());
+      : serializeEditorCoreState(emptyEditor());
     const transition = deriveSelectionTransition(activeSelectedId, note, {
       isDirty: activeSnapshot !== activePersistedSnapshot,
     });
@@ -472,7 +581,7 @@ export function useNotesWorkspace({
 
   useEffect(() => {
     setSearch(externalSearch);
-    void loadNotes(externalSearch);
+    void loadNotes(externalSearch, { refreshCurrentDetail: true });
   }, [
     externalSearch,
     externalSearchVersion,
@@ -487,7 +596,7 @@ export function useNotesWorkspace({
       return;
     }
 
-    const currentSnapshot = serializeEditorState(editor);
+    const currentSnapshot = serializeEditorCoreState(editor);
     if (currentSnapshot === persistedEditorByNoteIdRef.current.get(selectedId)) {
       return;
     }
@@ -505,11 +614,11 @@ export function useNotesWorkspace({
 
   async function handleSearchSubmit(event) {
     event.preventDefault();
-    await loadNotes(search);
+    await loadNotes(search, { refreshCurrentDetail: true });
   }
 
   async function runSearch(query) {
-    await loadNotes(query);
+    await loadNotes(query, { refreshCurrentDetail: true });
   }
 
   async function handleCreateNote(event) {
@@ -564,12 +673,10 @@ export function useNotesWorkspace({
     commitSelectedNote(null);
     setSelectedNoteLoading(false);
     setHistory([]);
-    setLinkedFileDetails({});
-    setLinkedFileDetailErrors({});
-    setLinkedNotePreview({ detail: null, error: "", loading: false, note: null, renderedBody: "" });
+    resetLinkedResourceState();
     const nextEditor = emptyEditor();
     commitEditor(nextEditor);
-    lastPersistedEditorRef.current = serializeEditorState(nextEditor);
+    lastPersistedEditorRef.current = serializeEditorCoreState(nextEditor);
     setAutosaveState("idle");
   }
 
@@ -624,24 +731,29 @@ export function useNotesWorkspace({
       return false;
     }
 
+    const normalizedLabelPaths = normalizeLabelPaths(labelPaths);
     clearAutosaveTimer();
     setError("");
     setNotice("");
     setAutosaving(true);
     setAutosaveState("saving");
-    try {
-      const labels = await replaceLabels(itemId, labelPaths);
-      syncLocalNoteLabels(itemId, labels);
-      setAutosaveState("saved");
-      await loadAvailableLabels();
-      return true;
-    } catch (err) {
-      setError(err.message);
-      setAutosaveState("error");
+    applyOptimisticNoteLabels(itemId, normalizedLabelPaths);
+    labelUpdateStateRef.current.itemId = itemId;
+    labelUpdateStateRef.current.pendingPaths = normalizedLabelPaths;
+    return flushPendingLabelUpdates();
+  }
+
+  async function toggleSelectedNoteLabel(labelPath) {
+    const itemId = selectedIdRef.current;
+    if (!itemId) {
       return false;
-    } finally {
-      setAutosaving(false);
     }
+
+    const currentSelectedLabels = normalizeLabelPaths(editorRef.current.selected_labels);
+    const nextLabels = currentSelectedLabels.includes(labelPath)
+      ? currentSelectedLabels.filter((entry) => entry !== labelPath)
+      : [...currentSelectedLabels, labelPath];
+    return updateSelectedNoteLabels(nextLabels);
   }
 
   async function handleUploadAttachment(event) {
@@ -885,13 +997,7 @@ export function useNotesWorkspace({
 
   function closeLinkedNotePreview() {
     linkedNotePreviewRequestRef.current += 1;
-    setLinkedNotePreview({
-      detail: null,
-      error: "",
-      loading: false,
-      note: null,
-      renderedBody: "",
-    });
+    setLinkedNotePreview(createEmptyLinkedNotePreview());
   }
 
   return {
@@ -936,6 +1042,7 @@ export function useNotesWorkspace({
     setDraft,
     setEditor: commitEditor,
     setSearch,
+    toggleSelectedNoteLabel,
     updateSelectedNoteLabels,
     updateSelectedNoteProjects,
     updateSelectedNoteFields,

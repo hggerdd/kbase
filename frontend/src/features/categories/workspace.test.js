@@ -176,6 +176,77 @@ test("categories workspace covers create update deactivate reactivate and delete
   await act(async () => root.unmount());
 });
 
+test("category workspace can force delete an in-use category", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  let categories = [
+    {
+      key: "research",
+      label: "Research",
+      description: "Research work",
+      applies_to_kind: "note",
+      parent_key: null,
+      full_path: "research",
+      depth: 0,
+      is_active: true,
+    },
+  ];
+  const calls = [];
+
+  global.fetch = async (url, options = {}) => {
+    const value = pathAndQuery(url);
+    const method = options.method ?? "GET";
+    calls.push({ method, url: value, body: options.body ? JSON.parse(String(options.body)) : null });
+
+    if (value.startsWith("/api/categories") && method === "GET") {
+      return createResponse({ categories, limit: 300, offset: 0 });
+    }
+    if (value === "/api/categories/research" && method === "DELETE") {
+      return {
+        ok: false,
+        status: 409,
+        json: async () => ({ detail: "Category 'research' is still in use and cannot be deleted without clearing related item categories" }),
+      };
+    }
+    if (value === "/api/categories/research?force=true" && method === "DELETE") {
+      categories = [];
+      return createResponse({
+        key: "research",
+        deleted: true,
+        cleared_item_count: 2,
+        cleared_classification_count: 0,
+      });
+    }
+    throw new Error(`Unhandled fetch: ${method} ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness, { onWorkspace: (workspace) => { latestWorkspace = workspace; } }));
+  });
+  await waitFor(() => assert.equal(latestWorkspace.loading, false));
+
+  await act(async () => {
+    const outcome = await latestWorkspace.handleDeleteCategory("research");
+    assert.equal(outcome.ok, false);
+    assert.equal(outcome.requiresForce, true);
+  });
+
+  await act(async () => {
+    const outcome = await latestWorkspace.handleDeleteCategory("research", { force: true });
+    assert.equal(outcome.ok, true);
+  });
+
+  await waitFor(() => {
+    assert.equal(latestWorkspace.notice, "Category deleted and cleared 2 item category assignments");
+    assert.equal(latestWorkspace.categories.length, 0);
+  });
+  assert.equal(calls.some((call) => call.method === "DELETE" && call.url === "/api/categories/research"), true);
+  assert.equal(calls.some((call) => call.method === "DELETE" && call.url === "/api/categories/research?force=true"), true);
+
+  await act(async () => root.unmount());
+});
+
 test("category workspace sends global categories without applies_to_kind", async () => {
   const container = createDom();
   let latestWorkspace;

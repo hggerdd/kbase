@@ -120,6 +120,11 @@ Auth:
 - `GET /api/auth/session`
 - `POST /api/auth/tokens`
 
+User preferences:
+
+- `GET /api/user-preferences/{preference_key}`
+- `PUT /api/user-preferences/{preference_key}`
+
 Notes and items:
 
 - `POST /api/notes`
@@ -140,6 +145,8 @@ Saved queries:
 - No saved-query endpoints are exposed.
 - The current frontend search history is browser-local.
 - The `saved_queries` table is reserved future storage.
+- User-specific UI preferences use the separate `user_preferences` capability
+  and are principal-scoped server state.
 
 Labels:
 
@@ -179,8 +186,12 @@ Category model:
 - Child categories must be compatible with their parent scope: a global parent
   can have global or kind-specific children; a kind-specific parent can only
   have children of the same kind.
-- Deleting a category is blocked while items/classifications or child
-  categories still reference it.
+- Deleting a category is blocked while child categories still reference it.
+- `DELETE /api/categories/{category_key}` returns `409` when the category is
+  still assigned to items or classifications unless `force=true` is provided.
+- `DELETE /api/categories/{category_key}?force=true` clears existing item
+  category assignments and secondary classifications that still reference the
+  category, then deletes the category.
 
 Files, assets, and inbox:
 
@@ -340,6 +351,13 @@ Search filter semantics:
 - `limit`
 - `offset`
 
+`DELETE /api/categories/{category_key}`:
+
+- optional `force=true`
+- without `force`, in-use categories return `409`
+- with `force`, the response includes `cleared_item_count` and
+  `cleared_classification_count`
+
 When `applies_to_kind` is provided, the result includes both categories for
 that exact item kind and global categories where `applies_to_kind` is `null`.
 
@@ -357,6 +375,7 @@ that exact item kind and global categories where `applies_to_kind` is `null`.
 - validation or domain errors: `400`
 - missing/invalid authentication: `401`
 - missing authorization: `403`
-- stale write precondition: `409`
+- write conflicts such as stale preconditions or deleting an in-use category
+  without `force`: `409`
 - successful reads/writes: usually `200`
 - successful logout: `204`

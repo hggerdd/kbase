@@ -205,11 +205,19 @@ export function LabelsPage() {
   return (
     <ResponsiveContainer>
       <PageHeader
-        eyebrow="Labels"
+        eyebrow="Settings"
         title="Labels"
         description="Manage hierarchical labels and keep the taxonomy stable across the knowledge base."
         actions={
           <>
+            <label className="settings-search-field settings-header-search">
+              <span>Search</span>
+              <input
+                value={workspace.query}
+                onChange={(event) => workspace.setQuery(event.target.value)}
+                placeholder="Search label names or paths"
+              />
+            </label>
             <label className="toggle-chip">
               <input
                 type="checkbox"
@@ -224,34 +232,67 @@ export function LabelsPage() {
             </button>
           </>
         }
+        aside={<span className="settings-count-pill">{workspace.labels.filter((label) => label.is_active).length} active</span>}
       />
 
       <StatusBanner error={workspace.error} notice={workspace.notice} />
 
-      <div className="labels-explorer-layout">
-        <Panel className="labels-tree-panel" eyebrow="Explorer" title={`Known labels (${workspace.labels.length})`}>
+      <div className="settings-workspace-layout">
+        <Panel
+          className="settings-workspace-panel settings-workspace-list-panel"
+          eyebrow="Labels"
+          title={`Known labels (${workspace.labels.length})`}
+          action={(
+            <div className="settings-tree-actions">
+              <button
+                type="button"
+                className="secondary icon-only-button settings-tree-action-button"
+                aria-label="Expand all labels"
+                title="Expand all labels"
+                onClick={() => setExpandedIds(new Set(collectLabelIds(tree)))}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                className="secondary icon-only-button settings-tree-action-button"
+                aria-label="Collapse all labels"
+                title="Collapse all labels"
+                onClick={() => setExpandedIds(new Set())}
+              >
+                -
+              </button>
+            </div>
+          )}
+        >
           {workspace.loading ? <p className="muted">Loading labels...</p> : null}
           {!workspace.loading && workspace.labels.length === 0 ? (
             <EmptyState title="No labels yet" description="Create the first taxonomy node." />
           ) : (
-            <ul className="tree-list tree-root" role="tree" aria-label="Label explorer tree">
-              {tree.map((node) => (
-                <LabelTreeNode
-                  key={node.id}
-                  node={node}
-                  selectedId={selectedId}
-                  expandedIds={expandedIds}
-                  onSelect={setSelectedId}
-                  onToggle={toggleExpanded}
-                />
-              ))}
-            </ul>
+            <div className="settings-tree-scroll">
+              <ul className="tree-list tree-root" role="tree" aria-label="Label explorer tree">
+                {tree.map((node) => (
+                  <LabelTreeNode
+                    key={node.id}
+                    node={node}
+                    selectedId={selectedId}
+                    expandedIds={expandedIds}
+                    onSelect={setSelectedId}
+                    onToggle={toggleExpanded}
+                  />
+                ))}
+              </ul>
+            </div>
           )}
         </Panel>
 
-        <Panel className="labels-detail-panel" eyebrow="Label" title={selectedLabel ? selectedLabel.name : "No label selected"}>
+        <Panel
+          className="settings-workspace-panel settings-workspace-detail-panel"
+          eyebrow="Label"
+          title={selectedLabel ? selectedLabel.name : "No label selected"}
+        >
           {selectedLabel ? (
-            <div className="label-detail">
+            <div className="settings-detail-stack label-detail">
               <div className="label-detail-title">
                 <span className="tree-node-icon tree-icon-generic"><TagIcon /></span>
                 <div>

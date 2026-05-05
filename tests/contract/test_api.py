@@ -71,6 +71,31 @@ def test_api_create_note_and_get_item(monkeypatch, tmp_path) -> None:
     assert item["labels"][0]["full_path"] == "api/demo"
 
 
+def test_api_user_preference_roundtrip(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+
+    missing = client.get("/api/user-preferences/notes.home.sort_order")
+    assert missing.status_code == 200
+    assert missing.json() == {
+        "preference_key": "notes.home.sort_order",
+        "value": None,
+        "is_set": False,
+        "updated_at": None,
+    }
+
+    saved = client.put("/api/user-preferences/notes.home.sort_order", json={"value": "created_on"})
+    assert saved.status_code == 200
+    assert saved.json()["preference"]["preference_key"] == "notes.home.sort_order"
+    assert saved.json()["preference"]["value"] == "created_on"
+    assert saved.json()["preference"]["is_set"] is True
+    assert saved.json()["preference"]["updated_at"]
+
+    loaded = client.get("/api/user-preferences/notes.home.sort_order")
+    assert loaded.status_code == 200
+    assert loaded.json()["value"] == "created_on"
+    assert loaded.json()["is_set"] is True
+
+
 def test_api_rejects_stale_note_content_replace(monkeypatch, tmp_path) -> None:
     client = _client(monkeypatch, tmp_path)
 
@@ -299,7 +324,12 @@ def test_api_category_lifecycle(monkeypatch, tmp_path) -> None:
         headers={"x-kbase-actor": "heiko"},
     )
     assert deleted.status_code == 200
-    assert deleted.json() == {"key": "meeting_note_test", "deleted": True}
+    assert deleted.json() == {
+        "key": "meeting_note_test",
+        "deleted": True,
+        "cleared_item_count": 0,
+        "cleared_classification_count": 0,
+    }
 
 
 def test_api_rejects_delete_of_used_category(monkeypatch, tmp_path) -> None:
@@ -320,8 +350,8 @@ def test_api_rejects_delete_of_used_category(monkeypatch, tmp_path) -> None:
         "/api/categories/research",
         headers={"x-kbase-actor": "heiko"},
     )
-    assert deleted.status_code == 400
-    assert deleted.json()["detail"] == "Category 'research' is still in use and cannot be deleted"
+    assert deleted.status_code == 409
+    assert deleted.json()["detail"] == "Category 'research' is still in use and cannot be deleted without clearing related item categories"
 
 
 def test_api_global_category_is_available_for_notes(monkeypatch, tmp_path) -> None:
@@ -533,6 +563,45 @@ def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> No
     )
     assert download.status_code == 200
     assert download.content == b"hello attachment"
+
+
+def test_api_uploads_note_image_as_linked_image_item(monkeypatch, tmp_path) -> None:
+    client = _client(monkeypatch, tmp_path)
+    monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
+
+    created = client.post(
+        "/api/notes",
+        json={
+            "title": "Image note",
+            "category_key": "research",
+            "markdown_body": "Body",
+        },
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert created.status_code == 200
+    note_id = created.json()["item"]["id"]
+
+    uploaded = client.post(
+        "/api/file-items/upload",
+        data={"link_to_item_id": note_id, "link_type": "attachment"},
+        files={"file": ("whiteboard.png", b"\x89PNG\r\n\x1a\nimage", "image/png")},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert uploaded.status_code == 200
+    image_payload = uploaded.json()
+    image_id = image_payload["item"]["id"]
+    assert image_payload["item"]["item_kind"] == "image"
+    assert image_payload["files"][0]["original_filename"] == "whiteboard.png"
+    assert image_payload["files"][0]["mime_type"] == "image/png"
+
+    note_detail = client.get(f"/api/items/{note_id}", headers={"x-kbase-actor": "heiko"})
+    assert note_detail.status_code == 200
+    note_payload = note_detail.json()
+    assert note_payload["files"] == []
+    assert [item["id"] for item in note_payload["related_items"]] == [image_id]
+    assert note_payload["related_items"][0]["item_kind"] == "image"
+    assert note_payload["outgoing_links"][0]["to_item_id"] == image_id
+    assert note_payload["outgoing_links"][0]["link_type"] == "attachment"
 
 
 def test_api_serves_pdf_file_content_inline(monkeypatch, tmp_path) -> None:

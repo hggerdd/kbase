@@ -160,6 +160,15 @@ class SessionData(BaseModel):
     auth_method: str
 
 
+class UserPreferenceData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    preference_key: str
+    value: Any = None
+    is_set: bool
+    updated_at: str | None = None
+
+
 class ApiTokenData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

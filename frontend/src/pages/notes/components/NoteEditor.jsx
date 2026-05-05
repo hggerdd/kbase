@@ -111,10 +111,7 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
   }
 
   async function handleToggleLabel(labelPath) {
-    const nextLabels = selectedLabelPaths.includes(labelPath)
-      ? selectedLabelPaths.filter((entry) => entry !== labelPath)
-      : [...selectedLabelPaths, labelPath];
-    await workspace.updateSelectedNoteLabels(nextLabels);
+    await workspace.toggleSelectedNoteLabel(labelPath);
   }
 
   return (
@@ -130,7 +127,6 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
 
           <div className="workspace-detail-hero">
             <div className="workspace-detail-main">
-              <span className="workspace-detail-kicker">Selected note</span>
               <div className="note-title-row">
                 <h2>{workspace.editor.title || activeNote?.title || "Untitled note"}</h2>
                 <button
@@ -285,13 +281,16 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
               key={editorInstanceKey}
               theme="snow"
               value={workspace.editor.html_body}
-              onChange={(value) =>
-                workspace.setEditor({
-                  ...workspace.editor,
+              onChange={(value, _delta, source) => {
+                if (source !== "user") {
+                  return;
+                }
+                workspace.setEditor((currentEditor) => ({
+                  ...currentEditor,
                   html_body: value,
                   markdown_body: turndown.turndown(value || ""),
-                })
-              }
+                }));
+              }}
             />
           </div>
 

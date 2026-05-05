@@ -89,6 +89,16 @@ class ApiTokenModel(Base):
     revoked_at: Mapped[str | None] = mapped_column(Text)
 
 
+class UserPreferenceModel(Base):
+    __tablename__ = "user_preferences"
+
+    principal_id: Mapped[str] = mapped_column(ForeignKey("principals.id"), primary_key=True)
+    preference_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    value_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(Text)
+
+
 class ItemModel(Base):
     __tablename__ = "items"
 

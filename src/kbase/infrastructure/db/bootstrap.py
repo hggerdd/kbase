@@ -25,6 +25,7 @@ def initialize_database(connection: Connection) -> None:
     for statement in _split_sql_statements(schema_sql):
         connection.execute(text(statement))
     _ensure_category_hierarchy_columns(connection)
+    _ensure_user_preferences_table(connection)
     for statement in _split_sql_statements(seed_sql):
         connection.execute(text(statement))
     _backfill_category_hierarchy(connection)
@@ -135,6 +136,24 @@ def _ensure_category_hierarchy_columns(connection: Connection) -> None:
     connection.execute(text("CREATE INDEX IF NOT EXISTS idx_item_categories_parent ON item_categories(parent_key)"))
     connection.execute(text("CREATE INDEX IF NOT EXISTS idx_item_categories_full_path ON item_categories(full_path)"))
     connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_item_categories_full_path ON item_categories(full_path)"))
+
+
+def _ensure_user_preferences_table(connection: Connection) -> None:
+    connection.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                principal_id TEXT NOT NULL,
+                preference_key TEXT NOT NULL,
+                value_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (principal_id, preference_key),
+                FOREIGN KEY (principal_id) REFERENCES principals(id)
+            )
+            """
+        )
+    )
 
 
 def _backfill_category_hierarchy(connection: Connection) -> None:

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useProjectsWorkspace } from "../../features/projects/hooks.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { EmptyState } from "../../shared/ui/EmptyState";
@@ -18,25 +18,7 @@ function formatLabel(value) {
 export function ProjectsSettingsPage() {
   const workspace = useProjectsWorkspace();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const selectedProject = workspace.projects.find((project) => project.id === workspace.selectedId) ?? null;
-  const visibleProjects = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return workspace.projects.filter((project) => {
-      if (!normalizedQuery) {
-        return true;
-      }
-      return [
-        project.title,
-        project.category_key,
-        project.status,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedQuery);
-    });
-  }, [query, workspace.projects]);
 
   async function deleteSelectedProject(project) {
     const confirmed = window.confirm(`Delete project "${project.title}"? Existing linked notes and files will remain.`);
@@ -53,29 +35,34 @@ export function ProjectsSettingsPage() {
         title="Projects"
         description="Manage the project containers used to group notes, files, and related work."
         actions={
-          <button className="primary icon-text-button" type="button" onClick={() => setIsCreateOpen(true)}>
-            <span className="button-icon"><PlusIcon /></span>
-            Add project
-          </button>
+          <>
+            <label className="settings-search-field settings-header-search">
+              <span>Search</span>
+              <input
+                value={workspace.search}
+                onChange={(event) => workspace.setSearch(event.target.value)}
+                placeholder="Search title, category or status"
+              />
+            </label>
+            <button className="primary icon-text-button" type="button" onClick={() => setIsCreateOpen(true)}>
+              <span className="button-icon"><PlusIcon /></span>
+              Add project
+            </button>
+          </>
         }
         aside={<span className="settings-count-pill">{workspace.projects.length} active</span>}
       />
 
       <StatusBanner error={workspace.error} notice={workspace.notice} />
 
-      <div className="settings-projects-layout">
-        <Panel className="settings-projects-list-panel" eyebrow="Projects" title={`Known projects (${visibleProjects.length})`}>
-          <label className="settings-search-field">
-            <span>Search</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, category or status" />
-          </label>
-
+      <div className="settings-workspace-layout">
+        <Panel className="settings-workspace-panel settings-workspace-list-panel" eyebrow="Projects" title={`Known projects (${workspace.filteredProjects.length})`}>
           {workspace.loading ? <p className="muted">Loading projects...</p> : null}
-          {!workspace.loading && visibleProjects.length === 0 ? (
+          {!workspace.loading && workspace.filteredProjects.length === 0 ? (
             <EmptyState title="No projects found" description="Create a project or change the search." />
           ) : (
-            <div className="settings-project-list">
-              {visibleProjects.map((project) => (
+            <div className="settings-tree-scroll settings-project-list">
+              {workspace.filteredProjects.map((project) => (
                 <button
                   key={project.id}
                   type="button"
@@ -95,7 +82,7 @@ export function ProjectsSettingsPage() {
         </Panel>
 
         <Panel
-          className="settings-projects-detail-panel"
+          className="settings-workspace-panel settings-workspace-detail-panel"
           eyebrow="Project"
           title={selectedProject ? selectedProject.title : "No project selected"}
         >
@@ -104,7 +91,7 @@ export function ProjectsSettingsPage() {
             <EmptyState title="No project selected" description="Pick a project from the list to inspect or delete it." />
           ) : null}
           {selectedProject && !workspace.projectLoading ? (
-            <div className="settings-project-detail">
+            <div className="settings-detail-stack settings-project-detail">
               <div className="settings-project-detail-meta">
                 <span className="category-kind-pill">{formatLabel(selectedProject.category_key ?? "project_general")}</span>
                 <span className="category-state-pill active">{formatLabel(selectedProject.status ?? "active")}</span>

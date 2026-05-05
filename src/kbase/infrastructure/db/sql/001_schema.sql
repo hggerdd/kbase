@@ -149,6 +149,16 @@ CREATE TABLE IF NOT EXISTS api_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS user_preferences (
+    principal_id TEXT NOT NULL,
+    preference_key TEXT NOT NULL,
+    value_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (principal_id, preference_key),
+    FOREIGN KEY (principal_id) REFERENCES principals(id)
+);
+
 -- =========================================================
 -- CORE ITEMS
 -- =========================================================

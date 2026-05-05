@@ -320,7 +320,7 @@ test("workspace autosaves debounced changes without reloading note details", asy
   await waitFor(() => {
     assert.equal(updateCoreCount, 1);
     assert.equal(replaceContentCount, 1);
-    assert.equal(replaceLabelsCount, 1);
+    assert.equal(replaceLabelsCount, 0);
     assert.equal(fetchNoteCount, 1);
     assert.equal(container.querySelector('[data-testid="title"]').textContent, "Alpha updated");
     assert.match(container.querySelector('[data-testid="body"]').textContent, /Body updated/);
@@ -935,6 +935,281 @@ test("workspace keeps the current note title unchanged when linking another note
   });
 });
 
+test("workspace preserves all selected labels across rapid toggles and note reloads", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+  const replaceBodies = [];
+  let persistedLabels = [{ id: "label-1", full_path: "work/alpha", is_active: true }];
+  let resolveFirstReplace;
+  let resolveSecondReplace;
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([
+        { id: "label-1", full_path: "work/alpha", is_active: true },
+        { id: "label-2", full_path: "private/home", is_active: true },
+        { id: "label-3", full_path: "team/shared", is_active: true },
+      ]);
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: persistedLabels,
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/labels")) {
+      const body = JSON.parse(options.body);
+      replaceBodies.push(body.label_paths);
+      if (replaceBodies.length === 1) {
+        assert.deepEqual(body, { label_paths: ["work/alpha", "private/home"] });
+        return new Promise((resolve) => {
+          resolveFirstReplace = () => {
+            persistedLabels = [
+              { id: "label-1", full_path: "work/alpha", is_active: true },
+              { id: "label-2", full_path: "private/home", is_active: true },
+            ];
+            resolve(createResponse(persistedLabels));
+          };
+        });
+      }
+      if (replaceBodies.length === 2) {
+        assert.deepEqual(body, { label_paths: ["work/alpha", "private/home", "team/shared"] });
+        return new Promise((resolve) => {
+          resolveSecondReplace = () => {
+            persistedLabels = [
+              { id: "label-1", full_path: "work/alpha", is_active: true },
+              { id: "label-2", full_path: "private/home", is_active: true },
+              { id: "label-3", full_path: "team/shared", is_active: true },
+            ];
+            resolve(createResponse(persistedLabels));
+          };
+        });
+      }
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.deepEqual(latestWorkspace.editor.selected_labels, ["work/alpha"]);
+  });
+
+  await act(async () => {
+    void latestWorkspace.toggleSelectedNoteLabel("private/home");
+    void latestWorkspace.toggleSelectedNoteLabel("team/shared");
+  });
+  await waitFor(() => {
+    assert.deepEqual(latestWorkspace.editor.selected_labels, ["work/alpha", "private/home", "team/shared"]);
+    assert.equal(replaceBodies.length, 1);
+  });
+
+  resolveFirstReplace();
+  await flush();
+  assert.deepEqual(latestWorkspace.editor.selected_labels, ["work/alpha", "private/home", "team/shared"]);
+  await waitFor(() => {
+    assert.equal(replaceBodies.length, 2);
+  });
+
+  resolveSecondReplace();
+  await flush();
+  await flush();
+
+  assert.deepEqual(latestWorkspace.editor.selected_labels, ["work/alpha", "private/home", "team/shared"]);
+  assert.equal(latestWorkspace.autosaveState, "saved");
+
+  await act(async () => {
+    latestWorkspace.closeSelectedNote();
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleSelectNote(latestWorkspace.notes[0]);
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.deepEqual(latestWorkspace.editor.selected_labels, ["work/alpha", "private/home", "team/shared"]);
+  });
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("switching notes clears stale linked resource state and ignores late linked detail responses", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+
+  let resolveLinkedFileDetail;
+  let resolveLinkedNotePreview;
+
+  global.fetch = async (url) => {
+    const value = String(url);
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          {
+            id: "note-a",
+            title: "Alpha",
+            category_key: "research",
+            status: "draft",
+            created_at: "2026-04-14T09:00:00Z",
+            updated_at: "2026-04-14T10:00:00Z",
+          },
+          {
+            id: "note-b",
+            title: "Beta",
+            category_key: "decision",
+            status: "active",
+            created_at: "2026-04-14T11:00:00Z",
+            updated_at: "2026-04-14T12:00:00Z",
+          },
+        ],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([]);
+    }
+    if (value.endsWith("/api/items/note-a/history") || value.endsWith("/api/items/note-b/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        outgoing_links: [
+          { id: "link-file", to_item_id: "image-1", link_type: "attachment", created_at: "2026-04-14T11:05:00Z" },
+          { id: "link-note", to_item_id: "note-c", link_type: "related", created_at: "2026-04-14T11:06:00Z" },
+        ],
+        related_items: [
+          { id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image" },
+          { id: "note-c", title: "Gamma", item_kind: "note", category_key: "reference" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/items/note-b")) {
+      return createResponse({
+        item: { id: "note-b", title: "Beta", category_key: "decision", status: "active" },
+        primary_content_part: { content_text: "# Beta\nBody B" },
+        labels: [],
+        files: [],
+        outgoing_links: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/image-1")) {
+      return new Promise((resolve) => {
+        resolveLinkedFileDetail = () =>
+          resolve(
+            createResponse({
+              item: { id: "image-1", title: "Whiteboard sketch", item_kind: "image", category_key: "reference_image" },
+              primary_content_part: null,
+              labels: [],
+              files: [
+                {
+                  id: "file-1",
+                  original_filename: "whiteboard.png",
+                  relative_path: "images/whiteboard.png",
+                  mime_type: "image/png",
+                  size_bytes: 1234,
+                  file_role: "original",
+                },
+              ],
+              outgoing_links: [],
+              related_items: [],
+            }),
+          );
+      });
+    }
+    if (value.endsWith("/api/items/note-c")) {
+      return new Promise((resolve) => {
+        resolveLinkedNotePreview = () =>
+          resolve(
+            createResponse({
+              item: { id: "note-c", title: "Gamma", category_key: "reference", status: "active" },
+              primary_content_part: { content_text: "# Gamma\nBody C" },
+              labels: [],
+              files: [],
+              outgoing_links: [],
+              related_items: [],
+            }),
+          );
+      });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(latestWorkspace.selectedNote.related_items.length, 2);
+  });
+
+  await act(async () => {
+    void latestWorkspace.openLinkedNotePreview({ id: "note-c", title: "Gamma", item_kind: "note", category_key: "reference" });
+  });
+  await flush();
+  await waitFor(() => {
+    assert.equal(latestWorkspace.linkedNotePreview.loading, true);
+    assert.equal(latestWorkspace.linkedNotePreview.note.id, "note-c");
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleSelectNote(latestWorkspace.notes[1]);
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-b");
+    assert.equal(latestWorkspace.selectedNote.related_items.length, 0);
+    assert.deepEqual(latestWorkspace.linkedFileDetails, {});
+    assert.equal(latestWorkspace.linkedNotePreview.note, null);
+  });
+
+  resolveLinkedFileDetail();
+  resolveLinkedNotePreview();
+  await flush();
+  await flush();
+
+  assert.deepEqual(latestWorkspace.linkedFileDetails, {});
+  assert.equal(latestWorkspace.linkedNotePreview.note, null);
+  assert.equal(latestWorkspace.selectedNote.item.id, "note-b");
+  assert.equal(latestWorkspace.selectedNote.related_items.length, 0);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
 test("workspace can replace the selected note project membership", async () => {
   const container = createDom();
   let latestWorkspace;
@@ -1237,6 +1512,168 @@ test("workspace loads notes through the scoped search endpoint when home filters
   assert.match(scopedSearchUrl, /category_keys=research/);
   assert.match(scopedSearchUrl, /label_path_prefixes=product%2Fui/);
   assert.match(scopedSearchUrl, /project_id=project-1/);
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace search auto-selection refreshes the detail editor when the current note leaves results", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createWorkspaceHarness((workspace) => {
+    latestWorkspace = workspace;
+  });
+
+  global.fetch = async (url) => {
+    const value = String(url);
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+          { id: "note-b", title: "Beta", category_key: "capture", status: "draft", updated_at: "2026-04-14T11:00:00Z" },
+        ],
+      });
+    }
+    if (value.includes("/api/search/content?")) {
+      return createResponse({
+        items: [
+          { id: "note-b", title: "Beta", category_key: "capture", status: "draft", updated_at: "2026-04-14T11:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/history") || value.endsWith("/api/items/note-b/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: [],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/items/note-b")) {
+      return createResponse({
+        item: { id: "note-b", title: "Beta", category_key: "capture", status: "draft" },
+        primary_content_part: { content_text: "# Beta\nBody B" },
+        labels: [{ id: "label-1", full_path: "product/ui", is_active: true }],
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([{ id: "label-1", full_path: "product/ui", is_active: true }]);
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Alpha");
+  });
+
+  await act(async () => {
+    await latestWorkspace.runSearch("Beta");
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-b");
+    assert.equal(container.querySelector('[data-testid="title"]').textContent, "Beta");
+    assert.deepEqual(latestWorkspace.editor.selected_labels, ["product/ui"]);
+  });
+
+  await act(async () => {
+    root.unmount();
+  });
+});
+
+test("workspace refreshes selected note detail when a label-filtered list keeps the same note selected", async () => {
+  const container = createDom();
+  let exposeApplyFilter;
+  let detailLabels = [];
+  let noteDetailFetchCount = 0;
+
+  function FilterRefreshHarness() {
+    const [filters, setFilters] = React.useState({});
+    exposeApplyFilter = () => {
+      detailLabels = [{ id: "label-1", full_path: "product/ui", is_active: true }];
+      setFilters({ labelPathPrefixes: ["product/ui"] });
+    };
+    const workspace = useNotesWorkspace({ filters });
+
+    return React.createElement(
+      "div",
+      null,
+      React.createElement("div", { "data-testid": "selected-id" }, workspace.selectedId ?? ""),
+      React.createElement("div", { "data-testid": "labels" }, workspace.editor.selected_labels.join("|")),
+    );
+  }
+
+  global.fetch = async (url) => {
+    const value = String(url);
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.includes("/api/search/content?")) {
+      assert.match(value, /label_path_prefixes=product%2Fui/);
+      return createResponse({
+        items: [
+          { id: "note-a", title: "Alpha", category_key: "research", status: "draft", updated_at: "2026-04-14T10:00:00Z" },
+        ],
+      });
+    }
+    if (value.endsWith("/api/items/note-a/history")) {
+      return createResponse({ events: [] });
+    }
+    if (value.endsWith("/api/items/note-a")) {
+      noteDetailFetchCount += 1;
+      return createResponse({
+        item: { id: "note-a", title: "Alpha", category_key: "research", status: "draft" },
+        primary_content_part: { content_text: "# Alpha\nBody A" },
+        labels: detailLabels,
+        files: [],
+        related_items: [],
+      });
+    }
+    if (value.endsWith("/api/labels")) {
+      return createResponse([{ id: "label-1", full_path: "product/ui", is_active: true }]);
+    }
+    if (value.includes("/api/categories?")) {
+      return createResponse({ categories: [] });
+    }
+    if (value.includes("/api/items?item_kind=project")) {
+      return createResponse({ items: [] });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(FilterRefreshHarness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(container.querySelector('[data-testid="labels"]').textContent, "");
+    assert.equal(noteDetailFetchCount, 1);
+  });
+
+  await act(async () => {
+    exposeApplyFilter();
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="selected-id"]').textContent, "note-a");
+    assert.equal(container.querySelector('[data-testid="labels"]').textContent, "product/ui");
+    assert.equal(noteDetailFetchCount, 2);
+  });
 
   await act(async () => {
     root.unmount();

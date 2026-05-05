@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy.orm import sessionmaker
 
 from kbase.application.dto.capabilities import DeleteCategoryInput, DeleteCategoryResult
+from kbase.application.services.errors import ConflictError
 from kbase.application.services.capability_support import build_repositories, record_write
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -26,12 +27,20 @@ def delete_category(
             if entry.key != data.key
         ]
         if child_categories:
-            raise ValueError(f"Category '{data.key}' has child categories and cannot be deleted")
+            raise ConflictError(f"Category '{data.key}' has child categories and cannot be deleted")
 
         item_count = repos.items.count_items_with_category(data.key)
         classification_count = repos.items.count_classifications_with_category(data.key)
-        if item_count > 0 or classification_count > 0:
-            raise ValueError(f"Category '{data.key}' is still in use and cannot be deleted")
+        if (item_count > 0 or classification_count > 0) and not data.force:
+            raise ConflictError(
+                f"Category '{data.key}' is still in use and cannot be deleted without clearing related item categories"
+            )
+
+        cleared_item_count = 0
+        cleared_classification_count = 0
+        if data.force:
+            cleared_item_count = repos.items.clear_items_with_category(data.key)
+            cleared_classification_count = repos.items.clear_classifications_with_category(data.key)
 
         repos.items.delete_category(category)
         record_write(
@@ -47,4 +56,9 @@ def delete_category(
             target_field_key=None,
             provenance=data.provenance,
         )
-        return DeleteCategoryResult(key=data.key, deleted=True)
+        return DeleteCategoryResult(
+            key=data.key,
+            deleted=True,
+            cleared_item_count=cleared_item_count,
+            cleared_classification_count=cleared_classification_count,
+        )

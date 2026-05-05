@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getFileContentUrl } from "../../../features/files/api.js";
-import { ImageFileIcon, NoteIcon, PdfFileIcon, TextFileIcon } from "../../../shared/ui/Icons";
+import { ImageFileIcon, NoteIcon, PdfFileIcon, TextFileIcon, XIcon } from "../../../shared/ui/Icons";
 import { formatDuration, formatFileSize } from "../../../shared/utils/format";
 
 const LINK_MODAL_CONFIG = {
@@ -323,6 +323,39 @@ function LinkedFileModal({ file, itemId, onClose }) {
   );
 }
 
+function UnlinkResourceButton({ disabled, label, onClick }) {
+  return (
+    <button
+      className="plain-icon-button linked-resource-remove"
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <XIcon />
+    </button>
+  );
+}
+
+function LinkedResourceCard({ body, canOpen = true, className = "", onOpen, unlink = null }) {
+  const mainClassName = `linked-resource-main ${canOpen ? "interactive" : ""}`.trim();
+  const cardClassName = `linked-resource-card ${className}`.trim();
+
+  return (
+    <div className={cardClassName}>
+      {canOpen ? (
+        <button type="button" className={mainClassName} onClick={onOpen}>
+          {body}
+        </button>
+      ) : (
+        <div className={mainClassName}>{body}</div>
+      )}
+      {unlink}
+    </div>
+  );
+}
+
 export function NoteMetaPanel({ workspace }) {
   const selectedNote = workspace.selectedNote;
   const [activeModal, setActiveModal] = useState(null);
@@ -368,27 +401,12 @@ export function NoteMetaPanel({ workspace }) {
 
               return (
                 <li key={file.id}>
-                  {canPreview ? (
-                    <button
-                      type="button"
-                      className="linked-resource-card linked-file-card interactive"
-                      onClick={() => setPreviewFile({ file, itemId: selectedItemId })}
-                    >
-                      {body}
-                    </button>
-                  ) : (
-                    <div className="linked-resource-card linked-file-card">{body}</div>
-                  )}
-                  {link ? (
-                    <button
-                      className="secondary compact-button linked-resource-remove"
-                      type="button"
-                      disabled={workspace.linking}
-                      onClick={() => void workspace.handleUnlinkExistingItem(link.id)}
-                    >
-                      Unlink
-                    </button>
-                  ) : null}
+                  <LinkedResourceCard
+                    body={body}
+                    canOpen={canPreview}
+                    className="linked-file-card"
+                    onOpen={() => setPreviewFile({ file, itemId: selectedItemId })}
+                  />
                 </li>
               );
             })}
@@ -417,27 +435,31 @@ export function NoteMetaPanel({ workspace }) {
 
               return (
                 <li key={linkedItem.id}>
-                  {canPreview ? (
-                    <button
-                      type="button"
-                      className="linked-resource-card linked-file-card interactive"
-                      onClick={() => setPreviewFile({ file: linkedFile, itemId: linkedItem.id, title: linkedItem.title })}
-                    >
-                      {body}
-                    </button>
-                  ) : (
-                    <div className="linked-resource-card linked-file-card">{body}</div>
-                  )}
+                  <LinkedResourceCard
+                    body={body}
+                    canOpen={canPreview}
+                    className="linked-file-card"
+                    onOpen={() => setPreviewFile({ file: linkedFile, itemId: linkedItem.id, title: linkedItem.title })}
+                    unlink={
+                      link ? (
+                        <UnlinkResourceButton
+                          disabled={workspace.linking}
+                          label={`Unlink ${linkedItem.title}`}
+                          onClick={() => void workspace.handleUnlinkExistingItem(link.id)}
+                        />
+                      ) : null
+                    }
+                  />
                 </li>
               );
             })}
             {relatedNotes.map((linkedItem) => (
               <li key={linkedItem.id}>
-                <button
-                  type="button"
-                  className="linked-resource-card linked-note-card interactive"
-                  onClick={() => void workspace.openLinkedNotePreview(linkedItem)}
-                >
+                <LinkedResourceCard
+                  className="linked-note-card"
+                  onOpen={() => void workspace.openLinkedNotePreview(linkedItem)}
+                  body={
+                    <>
                   <span className="linked-note-icon">
                     <NoteIcon />
                   </span>
@@ -447,17 +469,18 @@ export function NoteMetaPanel({ workspace }) {
                       {linkedTypeByItemId.get(linkedItem.id) ?? "related"} · {linkedItem.category_key ?? linkedItem.item_kind}
                     </span>
                   </div>
-                </button>
-                {linkedLinksByItemId.get(linkedItem.id) ? (
-                  <button
-                    className="secondary compact-button linked-resource-remove"
-                    type="button"
-                    disabled={workspace.linking}
-                    onClick={() => void workspace.handleUnlinkExistingItem(linkedLinksByItemId.get(linkedItem.id).id)}
-                  >
-                    Unlink
-                  </button>
-                ) : null}
+                    </>
+                  }
+                  unlink={
+                    linkedLinksByItemId.get(linkedItem.id) ? (
+                      <UnlinkResourceButton
+                        disabled={workspace.linking}
+                        label={`Unlink ${linkedItem.title}`}
+                        onClick={() => void workspace.handleUnlinkExistingItem(linkedLinksByItemId.get(linkedItem.id).id)}
+                      />
+                    ) : null
+                  }
+                />
               </li>
             ))}
             {!hasLinks ? (
