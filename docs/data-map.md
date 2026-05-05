@@ -99,7 +99,6 @@ kb/items/documents/
 kb/items/images/
 kb/items/spreadsheets/
 kb/items/summaries/
-kb/items/notes/
 ```
 
 `ItemFileStore` builds paths as:

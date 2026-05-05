@@ -1,6 +1,6 @@
 # Capabilities
 
-Status: current as of 2026-05-03.
+Status: current as of 2026-05-05.
 
 This matrix shows whether each application capability is visible through API,
 CLI, frontend, and tests. Use it before adding new behavior to avoid creating
@@ -52,21 +52,22 @@ Legend:
 | Unlink items | `unlink_items` | yes | no | yes | yes | CLI command missing |
 | List related items | `list_related_items` | yes | yes | yes | yes | frontend consumes item detail links in the notes workspace |
 | Create project | `create_project` | yes | yes | yes | yes | well mirrored |
-| Add item to project | `add_item_to_project` | yes | yes | yes | partial | dedicated CLI contract test missing |
+| Add item to project | `add_item_to_project` | yes | yes | yes | partial | API/integration coverage exists; dedicated CLI contract test still missing |
 | Replace item projects | `replace_item_projects` | yes | no | yes | yes | CLI command missing; currently used by note project picker |
 | List project items | `list_project_items` | yes | yes | yes | partial | dedicated CLI contract test missing |
 | Get item history | `get_item_history` | yes | yes | yes | partial | API/CLI contract tests missing |
 | Get item provenance | `get_item_provenance` | yes | yes | no | partial | no frontend surface; contract tests missing |
-| Get item ACL | `get_item_acl` | yes | no | no | no | API-only and not tested |
-| Replace item ACL | `replace_item_acl` | yes | no | no | no | API-only and not tested |
+| Get item ACL | `get_item_acl` | yes | no | no | no | API-only; direct route/capability coverage is still missing |
+| Replace item ACL | `replace_item_acl` | yes | no | no | partial | API-only; exercised in API ACL scenarios and integration tests but lacks a focused direct route test |
 
 ## Highest-Value Gaps
 
 1. `TEST-001`: keep expanding risk-driven auth/ACL/XSS/search/file coverage.
 2. Backfill or migrate legacy items that still have no explicit ACL rows.
-3. Add focused UI tests for note link cards, linked note modals, and image/PDF
-   previews.
-4. Add contract tests for project commands, history, provenance, and ACL.
+3. Add direct contract coverage where the matrix still says `partial`,
+   especially project commands, provenance, and direct ACL routes.
+4. Decide whether ACL and provenance should remain API-only/ops-facing or gain
+   explicit CLI/frontend surfaces.
 
 ## Rule For New Work
 

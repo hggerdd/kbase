@@ -30,7 +30,7 @@ Implemented app concerns:
 - Login/logout through `/api/auth/login` and `/api/auth/logout`.
 - Hash-based navigation via `frontend/src/app/navigation/nav-config.js`.
 - Reduced primary navigation: Home, Search, Files, Imports, plus a reachable
-  Settings entry from the app rail.
+  Settings entry from the desktop app rail and the mobile bottom navigation.
 - Home is the primary notes workspace and reuses the existing notes capability
   flow instead of a separate dashboard.
 - Global search state in `App.jsx` with page-scoped default behavior.
@@ -230,6 +230,8 @@ Projects:
 Settings/Projects:
 
 - Settings exposes Projects alongside Labels and Categories.
+- The standalone `projects` route still exists and is hash-reachable, but it is
+  no longer part of the reduced primary navigation set.
 - Settings/Labels, Settings/Categories, and Settings/Projects share the same
   two-pane workspace layout: a bounded list/tree panel on the left and a
   detail/edit panel on the right.
