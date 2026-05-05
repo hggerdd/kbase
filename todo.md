@@ -21,9 +21,6 @@ Priority values: `high`, `medium`, `low`.
 | `SEC-002` | partial | high | acl | Enforce ACL for reads and writes |
 | `TEST-001` | partial | high | tests | Add targeted tests for auth, ACL, XSS, labels, search, and files |
 | `DOC-001` | partial | medium | docs | Keep canonical docs synced with code |
-| `FE-005` | open | medium | notes-ui | Make notes workspace metadata filters denser and scrollable |
-| `SET-001` | open | medium | settings-ui | Align Settings pages with the notes workspace layout |
-| `CAT-002` | open | medium | categories-ui | Improve hierarchical category editing UI |
 | `FILE-001` | open | medium | files | Move file explorer filtering/loading toward server-side pagination |
 | `FILE-002` | partial | medium | files-ui | Improve file preview and summary editing UX |
 | `CAP-001` | open | low | capabilities | Audit capability coverage and generalization opportunities |
@@ -68,14 +65,14 @@ tests that will prove the behavior.
    logic or an alternate permission model. The adapter should be thin, auditable,
    and constrained by the same identity and ACL decisions as HTTP and CLI.
 
-5. Workspace and settings UI consistency: `FE-005`, `SET-001`, `CAT-002`,
-   `TEST-001`, `DOC-001`.
+5. Workspace and settings UI consistency: `FE-005`, `SET-001`, and `CAT-002`
+   are completed. Continue with `TEST-001` and `DOC-001` only when related
+   follow-up UI work changes behavior.
 
-   Goal: make the day-to-day note and settings workflows denser, more
-   consistent, and easier to scan without changing backend behavior. Start with
-   the notes workspace because Settings should reuse its layout language rather
-   than inventing a second shell. Category editing should build on the
-   hierarchical category model already documented by `CAT-001`.
+   Result: the notes workspace metadata filters are denser and scrollable,
+   Settings pages follow the notes workspace layout language, and
+   Settings/Categories edits hierarchical categories through a tree/detail
+   workflow.
 
 6. Capability model review: `CAP-001`, with follow-up updates to `DOC-001`,
    `TEST-001`, and `MCP-001` where needed.
@@ -110,6 +107,9 @@ tests that will prove the behavior.
 | `FE-001` | done | medium | frontend-tests | Add Settings/Labels and Settings/Categories workspace tests |
 | `FE-002` | done | medium | frontend | Show current build/version in the app chrome |
 | `FE-003` | done | medium | frontend | Refactor home into the primary notes workspace |
+| `FE-005` | done | medium | notes-ui | Make notes workspace metadata filters denser and scrollable |
+| `SET-001` | done | medium | settings-ui | Align Settings pages with the notes workspace layout |
+| `CAT-002` | done | medium | categories-ui | Improve hierarchical category editing UI |
 
 ## Task Details
 
