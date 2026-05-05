@@ -8,7 +8,6 @@ from kbase.application.services.capability_support import (
     build_repositories,
     record_write,
     require_item,
-    require_item_read,
     require_item_write,
 )
 from kbase.application.services.mappers import to_item_ref
@@ -27,7 +26,7 @@ def add_item_to_project(
         require_item(repos.items, data.project_id)
         require_item_write(repos, item_id=data.project_id, actor_principal_id=data.actor.principal_id)
         item = require_item(repos.items, data.item_id)
-        require_item_read(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
+        require_item_write(repos, item_id=item.id, actor_principal_id=data.actor.principal_id)
         repos.projects.add_item_to_project(
             project_id=data.project_id,
             item_id=data.item_id,

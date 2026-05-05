@@ -68,6 +68,7 @@ from kbase.application.dto.capabilities import (
     UpdateItemCoreInput,
 )
 from kbase.application.services.errors import ConflictError
+from kbase.application.services.security import AuthorizationError
 from kbase.core.value_objects.actor import ActorContext
 from kbase.core.value_objects.provenance import ProvenanceInput
 
@@ -104,6 +105,51 @@ def test_create_note_and_get_item(session_factory) -> None:
     assert item.primary_content_part.content_text.startswith("# Decision")
     assert item.labels[0].full_path == "finance/investing"
     assert item.metadata[0].field_key == "description"
+
+
+def test_create_note_requires_write_access_to_parent_item(session_factory) -> None:
+    wife_actor = ActorContext(principal_id="wife")
+    parent = create_note(
+        CreateNoteInput(
+            title="Restricted parent",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    replace_item_acl(
+        ReplaceItemAclInput(
+            item_id=parent.item.id,
+            grants=[
+                {"principal_id": "heiko", "permission_key": "view"},
+                {"principal_id": "heiko", "permission_key": "edit"},
+                {"principal_id": "heiko", "permission_key": "manage"},
+                {"principal_id": "wife", "permission_key": "view"},
+            ],
+            actor=actor(),
+            provenance=provenance("test.replace_item_acl"),
+        ),
+        session_factory=session_factory,
+    )
+
+    try:
+        create_note(
+            CreateNoteInput(
+                title="Blocked child",
+                category_key="research",
+                markdown_body="body",
+                parent_item_id=parent.item.id,
+                actor=wife_actor,
+                provenance=provenance("test.create_note"),
+            ),
+            session_factory=session_factory,
+        )
+    except AuthorizationError as error:
+        assert str(error) == "Access to item is forbidden"
+    else:
+        raise AssertionError("Expected create_note to require write access to parent_item_id")
 
 
 def test_replace_content_part_creates_history_and_provenance(session_factory) -> None:
@@ -591,6 +637,57 @@ def test_list_project_items_returns_only_project_members(session_factory) -> Non
 
     assert [item.title for item in result.items] == ["Included"]
     assert note_outside.item.id not in [item.id for item in result.items]
+
+
+def test_add_item_to_project_requires_write_access_to_item(session_factory) -> None:
+    wife_actor = ActorContext(principal_id="wife")
+    shared_note = create_note(
+        CreateNoteInput(
+            title="Shared read-only note",
+            category_key="research",
+            markdown_body="body",
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+    replace_item_acl(
+        ReplaceItemAclInput(
+            item_id=shared_note.item.id,
+            grants=[
+                {"principal_id": "heiko", "permission_key": "view"},
+                {"principal_id": "heiko", "permission_key": "edit"},
+                {"principal_id": "heiko", "permission_key": "manage"},
+                {"principal_id": "wife", "permission_key": "view"},
+            ],
+            actor=actor(),
+            provenance=provenance("test.replace_item_acl"),
+        ),
+        session_factory=session_factory,
+    )
+    wife_project = create_project(
+        CreateProjectInput(
+            title="Wife project",
+            actor=wife_actor,
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+
+    try:
+        add_item_to_project(
+            AddItemToProjectInput(
+                project_id=wife_project.id,
+                item_id=shared_note.item.id,
+                actor=wife_actor,
+                provenance=provenance("test.add_item_to_project"),
+            ),
+            session_factory=session_factory,
+        )
+    except AuthorizationError as error:
+        assert str(error) == "Access to item is forbidden"
+    else:
+        raise AssertionError("Expected add_item_to_project to require write access to the item")
 
 
 def test_create_note_can_attach_project_during_create(session_factory) -> None:

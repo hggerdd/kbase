@@ -7,6 +7,7 @@ from kbase.application.services.capability_support import (
     build_repositories,
     ensure_owner_acl,
     record_write,
+    require_item,
     require_item_write,
 )
 from kbase.application.services.mappers import to_content_part_data, to_item_summary
@@ -34,6 +35,10 @@ def create_note(
             raise ValueError(f"Unknown category '{data.category_key}'")
         if not category_applies_to_item_kind(category.applies_to_kind, NOTE_ITEM_KIND):
             raise ValueError(f"Category '{data.category_key}' is not valid for notes")
+
+        if data.parent_item_id is not None:
+            require_item(repos.items, data.parent_item_id)
+            require_item_write(repos, item_id=data.parent_item_id, actor_principal_id=data.actor.principal_id)
 
         item = repos.items.create(
             title=data.title,

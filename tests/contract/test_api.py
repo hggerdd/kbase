@@ -990,6 +990,86 @@ def test_api_enforces_acl_for_reads_writes_projects_and_files(monkeypatch, tmp_p
     assert project_items.status_code == 403
 
 
+def test_api_rejects_parent_and_project_membership_mutations_without_item_write(monkeypatch, tmp_path) -> None:
+    heiko = _client(monkeypatch, tmp_path, db_name="shared-mutation-auth.sqlite")
+    wife = _client(
+        monkeypatch,
+        tmp_path,
+        username="wife",
+        password="wife-local-dev",
+        db_name="shared-mutation-auth.sqlite",
+    )
+
+    parent = heiko.post(
+        "/api/notes",
+        json={
+            "title": "Restricted parent",
+            "category_key": "research",
+            "markdown_body": "Parent body",
+        },
+    )
+    assert parent.status_code == 200
+    parent_id = parent.json()["item"]["id"]
+
+    parent_acl = heiko.put(
+        f"/api/items/{parent_id}/acl",
+        json={
+            "grants": [
+                {"principal_id": "heiko", "permission_key": "view"},
+                {"principal_id": "heiko", "permission_key": "edit"},
+                {"principal_id": "heiko", "permission_key": "manage"},
+                {"principal_id": "wife", "permission_key": "view"},
+            ]
+        },
+    )
+    assert parent_acl.status_code == 200
+
+    blocked_child = wife.post(
+        "/api/notes",
+        json={
+            "title": "Blocked child",
+            "category_key": "research",
+            "markdown_body": "Child body",
+            "parent_item_id": parent_id,
+        },
+    )
+    assert blocked_child.status_code == 403
+
+    shared_note = heiko.post(
+        "/api/notes",
+        json={
+            "title": "Shared note",
+            "category_key": "research",
+            "markdown_body": "Shared body",
+        },
+    )
+    assert shared_note.status_code == 200
+    shared_note_id = shared_note.json()["item"]["id"]
+
+    shared_note_acl = heiko.put(
+        f"/api/items/{shared_note_id}/acl",
+        json={
+            "grants": [
+                {"principal_id": "heiko", "permission_key": "view"},
+                {"principal_id": "heiko", "permission_key": "edit"},
+                {"principal_id": "heiko", "permission_key": "manage"},
+                {"principal_id": "wife", "permission_key": "view"},
+            ]
+        },
+    )
+    assert shared_note_acl.status_code == 200
+
+    wife_project = wife.post("/api/projects", json={"title": "Wife project"})
+    assert wife_project.status_code == 200
+    wife_project_id = wife_project.json()["id"]
+
+    add_to_project = wife.post(
+        f"/api/projects/{wife_project_id}/items",
+        json={"item_id": shared_note_id},
+    )
+    assert add_to_project.status_code == 403
+
+
 def test_api_item_detail_filters_inaccessible_related_items(monkeypatch, tmp_path) -> None:
     heiko = _client(monkeypatch, tmp_path, db_name="shared-related.sqlite")
     wife = _client(

@@ -27,8 +27,9 @@ Implemented:
   `principal_memberships`, and `item_acl`.
 - Shared item authorization uses `view`, `edit`, and `manage`.
 - Item detail/list/search, content writes, metadata writes, file
-  upload/download, project membership operations, ACL endpoints, and related
-  item/project references run through the same item-permission checks.
+  upload/download, parent-item attachment, project membership operations, ACL
+  endpoints, and related item/project references run through the same
+  item-permission checks.
 - DB bootstrap creates dev users:
   - `heiko / heiko-local-dev`
   - `wife / wife-local-dev`
@@ -191,8 +192,12 @@ Protected paths:
 - Item list/detail/search reads.
 - Content reads and writes.
 - Note creation/update and item metadata/classification writes.
+- Parent-child note attachment during creation requires `edit` on the chosen
+  parent item.
 - File upload/import/download.
-- Project membership operations.
+- Project membership operations. Adding an item to a project or replacing an
+  item's project set requires `edit` on the mutated item and `edit` on the
+  touched project rows.
 - Related item/project references returned from item detail and link lookups.
 - Item label mutations and ACL read/write endpoints.
 

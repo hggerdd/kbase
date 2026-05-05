@@ -272,6 +272,10 @@ and returns the updated source item detail.
 set for an item and returns the updated item detail. The caller must be able to
 edit the item, all currently linked projects, and all target projects.
 
+`POST /api/projects/{project_id}/items` adds one item to a project and returns
+the added item summary. The caller must be able to edit both the project and
+the item being attached.
+
 Traceability and ACL:
 
 - `GET /api/items/{item_id}/history`
@@ -280,6 +284,12 @@ Traceability and ACL:
 - `PUT /api/items/{item_id}/acl`
 
 ## Important Query Parameters
+
+`POST /api/notes`:
+
+- `parent_item_id` is optional.
+- When provided, the caller must be able to edit the parent item because the
+  create operation mutates that item's child relationship graph.
 
 `GET /api/items`:
 

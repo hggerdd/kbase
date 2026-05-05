@@ -341,7 +341,12 @@ def test_cli_category_lifecycle(monkeypatch, tmp_path) -> None:
 
     deleted = _run_with_token(token, ["category", "delete", "meeting_note_test", "--json"])
     assert deleted.exit_code == 0
-    assert json.loads(deleted.stdout) == {"key": "meeting_note_test", "deleted": True}
+    assert json.loads(deleted.stdout) == {
+        "key": "meeting_note_test",
+        "deleted": True,
+        "cleared_item_count": 0,
+        "cleared_classification_count": 0,
+    }
 
 
 def test_cli_category_hierarchy(monkeypatch, tmp_path) -> None:

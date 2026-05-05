@@ -110,6 +110,8 @@ Acceptance:
 Historical docs in `docs/archive/` are background. Do not treat them as current
 truth when they conflict with code.
 
+After implementing a feature start/restart the docker dev version.
+
 ## Data Rules
 
 - Schema source: `src/kbase/infrastructure/db/sql/001_schema.sql`.
