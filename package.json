@@ -1,0 +1,25 @@
+{
+  "name": "kbase",
+  "version": "1.0.0",
+  "description": "Capability-first personal knowledge base with a Python/FastAPI backend,\r React/Vite frontend, Docker Compose runtime, PostgreSQL in containers, and\r SQLite for local/test cases.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hggerdd/kbase.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hggerdd/kbase/issues"
+  },
+  "homepage": "https://github.com/hggerdd/kbase#readme"
+}
