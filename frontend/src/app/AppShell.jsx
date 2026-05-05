@@ -218,7 +218,7 @@ export function AppShell({
         <main className={`app-main ${isWorkspaceRoute ? "app-main-workspace" : ""}`.trim()}>{children}</main>
       </section>
 
-      <BottomNav activeRoute={activeNav.id} onNavigate={onNavigate} />
+      <BottomNav activeRoute={activeRoute} onNavigate={onNavigate} />
     </div>
   );
 }

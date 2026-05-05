@@ -45,6 +45,10 @@ Implemented app concerns:
 - Home metadata filters now use denser bounded panels. Category, project, and
   label lists scroll inside their own regions, and category/label trees expose
   compact expand-all and collapse-all controls.
+- On mobile-width layouts, Home now collapses the left metadata sidebar into an
+  advanced-filters modal. The default mobile view shows only the note search
+  field and note results; tapping the advanced filter button opens category,
+  project, and label tree/list filters with an explicit Apply action.
 - The notes results column now has a clickable sort chip with `Recent (last changed)`,
   `Alphabetical`, and `Created on` ordering for the visible note list.
 - The Home notes sort selection is now saved through the backend user-preferences
@@ -176,6 +180,8 @@ Home/notes workspace behavior:
   included.
 - Label filters use subtree/prefix semantics through label path prefixes.
 - If a project is selected in Home, newly created notes keep that project scope.
+- On mobile, category/project/label filters are applied from an advanced modal
+  instead of the always-visible left sidebar.
 - The note editor exposes the current project under the title. Changing it
   replaces the note's project membership through the backend capability.
 - The `Files and links` panel can add note links and image/PDF file-item links.

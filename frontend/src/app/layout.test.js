@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const bottomNavSource = readFileSync(resolve(process.cwd(), "src/app/navigation/BottomNav.jsx"), "utf8");
 
 test("desktop sidebar stays fixed while page content scrolls", () => {
   const sidebarBlock = styles.match(/\.app-sidebar\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
@@ -11,4 +12,10 @@ test("desktop sidebar stays fixed while page content scrolls", () => {
   assert.match(sidebarBlock, /position:\s*sticky/);
   assert.match(sidebarBlock, /top:\s*0/);
   assert.match(sidebarBlock, /height:\s*100vh/);
+});
+
+test("mobile bottom navigation keeps settings reachable", () => {
+  assert.match(bottomNavSource, /id:\s*"settings"/);
+  assert.match(bottomNavSource, /navigateTo:\s*"settings\/labels"/);
+  assert.match(bottomNavSource, /normalizedActiveRoute === item\.id/);
 });

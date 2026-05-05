@@ -12,7 +12,7 @@ import {
   sortWorkspaceNotes,
 } from "../../features/notes/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
-import { FolderIcon, NoteIcon, SearchIcon, TagIcon } from "../../shared/ui/Icons";
+import { FilterIcon, FolderIcon, NoteIcon, SearchIcon, TagIcon, XIcon } from "../../shared/ui/Icons";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
 import { formatDate } from "../../shared/utils/format";
 import { CreateNotePanel } from "../notes/components/CreateNotePanel";
@@ -152,6 +152,25 @@ function LabelTreeRow({ expandedIds, node, onSelect, onToggle, selectedPath }) {
   );
 }
 
+function ProjectFilterRow({ isActive, project, onSelect }) {
+  return (
+    <li>
+      <button
+        type="button"
+        className={`workspace-tree-row ${isActive ? "active" : ""}`.trim()}
+        onClick={onSelect}
+      >
+        <span className="workspace-tree-caret hidden" />
+        <span className="workspace-tree-icon">
+          <FolderIcon />
+        </span>
+        <span className="workspace-tree-label">{project.title}</span>
+        <span className="workspace-tree-meta">{formatLabel(project.status ?? "active")}</span>
+      </button>
+    </li>
+  );
+}
+
 function NoteCard({ isActive, note, onClick }) {
   return (
     <button type="button" className={`workspace-note-card ${isActive ? "active" : ""}`.trim()} onClick={onClick}>
@@ -173,9 +192,13 @@ export function HomePage() {
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState(new Set());
   const [expandedLabelIds, setExpandedLabelIds] = useState(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isMobileAdvancedOpen, setIsMobileAdvancedOpen] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [labelQuery, setLabelQuery] = useState("");
+  const [mobileDraftCategoryKey, setMobileDraftCategoryKey] = useState("");
+  const [mobileDraftLabelPath, setMobileDraftLabelPath] = useState("");
+  const [mobileDraftProjectId, setMobileDraftProjectId] = useState("");
   const [noteSortMode, setNoteSortMode] = useState(DEFAULT_NOTE_SORT_MODE);
   const [categoryCountNotes, setCategoryCountNotes] = useState(null);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
@@ -332,6 +355,14 @@ export function HomePage() {
   }, [labelQuery, workspace.availableLabels]);
   const labelTree = useMemo(() => buildLabelTree(visibleLabels), [visibleLabels]);
   const labelIds = useMemo(() => collectLabelIds(labelTree), [labelTree]);
+  const activeLabels = useMemo(
+    () =>
+      workspace.availableLabels
+        .filter((label) => label.is_active)
+        .slice()
+        .sort((left, right) => left.full_path.localeCompare(right.full_path)),
+    [workspace.availableLabels],
+  );
 
   useEffect(() => {
     const availableKeys = new Set(categoryKeys);
@@ -423,6 +454,23 @@ export function HomePage() {
     setNoteSortMode(normalizedSortMode);
     setIsSortMenuOpen(false);
     void saveUserPreference(NOTE_SORT_PREFERENCE_KEY, normalizedSortMode).catch(() => {});
+  }
+
+  function openMobileAdvancedFilters() {
+    setMobileDraftCategoryKey(selectedCategoryKey);
+    setMobileDraftProjectId(selectedProjectId);
+    setMobileDraftLabelPath(selectedLabelPath);
+    setIsMobileAdvancedOpen(true);
+  }
+
+  function applyMobileAdvancedFilters() {
+    const nextCategory =
+      workspace.availableCategories.find((category) => category.key === mobileDraftCategoryKey) ?? null;
+    setSelectedCategoryKey(nextCategory?.key ?? "");
+    setSelectedCategoryPath(nextCategory?.full_path ?? "");
+    setSelectedProjectId(mobileDraftProjectId);
+    setSelectedLabelPath(mobileDraftLabelPath);
+    setIsMobileAdvancedOpen(false);
   }
 
   const activeFilterChips = [
@@ -607,6 +655,30 @@ export function HomePage() {
             </div>
           </header>
 
+          <div className="workspace-mobile-controls">
+            <label className="workspace-search-shell">
+              <span className="workspace-search-icon">
+                <SearchIcon />
+              </span>
+              <input
+                className="workspace-search-input"
+                aria-label="Search notes"
+                value={workspace.search}
+                onChange={(event) => workspace.setSearch(event.target.value)}
+                placeholder="Search notes..."
+              />
+            </label>
+            <button
+              type="button"
+              className="workspace-mobile-advanced-button"
+              aria-label="Open advanced note filters"
+              onClick={openMobileAdvancedFilters}
+            >
+              <FilterIcon />
+              <span>Advanced</span>
+            </button>
+          </div>
+
           <div className="workspace-filter-chips">
             <div className="workspace-sort-control" ref={sortMenuRef}>
               <button
@@ -680,6 +752,152 @@ export function HomePage() {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
       />
+
+      {isMobileAdvancedOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsMobileAdvancedOpen(false)}>
+          <section
+            className="modal-sheet workspace-mobile-advanced-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-advanced-filters-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header workspace-mobile-advanced-header">
+              <div>
+                <p className="eyebrow">Filters</p>
+                <h2 id="mobile-advanced-filters-title">Advanced note filters</h2>
+              </div>
+              <div className="workspace-mobile-advanced-header-actions">
+                <button className="primary workspace-mobile-advanced-apply" type="button" onClick={applyMobileAdvancedFilters}>
+                  Apply
+                </button>
+                <button
+                  className="secondary workspace-mobile-advanced-close"
+                  type="button"
+                  aria-label="Close advanced note filters"
+                  onClick={() => setIsMobileAdvancedOpen(false)}
+                >
+                  <XIcon />
+                </button>
+              </div>
+            </div>
+
+            <div className="workspace-mobile-advanced-form">
+              <section className="workspace-mobile-filter-card">
+                <div className="workspace-mobile-filter-card-head">
+                  <div className="workspace-section-title">Category</div>
+                  <span className="workspace-mobile-filter-pill">
+                    {mobileDraftCategoryKey
+                      ? workspace.availableCategories.find((category) => category.key === mobileDraftCategoryKey)?.label ||
+                        formatLabel(mobileDraftCategoryKey)
+                      : "All notes"}
+                  </span>
+                </div>
+                <div className="workspace-mobile-filter-tree">
+                  <ul className="workspace-tree-list" role="tree" aria-label="Mobile category filters">
+                    <li>
+                      <button
+                        type="button"
+                        className={`workspace-tree-row ${mobileDraftCategoryKey === "" ? "active" : ""}`.trim()}
+                        onClick={() => setMobileDraftCategoryKey("")}
+                      >
+                        <span className="workspace-tree-caret hidden" />
+                        <span className="workspace-tree-icon">
+                          <NoteIcon />
+                        </span>
+                        <span className="workspace-tree-label">All notes</span>
+                        <span className="workspace-tree-meta">{categoryCountSourceNotes.length}</span>
+                      </button>
+                    </li>
+                    {categoryTree.map((category) => (
+                      <CategoryTreeRow
+                        key={category.key}
+                        category={category}
+                        counts={categoryCounts}
+                        expandedKeys={expandedCategoryKeys}
+                        onSelect={(entry) => setMobileDraftCategoryKey((current) => (current === entry.key ? "" : entry.key))}
+                        onToggle={toggleExpandedCategory}
+                        selectedKey={mobileDraftCategoryKey}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </section>
+
+              <section className="workspace-mobile-filter-card">
+                <div className="workspace-mobile-filter-card-head">
+                  <div className="workspace-section-title">Projects</div>
+                  <span className="workspace-mobile-filter-pill">
+                    {mobileDraftProjectId ? projectsState.projects.find((project) => project.id === mobileDraftProjectId)?.title ?? "Selected" : "All projects"}
+                  </span>
+                </div>
+                <div className="workspace-mobile-filter-tree">
+                  <ul className="workspace-tree-list" role="tree" aria-label="Mobile project filters">
+                    <li>
+                      <button
+                        type="button"
+                        className={`workspace-tree-row ${mobileDraftProjectId === "" ? "active" : ""}`.trim()}
+                        onClick={() => setMobileDraftProjectId("")}
+                      >
+                        <span className="workspace-tree-caret hidden" />
+                        <span className="workspace-tree-icon">
+                          <FolderIcon />
+                        </span>
+                        <span className="workspace-tree-label">All projects</span>
+                      </button>
+                    </li>
+                    {projectsState.projects.map((project) => (
+                      <ProjectFilterRow
+                        key={project.id}
+                        isActive={mobileDraftProjectId === project.id}
+                        project={project}
+                        onSelect={() => setMobileDraftProjectId((current) => (current === project.id ? "" : project.id))}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </section>
+
+              <section className="workspace-mobile-filter-card">
+                <div className="workspace-mobile-filter-card-head">
+                  <div className="workspace-section-title">Labels</div>
+                  <span className="workspace-mobile-filter-pill">{mobileDraftLabelPath || "All labels"}</span>
+                </div>
+                <div className="workspace-mobile-filter-tree">
+                  <ul className="workspace-tree-list" role="tree" aria-label="Mobile label filters">
+                    <li>
+                      <button
+                        type="button"
+                        className={`workspace-tree-row ${mobileDraftLabelPath === "" ? "active" : ""}`.trim()}
+                        onClick={() => setMobileDraftLabelPath("")}
+                      >
+                        <span className="workspace-tree-caret hidden" />
+                        <span className="workspace-tree-icon">
+                          <TagIcon />
+                        </span>
+                        <span className="workspace-tree-label">All labels</span>
+                      </button>
+                    </li>
+                    {buildLabelTree(activeLabels).map((node) => (
+                      <LabelTreeRow
+                        key={node.id}
+                        expandedIds={expandedLabelIds}
+                        node={node}
+                        onSelect={(labelPath) =>
+                          setMobileDraftLabelPath((current) => (current === labelPath ? "" : labelPath))
+                        }
+                        onToggle={toggleExpandedLabel}
+                        selectedPath={mobileDraftLabelPath}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            </div>
+
+          </section>
+        </div>
+      ) : null}
     </ResponsiveContainer>
   );
 }

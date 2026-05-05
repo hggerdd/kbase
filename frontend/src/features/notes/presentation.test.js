@@ -112,6 +112,32 @@ test("home metadata filters expose compact tree controls and internal scroll reg
   assert.match(styles, /\.workspace-sort-menu\s*\{[\s\S]*?position:\s*absolute[\s\S]*?\n\}/);
 });
 
+test("mobile home view collapses filters into an advanced modal", () => {
+  assert.match(homePageSource, /aria-label="Open advanced note filters"/);
+  assert.match(homePageSource, /id="mobile-advanced-filters-title"/);
+  assert.match(homePageSource, /Advanced note filters/);
+  assert.match(homePageSource, /setIsMobileAdvancedOpen\(true\)/);
+  assert.match(homePageSource, /className="primary workspace-mobile-advanced-apply"/);
+  assert.match(homePageSource, /applyMobileAdvancedFilters/);
+  assert.match(homePageSource, /setSelectedCategoryPath\(nextCategory\?\.full_path \?\? ""\)/);
+  assert.match(homePageSource, /setSelectedProjectId\(mobileDraftProjectId\)/);
+  assert.match(homePageSource, /setSelectedLabelPath\(mobileDraftLabelPath\)/);
+  assert.match(homePageSource, /aria-label="Mobile category filters"/);
+  assert.match(homePageSource, /aria-label="Mobile project filters"/);
+  assert.match(homePageSource, /aria-label="Mobile label filters"/);
+  assert.doesNotMatch(homePageSource, /mobileDraftCategoryKey} onChange=\{\(event\) => setMobileDraftCategoryKey\(event\.target\.value\)\}/);
+  assert.match(homePageSource, /<CategoryTreeRow/);
+  assert.match(homePageSource, /<ProjectFilterRow/);
+  assert.match(homePageSource, /<LabelTreeRow/);
+  assert.match(styles, /\.workspace-mobile-controls\s*\{[\s\S]*?display:\s*none[\s\S]*?\n\}/);
+  assert.match(styles, /\.workspace-mobile-advanced-header\s*\{[\s\S]*?position:\s*sticky[\s\S]*?border-bottom:\s*1px solid rgba\(191, 210, 245, 0\.72\)[\s\S]*?\n\}/);
+  assert.match(styles, /\.workspace-mobile-advanced-header-actions\s*\{[\s\S]*?display:\s*inline-flex[\s\S]*?\n\}/);
+  assert.match(styles, /\.workspace-mobile-filter-card\s*\{[\s\S]*?border-radius:\s*22px[\s\S]*?background:\s*rgba\(255, 255, 255, 0\.8\)[\s\S]*?\n\}/);
+  assert.match(styles, /\.workspace-mobile-filter-tree\s*\{[\s\S]*?max-height:\s*176px[\s\S]*?overflow:\s*auto[\s\S]*?\n\}/);
+  assert.match(styles, /@media \(max-width: 860px\)[\s\S]*?\.workspace-sidebar\s*\{[\s\S]*?display:\s*none[\s\S]*?\n\s*\}/);
+  assert.match(styles, /@media \(max-width: 860px\)[\s\S]*?\.workspace-mobile-controls\s*\{[\s\S]*?display:\s*grid[\s\S]*?\n\s*\}/);
+});
+
 test("user preference API uses the shared capability endpoints", () => {
   assert.match(preferencesApiSource, /\/api\/user-preferences\/\$\{encodeURIComponent\(preferenceKey\)\}/);
   assert.match(preferencesApiSource, /method:\s*"PUT"/);
