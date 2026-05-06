@@ -10,6 +10,7 @@ from kbase.application.services.capability_support import (
     require_item,
     require_item_write,
 )
+from kbase.application.services.linked_file_context import propagate_context_to_exclusive_attachments
 from kbase.application.services.mappers import to_label_data
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -42,5 +43,12 @@ def replace_labels(
             target_object_id=data.item_id,
             target_field_key="labels",
             provenance=data.provenance,
+        )
+        propagate_context_to_exclusive_attachments(
+            repos,
+            source_item_id=data.item_id,
+            actor=data.actor,
+            provenance=data.provenance,
+            label_paths=data.label_paths,
         )
         return [to_label_data(label) for label in labels]

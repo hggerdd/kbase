@@ -1,9 +1,8 @@
 import React from "react";
 
-export function AppBarPageHeader({ appName = "kbase", title, countLabel, status }) {
+export function AppBarPageHeader({ title, countLabel, status }) {
   return (
     <div className="app-bar-page-header">
-      <span className="app-bar-page-app">{appName}</span>
       <strong>{title}</strong>
       {countLabel ? <span className="app-bar-page-count">{countLabel}</span> : null}
       {status ? (

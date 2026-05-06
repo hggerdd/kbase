@@ -1,11 +1,5 @@
 export const FILE_ITEM_KINDS = ["document", "image", "spreadsheet", "summary"];
 
-export const FILE_TREE_LAYOUTS = [
-  { id: "category-label-file", label: "Category > Label > File" },
-  { id: "label-category-file", label: "Label > Category > File" },
-  { id: "category-file", label: "Category > File" },
-];
-
 export function getPrimaryFilename(detail) {
   const primaryFile = detail.files?.[0];
   return primaryFile?.original_filename ?? primaryFile?.relative_path ?? detail.item.title;
@@ -40,8 +34,9 @@ function labelMatchesFilter(labelPath, filterPath) {
 
 export function itemMatchesFileFilters(detail, filters) {
   const query = normalizeValue(filters.query);
-  const categoryPrefix = normalizeValue(filters.categoryPrefix);
+  const selectedCategoryKeys = (filters.selectedCategoryKeys ?? []).map(normalizeValue);
   const labels = filters.selectedLabels ?? [];
+  const selectedProjectId = normalizeValue(filters.selectedProjectId);
   const filename = normalizeValue(getPrimaryFilename(detail));
   const title = normalizeValue(detail.item.title);
   const categoryKey = normalizeValue(detail.item.category_key);
@@ -55,12 +50,19 @@ export function itemMatchesFileFilters(detail, filters) {
     }
   }
 
-  if (categoryPrefix && !categoryKey.startsWith(categoryPrefix)) {
+  if (selectedCategoryKeys.length > 0 && !selectedCategoryKeys.includes(categoryKey)) {
     return false;
   }
 
   if (labels.length > 0 && !labels.every((label) => itemLabels.some((itemLabel) => labelMatchesFilter(itemLabel, label)))) {
     return false;
+  }
+
+  if (selectedProjectId) {
+    const projectIds = (detail.projects ?? []).map((project) => normalizeValue(project.id));
+    if (!projectIds.includes(selectedProjectId)) {
+      return false;
+    }
   }
 
   return true;
@@ -119,7 +121,7 @@ function getCategorySegments(categoryKey) {
   return [categoryKey];
 }
 
-export function buildFileTree(details, { treeLayout, selectedLabels = [], categoryPrefix = "" }) {
+export function buildFileTree(details, { selectedLabels = [] } = {}) {
   const rootMap = new Map();
 
   for (const detail of details) {
@@ -132,24 +134,6 @@ export function buildFileTree(details, { treeLayout, selectedLabels = [], catego
         ? itemLabels.filter((label) => selectedLabels.some((selectedLabel) => labelMatchesFilter(label, selectedLabel)))
         : itemLabels;
     const labelSegments = displayLabels.length > 0 ? displayLabels : ["unlabeled"];
-
-    if (treeLayout === "category-file") {
-      const categoryRootId = `category:${categoryKey}`;
-      const categoryRoot = addGroup(rootMap, categoryRootId, categorySegments[0] ?? categoryKey);
-      const categoryParent =
-        categorySegments.length > 1 ? ensureNestedGroup(categoryRoot, categorySegments.slice(1), categoryRootId) : categoryRoot;
-      appendLeaf(categoryParent, fileLeaf);
-      continue;
-    }
-
-    if (treeLayout === "label-category-file") {
-      for (const labelPath of labelSegments) {
-        const labelRoot = addGroup(rootMap, `label:${labelPath}`, labelPath);
-        const categoryNode = ensureNestedGroup(labelRoot, categorySegments, `label:${labelPath}/category`);
-        appendLeaf(categoryNode, fileLeaf);
-      }
-      continue;
-    }
 
     const categoryRootId = `category:${categoryKey}`;
     const categoryRoot = addGroup(rootMap, categoryRootId, categorySegments[0] ?? categoryKey);

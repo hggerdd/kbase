@@ -10,6 +10,7 @@ from kbase.application.services.capability_support import (
     require_item,
     require_item_write,
 )
+from kbase.application.services.linked_file_context import propagate_context_to_exclusive_attachments
 from kbase.application.services.mappers import to_item_summary
 from kbase.core.policies.classification_policy import category_applies_to_item_kind
 from kbase.infrastructure.db.session import get_session_factory
@@ -53,4 +54,12 @@ def update_item_core(
             target_field_key=None,
             provenance=data.provenance,
         )
+        if data.category_key is not None:
+            propagate_context_to_exclusive_attachments(
+                repos,
+                source_item_id=updated.id,
+                actor=data.actor,
+                provenance=data.provenance,
+                category_key_provided=True,
+            )
         return to_item_summary(updated)

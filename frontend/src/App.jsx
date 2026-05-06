@@ -62,36 +62,11 @@ export default function App() {
       });
   }, []);
 
-  function handleGlobalSearchSubmit(event) {
-    event.preventDefault();
-    navigate("search");
-    setSearchState((current) => ({
-      ...current,
-      query: current.query.trim(),
-      scopeRoute: routeRoot === "search" ? current.scopeRoute : routeRoot,
-      version: current.version + 1,
-    }));
-  }
-
   function handleSearchStateChange(patch) {
     setSearchState((current) => ({
       ...current,
       ...patch,
     }));
-  }
-
-  function seedGlobalSearch(query, { navigateTo = false, scopeRoute = routeRoot } = {}) {
-    setSearchState((current) => ({
-      ...current,
-      query,
-      globalScope: false,
-      scopeRoute,
-      version: navigateTo ? current.version + 1 : current.version,
-    }));
-
-    if (navigateTo) {
-      navigate("search");
-    }
   }
 
   const activePage = useMemo(() => {
@@ -113,8 +88,6 @@ export default function App() {
         return <HomePage />;
     }
   }, [navigate, route, routeRoot, searchState]);
-
-  const searchContextRoute = routeRoot === "search" ? searchState.scopeRoute : routeRoot;
 
   async function handleLoginSubmit(event) {
     event.preventDefault();
@@ -169,14 +142,8 @@ export default function App() {
   return (
     <AppShell
       activeRoute={routeRoot}
-      globalScope={searchState.globalScope}
-      globalSearch={searchState.query}
-      onGlobalScopeChange={(value) => handleSearchStateChange({ globalScope: value })}
-      onGlobalSearchChange={(value) => handleSearchStateChange({ query: value })}
-      onGlobalSearchSubmit={handleGlobalSearchSubmit}
       onLogout={handleLogout}
       onNavigate={navigate}
-      searchContextRoute={searchContextRoute}
       session={session}
     >
       {activePage}

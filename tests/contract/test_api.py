@@ -529,12 +529,22 @@ def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> No
     client = _client(monkeypatch, tmp_path)
     monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
 
+    project = client.post(
+        "/api/projects",
+        json={"title": "Attachment project", "category_key": "project_general"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
     created = client.post(
         "/api/notes",
         json={
             "title": "Attachment note",
             "category_key": "research",
             "markdown_body": "Body",
+            "label_paths": ["api/attachment"],
+            "project_ids": [project_id],
         },
         headers={"x-kbase-actor": "heiko"},
     )
@@ -554,6 +564,9 @@ def test_api_can_upload_attachment_and_link_to_note(monkeypatch, tmp_path) -> No
     assert file_item.status_code == 200
     file_payload = file_item.json()
     assert file_payload["item"]["item_kind"] == "document"
+    assert file_payload["item"]["category_key"] == "research"
+    assert [label["full_path"] for label in file_payload["labels"]] == ["api/attachment"]
+    assert [project["id"] for project in file_payload["projects"]] == [project_id]
     assert len(file_payload["files"]) == 1
     assert file_payload["files"][0]["original_filename"] == "demo.txt"
 
@@ -569,12 +582,22 @@ def test_api_uploads_note_image_as_linked_image_item(monkeypatch, tmp_path) -> N
     client = _client(monkeypatch, tmp_path)
     monkeypatch.setenv("KBASE_STORAGE_ROOT", str(tmp_path / "items"))
 
+    project = client.post(
+        "/api/projects",
+        json={"title": "Image attachment project", "category_key": "project_general"},
+        headers={"x-kbase-actor": "heiko"},
+    )
+    assert project.status_code == 200
+    project_id = project.json()["id"]
+
     created = client.post(
         "/api/notes",
         json={
             "title": "Image note",
             "category_key": "research",
             "markdown_body": "Body",
+            "label_paths": ["api/image-attachment"],
+            "project_ids": [project_id],
         },
         headers={"x-kbase-actor": "heiko"},
     )
@@ -591,6 +614,9 @@ def test_api_uploads_note_image_as_linked_image_item(monkeypatch, tmp_path) -> N
     image_payload = uploaded.json()
     image_id = image_payload["item"]["id"]
     assert image_payload["item"]["item_kind"] == "image"
+    assert image_payload["item"]["category_key"] == "research"
+    assert [label["full_path"] for label in image_payload["labels"]] == ["api/image-attachment"]
+    assert [project["id"] for project in image_payload["projects"]] == [project_id]
     assert image_payload["files"][0]["original_filename"] == "whiteboard.png"
     assert image_payload["files"][0]["mime_type"] == "image/png"
 

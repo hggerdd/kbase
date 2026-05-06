@@ -13,6 +13,7 @@ from kbase.application.services.capability_support import (
     require_item,
     require_item_write,
 )
+from kbase.application.services.linked_file_context import inherited_context_for_file_item
 from kbase.application.services.mappers import (
     to_item_file_data,
     to_item_ref,
@@ -52,12 +53,28 @@ def import_file_as_item(
         assert uow.session is not None
         repos = build_repositories(uow.session)
 
-        if data.category_key is not None:
-            category = repos.items.get_category(data.category_key)
+        category_key = data.category_key
+        project_ids = list(data.project_ids)
+        label_paths = list(data.label_paths)
+
+        if data.link_to_item_id is not None:
+            inherited_context = inherited_context_for_file_item(
+                repos,
+                source_item_id=data.link_to_item_id,
+            )
+            if category_key is None:
+                category_key = inherited_context["category_key"]  # type: ignore[assignment]
+            if not project_ids:
+                project_ids = list(inherited_context["project_ids"])  # type: ignore[arg-type]
+            if not label_paths:
+                label_paths = list(inherited_context["label_paths"])  # type: ignore[arg-type]
+
+        if category_key is not None:
+            category = repos.items.get_category(category_key)
             if category is None:
-                raise ValueError(f"Unknown category '{data.category_key}'")
+                raise ValueError(f"Unknown category '{category_key}'")
             if not category_applies_to_item_kind(category.applies_to_kind, data.item_kind):
-                raise ValueError(f"Category '{data.category_key}' is not valid for {data.item_kind}")
+                raise ValueError(f"Category '{category_key}' is not valid for {data.item_kind}")
 
         if data.link_to_item_id is not None:
             require_item(repos.items, data.link_to_item_id)
@@ -70,7 +87,7 @@ def import_file_as_item(
         item = repos.items.create(
             title=title,
             item_kind=data.item_kind,
-            category_key=data.category_key,
+            category_key=category_key,
             status=data.status,
             origin="import",
             language_code=data.language_code,
@@ -98,14 +115,14 @@ def import_file_as_item(
             created_by_principal_id=data.actor.principal_id,
         )
 
-        if data.label_paths:
+        if label_paths:
             repos.labels.assign_labels(
                 item_id=item.id,
-                label_paths=data.label_paths,
+                label_paths=label_paths,
                 created_by_principal_id=data.actor.principal_id,
             )
 
-        for project_id in data.project_ids:
+        for project_id in project_ids:
             require_item_write(repos, item_id=project_id, actor_principal_id=data.actor.principal_id)
             repos.projects.add_item_to_project(
                 project_id=project_id,

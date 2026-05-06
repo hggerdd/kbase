@@ -10,6 +10,7 @@ from kbase.application.services.capability_support import (
     require_item,
     require_item_write,
 )
+from kbase.application.services.linked_file_context import propagate_context_to_exclusive_attachments
 from kbase.application.services.mappers import to_item_ref
 from kbase.infrastructure.db.session import get_session_factory
 from kbase.infrastructure.db.unit_of_work import SqlAlchemyUnitOfWork
@@ -56,5 +57,12 @@ def replace_item_projects(
             target_object_id=item.id,
             target_field_key="project_items",
             provenance=data.provenance,
+        )
+        propagate_context_to_exclusive_attachments(
+            repos,
+            source_item_id=item.id,
+            actor=data.actor,
+            provenance=data.provenance,
+            project_ids=deduplicated_project_ids,
         )
         return to_item_ref(item)

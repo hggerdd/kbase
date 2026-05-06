@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from kbase.core.rules.modelling_rules import PROJECT_ITEM_KIND
+from kbase.core.rules.modelling_rules import FILE_ITEM_KINDS, PROJECT_ITEM_KIND
 
 
 def category_applies_to_item_kind(category_applies_to_kind: str | None, item_kind: str) -> bool:
-    return category_applies_to_kind is None or category_applies_to_kind == item_kind
+    return (
+        category_applies_to_kind is None
+        or category_applies_to_kind == item_kind
+        or (category_applies_to_kind == "note" and item_kind in FILE_ITEM_KINDS)
+    )
 
 
 def category_can_be_child_of_parent(

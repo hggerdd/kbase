@@ -53,15 +53,15 @@ function Harness({ onWorkspace }) {
   return React.createElement("div", {
     "data-testid": "notice",
     "data-notice": workspace.notice ?? "",
-    "data-editing": workspace.summaryEditing ? "yes" : "no",
+    "data-saving": workspace.contentSaving ? "yes" : "no",
   });
 }
 
-test("file workspace can save edited file summary", async () => {
+test("file workspace autosaves edited file description", async () => {
   const container = createDom();
   let latestWorkspace;
   let saveCallCount = 0;
-  let savedBody = "";
+  let savedBody = "# Old\nBody";
 
   global.fetch = async (url, options = {}) => {
     const value = String(url);
@@ -75,10 +75,16 @@ test("file workspace can save edited file summary", async () => {
     if (value.includes("/api/labels")) {
       return createResponse([{ id: "label-1", full_path: "test" }]);
     }
+    if (value.includes("/api/categories")) {
+      return createResponse({ categories: [{ key: "income_document", full_path: "income_document", label: "Income Document" }] });
+    }
+    if (value.includes("/api/items?item_kind=project")) {
+      return createResponse({ items: [] });
+    }
     if (value.endsWith("/api/items/file-1")) {
       return createResponse({
         item: { id: "file-1", title: "Alpha file", item_kind: "document", category_key: "income_document", updated_at: "2026-04-14T10:00:00Z" },
-        primary_content_part: { content_text: "# Old\nBody" },
+        primary_content_part: { content_text: savedBody },
         content_parts: [],
         labels: [{ id: "label-1", full_path: "test" }],
         metadata: [],
@@ -100,22 +106,22 @@ test("file workspace can save edited file summary", async () => {
 
   await waitFor(() => {
     assert.equal(latestWorkspace.selectedItem?.item.id, "file-1");
-    assert.match(latestWorkspace.renderedSummary, /Old/);
+    assert.match(latestWorkspace.descriptionDraft, /Old/);
   });
 
   await act(async () => {
-    latestWorkspace.setSummaryEditing(true);
-    latestWorkspace.setSummaryEditorHtml("<h1>Updated</h1><p>New body</p>");
+    latestWorkspace.setDescriptionDraft("# Updated\nNew body");
   });
 
   await act(async () => {
-    await latestWorkspace.saveSummary();
+    await new Promise((resolve) => setTimeout(resolve, 950));
   });
 
-  assert.equal(saveCallCount, 1);
-  assert.match(savedBody, /Updated/);
-  assert.equal(latestWorkspace.summaryEditing, false);
-  assert.equal(latestWorkspace.notice, "File summary saved");
+  await waitFor(() => {
+    assert.equal(saveCallCount, 1);
+    assert.match(savedBody, /Updated/);
+    assert.equal(latestWorkspace.notice, "File description saved");
+  });
 
   await act(async () => {
     root.unmount();

@@ -9,8 +9,9 @@ browser and for agents/tools through stable capabilities.
 - Notes: create, edit, autosave, label, categorize, search, view history.
 - Note links: connect one note to other notes or file-backed items through
   explicit item links.
-- Files: upload/import file-backed items, browse file tree, inspect metadata and
-  stored content, and preview PDFs plus linked note image/PDF files.
+- Files: upload/import file-backed items, browse file tree, autosave item
+  context and description text, edit links, inspect stored content, and preview
+  PDFs/images plus linked note image/PDF files.
 - Search: global and scoped search over content and metadata filters.
 - Projects: create project contexts and attach/list items.
 - Project membership: assign or replace the project context a note belongs to.
@@ -50,6 +51,12 @@ File:
 
 - Original stored file attached to a file-backed item.
 - Stored in `kb/items/`, referenced by DB row.
+- The file-backed item owns normal item context: category, labels, project
+  membership, description text through the primary content part, item links,
+  ACL, history, and provenance.
+- When a file is uploaded as a note attachment, it inherits the note's category,
+  labels, and projects. If that note is the file's only incoming use, later
+  note context changes continue to update the file item.
 
 Label:
 
@@ -65,6 +72,8 @@ Category:
 - Applies to an item kind when configured.
 - If no item kind is configured, it applies to all item kinds and is shown in
   kind-specific pickers.
+- Note-scoped categories can also be used by file-backed items so attachments
+  can keep the same context as the note they belong to.
 - Can have a compatible parent category; `full_path` is generated from the
   parent chain. A global parent can contain kind-specific children, but a
   kind-specific parent cannot contain global or different-kind children.

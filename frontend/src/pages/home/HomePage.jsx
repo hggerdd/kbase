@@ -12,7 +12,7 @@ import {
   sortWorkspaceNotes,
 } from "../../features/notes/state.js";
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
-import { FolderIcon, NoteIcon, SearchIcon, TagIcon } from "../../shared/ui/Icons";
+import { FilterIcon, FolderIcon, NoteIcon, SearchIcon, TagIcon } from "../../shared/ui/Icons";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
 import { formatDate } from "../../shared/utils/format";
 import { CreateNotePanel } from "../notes/components/CreateNotePanel";
@@ -173,6 +173,7 @@ export function HomePage() {
   const [expandedCategoryKeys, setExpandedCategoryKeys] = useState(new Set());
   const [expandedLabelIds, setExpandedLabelIds] = useState(new Set());
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [labelQuery, setLabelQuery] = useState("");
@@ -441,28 +442,39 @@ export function HomePage() {
 
       <div className="home-notes-workspace">
         <aside className="workspace-sidebar">
-          <section className="workspace-section">
+          <section className="workspace-section file-workspace-heading">
             <div className="workspace-section-heading">Workspace</div>
             <h1>Home</h1>
           </section>
 
-          <section className="workspace-section">
+          <section className="workspace-section file-mobile-search-section">
             <div className="workspace-section-title">Search</div>
-            <label className="workspace-search-shell">
-              <span className="workspace-search-icon">
-                <SearchIcon />
-              </span>
-              <input
-                className="workspace-search-input"
-                aria-label="Search notes"
-                value={workspace.search}
-                onChange={(event) => workspace.setSearch(event.target.value)}
-                placeholder="Search notes, projects, labels..."
-              />
-            </label>
+            <div className="file-search-action-row">
+              <label className="workspace-search-shell">
+                <span className="workspace-search-icon">
+                  <SearchIcon />
+                </span>
+                <input
+                  className="workspace-search-input"
+                  aria-label="Search notes"
+                  value={workspace.search}
+                  onChange={(event) => workspace.setSearch(event.target.value)}
+                  placeholder="Search notes, projects, labels..."
+                />
+              </label>
+              <button
+                className="file-mobile-advanced-button"
+                type="button"
+                aria-label="Advanced note filters"
+                onClick={() => setIsAdvancedModalOpen(true)}
+              >
+                <FilterIcon />
+                <span>Advanced</span>
+              </button>
+            </div>
           </section>
 
-          <section className="workspace-section workspace-filter-section">
+          <section className="workspace-section workspace-filter-section file-advanced-filter">
             <div className="workspace-section-head">
               <div className="workspace-section-title">Category</div>
               <div className="workspace-tree-tools">
@@ -511,7 +523,7 @@ export function HomePage() {
             </div>
           </section>
 
-          <section className="workspace-section workspace-filter-section">
+          <section className="workspace-section workspace-filter-section file-advanced-filter">
             <div className="workspace-section-head">
               <div className="workspace-section-title">Projects</div>
             </div>
@@ -544,7 +556,7 @@ export function HomePage() {
             </div>
           </section>
 
-          <section className="workspace-section workspace-filter-section">
+          <section className="workspace-section workspace-filter-section file-advanced-filter">
             <div className="workspace-section-head">
               <div className="workspace-section-title">Labels</div>
               <div className="workspace-tree-tools">
@@ -680,6 +692,160 @@ export function HomePage() {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
       />
+
+      {isAdvancedModalOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setIsAdvancedModalOpen(false)}>
+          <section
+            className="modal-sheet file-mobile-advanced-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="home-advanced-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header file-mobile-sticky-header">
+              <h2 id="home-advanced-title">Advanced</h2>
+              <button className="primary compact-button" type="button" onClick={() => setIsAdvancedModalOpen(false)}>
+                Apply
+              </button>
+            </div>
+            <div className="file-mobile-filter-stack">
+              <section className="workspace-section workspace-filter-section">
+                <div className="workspace-section-head">
+                  <div className="workspace-section-title">Category</div>
+                  <div className="workspace-tree-tools">
+                    <button type="button" className="workspace-tree-action" aria-label="Expand all categories" title="Expand all categories" onClick={expandAllCategories}>
+                      +
+                    </button>
+                    <button type="button" className="workspace-tree-action" aria-label="Collapse all categories" title="Collapse all categories" onClick={collapseAllCategories}>
+                      -
+                    </button>
+                  </div>
+                </div>
+                <div className="workspace-tree-scroll">
+                  <ul className="workspace-tree-list" role="tree" aria-label="Mobile note category filters">
+                    <li>
+                      <button
+                        type="button"
+                        className={`workspace-tree-row ${selectedCategoryKey === "" ? "active" : ""}`.trim()}
+                        onClick={() => {
+                          setSelectedCategoryKey("");
+                          setSelectedCategoryPath("");
+                        }}
+                      >
+                        <span className="workspace-tree-icon">
+                          <NoteIcon />
+                        </span>
+                        <span className="workspace-tree-label">All notes</span>
+                        <span className="workspace-tree-meta">{categoryCountSourceNotes.length}</span>
+                      </button>
+                    </li>
+                    {categoryTree.map((category) => (
+                      <CategoryTreeRow
+                        key={category.key}
+                        category={category}
+                        counts={categoryCounts}
+                        expandedKeys={expandedCategoryKeys}
+                        onSelect={(entry) => {
+                          const isCurrent = selectedCategoryKey === entry.key;
+                          setSelectedCategoryKey(isCurrent ? "" : entry.key);
+                          setSelectedCategoryPath(isCurrent ? "" : entry.full_path);
+                        }}
+                        onToggle={toggleExpandedCategory}
+                        selectedKey={selectedCategoryKey}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </section>
+
+              <section className="workspace-section workspace-filter-section">
+                <div className="workspace-section-title">Projects</div>
+                <div className="workspace-flat-scroll workspace-flat-list">
+                  <button
+                    type="button"
+                    className={`workspace-tree-row ${selectedProjectId === "" ? "active" : ""}`.trim()}
+                    onClick={() => setSelectedProjectId("")}
+                  >
+                    <span className="workspace-tree-icon">
+                      <FolderIcon />
+                    </span>
+                    <span className="workspace-tree-label">All projects</span>
+                  </button>
+                  {projectsState.loading ? <p className="muted">Loading projects...</p> : null}
+                  {projectsState.projects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      className={`workspace-tree-row ${selectedProjectId === project.id ? "active" : ""}`.trim()}
+                      onClick={() => setSelectedProjectId((current) => (current === project.id ? "" : project.id))}
+                    >
+                      <span className="workspace-tree-icon">
+                        <FolderIcon />
+                      </span>
+                      <span className="workspace-tree-label">{project.title}</span>
+                      <span className="workspace-tree-meta">{formatLabel(project.status ?? "active")}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="workspace-section workspace-filter-section">
+                <div className="workspace-section-head">
+                  <div className="workspace-section-title">Labels</div>
+                  <div className="workspace-tree-tools">
+                    <button type="button" className="workspace-tree-action" aria-label="Expand all labels" title="Expand all labels" onClick={expandAllLabels}>
+                      +
+                    </button>
+                    <button type="button" className="workspace-tree-action" aria-label="Collapse all labels" title="Collapse all labels" onClick={collapseAllLabels}>
+                      -
+                    </button>
+                  </div>
+                </div>
+                <label className="workspace-search-shell">
+                  <span className="workspace-search-icon">
+                    <SearchIcon />
+                  </span>
+                  <input
+                    className="workspace-search-input"
+                    aria-label="Search labels"
+                    value={labelQuery}
+                    onChange={(event) => setLabelQuery(event.target.value)}
+                    placeholder="Search labels..."
+                  />
+                </label>
+                <div className="workspace-tree-scroll">
+                  <ul className="workspace-tree-list" role="tree" aria-label="Mobile note label filters">
+                    <li>
+                      <button
+                        type="button"
+                        className={`workspace-tree-row ${selectedLabelPath === "" ? "active" : ""}`.trim()}
+                        onClick={() => setSelectedLabelPath("")}
+                      >
+                        <span className="workspace-tree-icon">
+                          <TagIcon />
+                        </span>
+                        <span className="workspace-tree-label">All labels</span>
+                      </button>
+                    </li>
+                    {labelTree.map((node) => (
+                      <LabelTreeRow
+                        key={node.id}
+                        expandedIds={expandedLabelIds}
+                        node={node}
+                        onSelect={(labelPath) =>
+                          setSelectedLabelPath((current) => (current === labelPath ? "" : labelPath))
+                        }
+                        onToggle={toggleExpandedLabel}
+                        selectedPath={selectedLabelPath}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </ResponsiveContainer>
   );
 }

@@ -33,7 +33,8 @@ Implemented app concerns:
   Settings entry from the desktop app rail and the mobile bottom navigation.
 - Home is the primary notes workspace and reuses the existing notes capability
   flow instead of a separate dashboard.
-- Global search state in `App.jsx` with page-scoped default behavior.
+- Search state lives in the dedicated Search page. The shared app header no
+  longer renders a global search form.
 - Shared API client with `credentials: "include"` in
   `frontend/src/shared/api/client.js`.
 - File upload progress through `XMLHttpRequest` in the shared API client.
@@ -45,6 +46,9 @@ Implemented app concerns:
 - Home metadata filters now use denser bounded panels. Category, project, and
   label lists scroll inside their own regions, and category/label trees expose
   compact expand-all and collapse-all controls.
+- On phone-width screens, Home keeps search visible in the dark workspace area
+  and moves category / project / label filters behind the same Advanced modal
+  pattern used by Files.
 - The notes results column now has a clickable sort chip with `Recent (last changed)`,
   `Alphabetical`, and `Created on` ordering for the visible note list.
 - The Home notes sort selection is now saved through the backend user-preferences
@@ -132,7 +136,7 @@ LAN usage:
 
 ```text
 frontend/src/main.jsx                         React entry point
-frontend/src/App.jsx                          session bootstrap, routing, global search
+frontend/src/App.jsx                          session bootstrap and routing
 frontend/src/app/AppShell.jsx                 shared app frame and navigation
 frontend/src/app/navigation/nav-config.js     route definitions
 frontend/src/shared/api/client.js             fetch/XHR wrapper
@@ -169,8 +173,8 @@ Home/notes workspace behavior:
 
 - The `home` route is the main notes workspace.
 - The legacy `notes` route renders the same workspace for compatibility.
-- Home search is note-scoped by default when the global search flow forwards
-  into the Search page.
+- Home search is note-scoped by default when navigation forwards into the
+  Search page.
 - Category filters render the managed category tree. Selecting a parent category
   filters notes by `category_path_prefixes`, so descendant categories are
   included.
@@ -207,14 +211,48 @@ Files and imports:
 
 - `GET /api/items?item_kind=document|image|spreadsheet|summary`
 - `GET /api/items/{item_id}`
+- `PATCH /api/items/{item_id}`
+- `PUT /api/items/{item_id}/labels`
+- `PUT /api/items/{item_id}/projects`
+- `POST /api/links`
+- `DELETE /api/links/{link_id}`
 - `GET /api/items/{item_id}/files/{file_id}/content`
 - `POST /api/file-items/upload`
 - `GET /api/inbox/files`
 - `POST /api/inbox/import`
 
+Files workspace behavior:
+
+- The Files page now uses the same workspace layout language as Home: filters
+  on the left, a bounded file results column, and an item detail panel.
+- File-backed entries are treated as normal items. The page can edit title,
+  description text, category, labels, project membership, and item links for
+  the selected file item.
+- File item title and description text autosave after editing. Category,
+  project, label, and link changes write immediately through their shared
+  capabilities; there is no separate file-item save button.
+- The Files detail panel reuses the same note-style category, project, and
+  label pill controls and picker modals as the Home note editor, so item context
+  editing has one shared interaction path.
+- The Files results header has a round add action. It can upload a file or open
+  a camera-oriented image input on mobile browsers.
+- On phone-width screens, Files follows the Home mobile pattern: the dark
+  workspace area only shows search plus an Advanced button, advanced category /
+  project / label filters live in a modal, the file tree remains the main list,
+  and tapping a file opens a compact detail modal with context pills, preview,
+  description text, and item links.
+- File filters include search text plus scrollable category, project, and label
+  tree/list filters. The right detail panel is reserved for file preview and
+  editing the selected file item's normal item fields. The previous implicit
+  `test` label filter is gone.
+- Files uploaded as note attachments inherit the note context through the
+  backend capability. Category, project membership, and labels are copied on
+  upload; exclusive attachment file items track later note context changes.
+
 Preview behavior:
 
-- The Files page currently renders PDFs in the preview frame.
+- The Files page renders PDFs in the preview frame and image files in the
+  preview surface.
 - The note link panel renders linked image and PDF file items in a modal. It
   loads the linked file item detail before building the content URL.
 - Image thumbnails preserve aspect ratio with letterboxing instead of cropping.

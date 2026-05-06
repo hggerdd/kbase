@@ -50,6 +50,16 @@ class LinkRepository:
         )
         return list(self.session.scalars(stmt))
 
+    def list_incoming_links(self, item_id: str) -> list[ItemLinkModel]:
+        stmt = select(ItemLinkModel).where(ItemLinkModel.to_item_id == item_id).order_by(
+            ItemLinkModel.created_at.desc()
+        )
+        return list(self.session.scalars(stmt))
+
+    def count_incoming_links(self, item_id: str) -> int:
+        stmt = select(ItemLinkModel).where(ItemLinkModel.to_item_id == item_id)
+        return len(list(self.session.scalars(stmt)))
+
     def get_link(self, link_id: str) -> ItemLinkModel | None:
         return self.session.get(ItemLinkModel, link_id)
 

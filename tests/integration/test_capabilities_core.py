@@ -15,6 +15,7 @@ from kbase.application.capabilities.get_item import get_item
 from kbase.application.capabilities.get_item_history import get_item_history
 from kbase.application.capabilities.get_item_provenance import get_item_provenance
 from kbase.application.capabilities.get_user_preference import get_user_preference
+from kbase.application.capabilities.import_file_as_item import import_file_as_item
 from kbase.application.capabilities.link_items import link_items
 from kbase.application.capabilities.list_labels import list_labels
 from kbase.application.capabilities.list_categories import list_categories
@@ -40,6 +41,7 @@ from kbase.application.dto.capabilities import (
     AttachAssetToItemInput,
     ClassifyItemInput,
     CreateCategoryInput,
+    CreateFileItemInput,
     CreateLabelInput,
     CreateNoteInput,
     CreateProjectInput,
@@ -224,6 +226,94 @@ def test_asset_link_project_and_search_flow(session_factory) -> None:
 
     assert len(search_result.items) == 1
     assert search_result.items[0].title == "Waschmaschine"
+
+
+def test_note_attachment_inherits_and_tracks_exclusive_note_context(session_factory) -> None:
+    project = create_project(
+        CreateProjectInput(
+            title="Attachment Context",
+            category_key="project_general",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+    next_project = create_project(
+        CreateProjectInput(
+            title="Attachment Context Next",
+            category_key="project_general",
+            actor=actor(),
+            provenance=provenance("test.create_project"),
+        ),
+        session_factory=session_factory,
+    )
+    note = create_note(
+        CreateNoteInput(
+            title="Context source",
+            category_key="research",
+            markdown_body="source",
+            label_paths=["house/manual"],
+            project_ids=[project.id],
+            actor=actor(),
+            provenance=provenance("test.create_note"),
+        ),
+        session_factory=session_factory,
+    )
+
+    file_item = import_file_as_item(
+        CreateFileItemInput(
+            title="Manual",
+            item_kind="document",
+            original_filename="manual.pdf",
+            mime_type="application/pdf",
+            file_bytes=b"%PDF context",
+            link_to_item_id=note.item.id,
+            link_type="attachment",
+            actor=actor(),
+            provenance=provenance("test.import_file_as_item"),
+        ),
+        session_factory=session_factory,
+    )
+
+    assert file_item.item.category_key == "research"
+    assert [label.full_path for label in file_item.labels] == ["house/manual"]
+    assert [project_ref.id for project_ref in file_item.projects] == [project.id]
+
+    update_item_core(
+        UpdateItemCoreInput(
+            item_id=note.item.id,
+            category_key="decision",
+            actor=actor(),
+            provenance=provenance("test.update_item_core"),
+        ),
+        session_factory=session_factory,
+    )
+    replace_labels(
+        AssignLabelsInput(
+            item_id=note.item.id,
+            label_paths=["house/decision"],
+            actor=actor(),
+            provenance=provenance("test.replace_labels"),
+        ),
+        session_factory=session_factory,
+    )
+    replace_item_projects(
+        ReplaceItemProjectsInput(
+            item_id=note.item.id,
+            project_ids=[next_project.id],
+            actor=actor(),
+            provenance=provenance("test.replace_item_projects"),
+        ),
+        session_factory=session_factory,
+    )
+
+    updated_file = get_item(
+        GetItemInput(item_id=file_item.item.id, actor=actor()),
+        session_factory=session_factory,
+    )
+    assert updated_file.item.category_key == "decision"
+    assert [label.full_path for label in updated_file.labels] == ["house/decision"]
+    assert [project_ref.id for project_ref in updated_file.projects] == [next_project.id]
 
 
 def test_user_preference_roundtrip(session_factory) -> None:

@@ -112,6 +112,15 @@ test("home metadata filters expose compact tree controls and internal scroll reg
   assert.match(styles, /\.workspace-sort-menu\s*\{[\s\S]*?position:\s*absolute[\s\S]*?\n\}/);
 });
 
+test("home mobile keeps search visible and moves filters behind advanced", () => {
+  assert.match(homePageSource, /file-search-action-row/);
+  assert.match(homePageSource, /file-mobile-advanced-button/);
+  assert.match(homePageSource, /aria-label="Advanced note filters"/);
+  assert.match(homePageSource, /file-mobile-advanced-modal/);
+  assert.match(homePageSource, /file-advanced-filter/);
+  assert.match(styles, /\.file-advanced-filter,\r?\n\s*\.file-desktop-editor\s*\{[\s\S]*?display:\s*none/);
+});
+
 test("user preference API uses the shared capability endpoints", () => {
   assert.match(preferencesApiSource, /\/api\/user-preferences\/\$\{encodeURIComponent\(preferenceKey\)\}/);
   assert.match(preferencesApiSource, /method:\s*"PUT"/);

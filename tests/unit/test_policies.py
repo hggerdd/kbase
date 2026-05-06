@@ -40,6 +40,7 @@ def test_global_category_applies_to_every_item_kind() -> None:
     assert category_applies_to_item_kind(None, "note") is True
     assert category_applies_to_item_kind(None, "image") is True
     assert category_applies_to_item_kind("note", "note") is True
+    assert category_applies_to_item_kind("note", "document") is True
     assert category_applies_to_item_kind("document", "note") is False
 
 

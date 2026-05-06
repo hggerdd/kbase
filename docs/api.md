@@ -208,6 +208,11 @@ Files, assets, and inbox:
 Upload/import paths:
 
 - Browser uploads are read by FastAPI and stored through `ItemFileStore`.
+- Files uploaded with `link_to_item_id` inherit category, labels, and project
+  membership from the linked note when the upload request does not provide
+  explicit values.
+- Later category, label, and project changes on a note propagate to linked file
+  attachments only when that file item has exactly one incoming use/link.
 - Inbox imports can only resolve files below `kb/inbox/raw`.
 - Inbox processing and rejection moves must stay below their matching inbox
   folders.

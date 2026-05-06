@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "./navigation/BottomNav";
 import { NAV_ITEMS } from "./navigation/nav-config";
-import { getNavIcon, HelpIcon, PlusIcon, SearchIcon, SettingsIcon } from "../shared/ui/Icons";
+import { getNavIcon, HelpIcon, PlusIcon, SettingsIcon } from "../shared/ui/Icons";
 import { AppBarPageHeader } from "../shared/ui/AppBarPageHeader";
-import { getSearchScopeForRoute } from "../features/search/state.js";
 import { getBuildInfo } from "../shared/build-info.js";
 
 const PAGE_HEADER_CONFIG = {
@@ -31,19 +30,19 @@ const PAGE_HEADER_CONFIG = {
     createEvent: "kbase:projects-create",
     statusLabel: "Projects connected",
   },
+  files: {
+    title: "Files",
+    singular: "Datei",
+    plural: "Dateien",
+    statusLabel: "Files connected",
+  },
 };
 
 export function AppShell({
   activeRoute,
   children,
-  globalScope,
-  globalSearch,
   onLogout,
-  onGlobalScopeChange,
-  onGlobalSearchChange,
-  onGlobalSearchSubmit,
   onNavigate,
-  searchContextRoute,
   session,
 }) {
   const activeNav = useMemo(() => {
@@ -53,14 +52,13 @@ export function AppShell({
     return NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
   }, [activeRoute]);
   const buildInfo = getBuildInfo();
-  const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
   const pageHeaderConfig = PAGE_HEADER_CONFIG[activeRoute] ?? null;
-  const showGlobalSearch = !pageHeaderConfig;
-  const isWorkspaceRoute = activeRoute === "home" || activeRoute === "notes";
+  const isWorkspaceRoute = activeRoute === "home" || activeRoute === "notes" || activeRoute === "files";
   const [pageHeaderMeta, setPageHeaderMeta] = useState({
     home: { count: 0 },
     notes: { count: 0 },
     projects: { count: 0 },
+    files: { count: 0 },
   });
 
   useEffect(() => {
@@ -137,49 +135,20 @@ export function AppShell({
       </aside>
 
       <section className="app-content">
-        <header className={`app-bar ${showGlobalSearch ? "" : "app-bar-page"}`.trim()}>
-          {showGlobalSearch ? (
-            <div className="app-bar-left">
-              <div className="app-bar-brand">
-                <strong>kbase</strong>
-                <span>{activeNav.label}</span>
-              </div>
-            </div>
-          ) : null}
-
-          {showGlobalSearch ? (
-            <form className="global-search" onSubmit={onGlobalSearchSubmit}>
-              <span className="input-icon">
-                <SearchIcon />
-              </span>
-              <div className="global-search-input-group">
-                <input
-                  value={globalSearch}
-                  onChange={(event) => onGlobalSearchChange(event.target.value)}
-                  placeholder="Search notes, docs, decisions, projects"
-                  aria-label="Global search"
-                />
-                <label className="search-toggle global-search-toggle">
-                  <input
-                    type="checkbox"
-                    checked={globalScope}
-                    onChange={(event) => onGlobalScopeChange(event.target.checked)}
-                  />
-                  <span>Global</span>
-                </label>
-              </div>
-              <span className="search-scope-pill">{globalScope ? "All content" : searchScope.label}</span>
-              <button className="global-search-submit" type="submit">Search</button>
-            </form>
-          ) : (
-            <div className="app-bar-page-slot">
+        <header className="app-bar app-bar-page">
+          <div className="app-bar-page-slot">
+            {pageHeaderConfig ? (
               <AppBarPageHeader
                 title={pageHeaderConfig.title}
                 countLabel={activeCountLabel}
                 status={{ label: pageHeaderConfig.statusLabel }}
               />
-            </div>
-          )}
+            ) : (
+              <div className="app-bar-compact-title">
+                <strong>{activeNav.label}</strong>
+              </div>
+            )}
+          </div>
 
           <div className="app-bar-actions">
             <div
@@ -191,7 +160,7 @@ export function AppShell({
               <span className="build-version-commit">{buildInfo.commitShort}</span>
               <span className="build-version-date">{buildInfo.commitDateLabel}</span>
             </div>
-            {!showGlobalSearch ? (
+            {pageHeaderConfig?.createEvent ? (
               <button
                 className="header-link header-icon-button"
                 type="button"

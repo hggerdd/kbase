@@ -26,7 +26,7 @@ Legend:
 | Create note | `create_note` | yes | yes | yes | yes | well mirrored |
 | Get item detail | `get_item` | yes | yes | yes | yes | well mirrored |
 | List items | `list_items` | yes | yes | yes | yes | well mirrored |
-| Update item core | `update_item_core` | yes | yes | yes | partial | API/CLI contract tests should be stronger |
+| Update item core | `update_item_core` | yes | yes | yes | partial | frontend now edits note and file item core fields; API/CLI contract tests should be stronger |
 | Replace content part | `replace_content_part` | yes | yes | yes | yes | well mirrored |
 | Search content | `search_content` | yes | yes | yes | yes | well mirrored |
 | Assign labels | `assign_labels` | yes | yes | no | partial | frontend uses replace flow instead |
@@ -45,11 +45,11 @@ Legend:
 | Patch metadata | `patch_item_metadata` | yes | yes | no | yes | no frontend management UI |
 | Register asset | `register_asset` | yes | yes | no | partial | frontend uses upload flows instead |
 | Attach asset | `attach_asset_to_item` | yes | yes | no | partial | frontend uses upload flows instead |
-| Import uploaded file | `import_file_as_item` | yes | yes | yes | yes | well mirrored |
+| Import uploaded file | `import_file_as_item` | yes | yes | yes | yes | note-linked uploads inherit note category, labels, and projects |
 | List inbox files | `list_inbox_files` | yes | yes | yes | partial | frontend imports tests missing |
 | Import inbox file | `import_inbox_file` | yes | yes | yes | partial | frontend imports tests missing |
-| Link items | `link_items` | yes | yes | yes | partial | frontend supports note and image/PDF linking from notes |
-| Unlink items | `unlink_items` | yes | no | yes | yes | CLI command missing |
+| Link items | `link_items` | yes | yes | yes | partial | frontend supports linking from notes and file items |
+| Unlink items | `unlink_items` | yes | no | yes | yes | frontend supports unlink from notes and file items; CLI command missing |
 | List related items | `list_related_items` | yes | yes | yes | yes | frontend consumes item detail links in the notes workspace |
 | Create project | `create_project` | yes | yes | yes | yes | well mirrored |
 | Add item to project | `add_item_to_project` | yes | yes | yes | partial | API/integration coverage exists; dedicated CLI contract test still missing |

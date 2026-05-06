@@ -1,23 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
-import TurndownService from "turndown";
-import { fetchFileItemDetail, fetchFileItemSummaries, fetchFileLabels, replaceFileSummary } from "./api.js";
+import {
+  fetchFileCategories,
+  fetchFileItemDetail,
+  fetchFileItemSummaries,
+  fetchFileLabels,
+  fetchFileProjects,
+  linkFileItem,
+  replaceFileLabels,
+  replaceFileProjects,
+  replaceFileSummary,
+  searchLinkCandidates,
+  unlinkFileItem,
+  updateFileCore,
+  uploadFileItem,
+} from "./api.js";
 import { buildFileTree, itemMatchesFileFilters } from "./state.js";
-import { renderMarkdownToSafeHtml, sanitizeRichHtml } from "../../shared/utils/rich-content.js";
-
-const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
 export function useFileViewerWorkspace() {
   const [items, setItems] = useState([]);
+  const [availableCategories, setAvailableCategories] = useState([]);
   const [availableLabels, setAvailableLabels] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [treeLayout, setTreeLayout] = useState("category-label-file");
   const [query, setQuery] = useState("");
-  const [categoryPrefix, setCategoryPrefix] = useState("");
-  const [selectedLabels, setSelectedLabels] = useState(["test"]);
-  const [renderedSummary, setRenderedSummary] = useState("");
-  const [summaryEditorHtml, setSummaryEditorHtml] = useState("");
-  const [summaryEditing, setSummaryEditing] = useState(false);
-  const [summarySaving, setSummarySaving] = useState(false);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState("");
+  const [selectedLabels, setSelectedLabels] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [coreDraft, setCoreDraft] = useState({ title: "", category_key: "" });
+  const [linkQuery, setLinkQuery] = useState("");
+  const [linkCandidates, setLinkCandidates] = useState([]);
+  const [linking, setLinking] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [coreSaving, setCoreSaving] = useState(false);
+  const [contentSaving, setContentSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,10 +43,17 @@ export function useFileViewerWorkspace() {
     setLoading(true);
     setError("");
     try {
-      const [summaries, labels] = await Promise.all([fetchFileItemSummaries(), fetchFileLabels()]);
+      const [summaries, labels, categories, projects] = await Promise.all([
+        fetchFileItemSummaries(),
+        fetchFileLabels(),
+        fetchFileCategories(),
+        fetchFileProjects({ limit: 200 }),
+      ]);
       const details = await Promise.all(summaries.map((item) => fetchFileItemDetail(item.id)));
       setItems(details);
       setAvailableLabels(labels);
+      setAvailableCategories(categories);
+      setAvailableProjects(projects);
       setSelectedId((current) => current ?? details[0]?.item.id ?? null);
     } catch (err) {
       setError(err.message);
@@ -42,26 +66,42 @@ export function useFileViewerWorkspace() {
     void loadItems();
   }, []);
 
+  const selectedCategoryKeys = useMemo(() => {
+    if (!selectedCategoryKey) {
+      return [];
+    }
+    const selectedCategory = availableCategories.find((category) => category.key === selectedCategoryKey);
+    const selectedPath = selectedCategory?.full_path || selectedCategory?.key || "";
+    if (!selectedPath) {
+      return [selectedCategoryKey];
+    }
+    return availableCategories
+      .filter((category) => {
+        const path = category.full_path || category.key;
+        return path === selectedPath || path.startsWith(`${selectedPath}/`);
+      })
+      .map((category) => category.key);
+  }, [availableCategories, selectedCategoryKey]);
+
   const filteredItems = useMemo(
     () =>
       items.filter((detail) =>
         itemMatchesFileFilters(detail, {
-          categoryPrefix,
           query,
+          selectedCategoryKeys,
           selectedLabels,
+          selectedProjectId,
         }),
       ),
-    [categoryPrefix, items, query, selectedLabels],
+    [items, query, selectedCategoryKeys, selectedLabels, selectedProjectId],
   );
 
   const tree = useMemo(
     () =>
       buildFileTree(filteredItems, {
-        treeLayout,
         selectedLabels,
-        categoryPrefix,
       }),
-    [categoryPrefix, filteredItems, selectedLabels, treeLayout],
+    [filteredItems, selectedLabels],
   );
 
   const selectedItem = useMemo(
@@ -71,28 +111,80 @@ export function useFileViewerWorkspace() {
 
   useEffect(() => {
     if (!selectedItem) {
-      setRenderedSummary("");
-      setSummaryEditorHtml("");
-      setSummaryEditing(false);
+      setCoreDraft({ title: "", category_key: "" });
+      setDescriptionDraft("");
       return;
     }
+
+    setCoreDraft({
+      title: selectedItem.item.title ?? "",
+      category_key: selectedItem.item.category_key ?? "",
+    });
 
     const summaryText =
       selectedItem.primary_content_part?.content_text ??
       selectedItem.content_parts?.find((part) => part.part_kind === "summary")?.content_text ??
       "";
-
-    let cancelled = false;
-    void renderMarkdownToSafeHtml(summaryText).then((html) => {
-      if (!cancelled) {
-        setRenderedSummary(html);
-        setSummaryEditorHtml(html);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
+    setDescriptionDraft(summaryText);
   }, [selectedItem]);
+
+  useEffect(() => {
+    if (!selectedItem) {
+      return undefined;
+    }
+    const nextTitle = coreDraft.title.trim();
+    const currentTitle = selectedItem.item.title ?? "";
+    if (!nextTitle || nextTitle === currentTitle) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      setCoreSaving(true);
+      setError("");
+      try {
+        await updateFileCore(selectedItem.item.id, { title: nextTitle });
+        const detail = await fetchFileItemDetail(selectedItem.item.id);
+        replaceItemInState(detail);
+        setNotice("File title saved");
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setCoreSaving(false);
+      }
+    }, 700);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [coreDraft.title, selectedItem]);
+
+  useEffect(() => {
+    if (!selectedItem) {
+      return undefined;
+    }
+    const currentText =
+      selectedItem.primary_content_part?.content_text ??
+      selectedItem.content_parts?.find((part) => part.part_kind === "summary")?.content_text ??
+      "";
+    if (descriptionDraft === currentText) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      setContentSaving(true);
+      setError("");
+      try {
+        await replaceFileSummary(selectedItem.item.id, descriptionDraft);
+        const detail = await fetchFileItemDetail(selectedItem.item.id);
+        replaceItemInState(detail);
+        setNotice("File description saved");
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setContentSaving(false);
+      }
+    }, 900);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [descriptionDraft, selectedItem]);
 
   useEffect(() => {
     if (!selectedItem) {
@@ -110,82 +202,218 @@ export function useFileViewerWorkspace() {
     );
   }
 
-  async function saveSummary() {
-    if (!selectedItem) {
-      return;
-    }
+  function clearLabelFilters() {
+    setSelectedLabels([]);
+  }
 
-    setSummarySaving(true);
+  function replaceItemInState(itemDetail) {
+    setItems((currentItems) =>
+      currentItems.map((detail) => (detail.item.id === itemDetail.item.id ? itemDetail : detail)),
+    );
+  }
+
+  function selectedLabelPaths() {
+    return (selectedItem?.labels ?? []).map((label) => label.full_path);
+  }
+
+  async function updateSelectedItemCategory(categoryKey) {
+    if (!selectedItem) {
+      return false;
+    }
     setError("");
     setNotice("");
     try {
-      const markdownBody = turndown.turndown(sanitizeRichHtml(summaryEditorHtml || ""));
-      await replaceFileSummary(selectedItem.item.id, markdownBody);
-      setItems((currentItems) =>
-        currentItems.map((detail) =>
-          detail.item.id === selectedItem.item.id
-            ? {
-                ...detail,
-                primary_content_part: detail.primary_content_part
-                  ? {
-                      ...detail.primary_content_part,
-                      content_text: markdownBody,
-                    }
-                  : {
-                      id: `generated-${detail.item.id}`,
-                      item_id: detail.item.id,
-                      part_kind: "markdown_body",
-                      sequence_no: 1,
-                      content_text: markdownBody,
-                      content_format: "markdown",
-                      source_method: "manual",
-                      source_data_class: "canonical",
-                      language_code: null,
-                      created_by_principal_id: null,
-                      created_at: detail.item.updated_at,
-                      updated_at: detail.item.updated_at,
-                    },
-              }
-            : detail,
-        ),
-      );
-      setRenderedSummary(await renderMarkdownToSafeHtml(markdownBody));
-      setSummaryEditing(false);
-      setNotice("File summary saved");
+      await updateFileCore(selectedItem.item.id, {
+        category_key: categoryKey || null,
+      });
+      const detail = await fetchFileItemDetail(selectedItem.item.id);
+      replaceItemInState(detail);
+      setNotice("File category updated");
+      return true;
     } catch (err) {
       setError(err.message);
+      return false;
+    }
+  }
+
+  async function replaceSelectedItemProject(projectId) {
+    if (!selectedItem) {
+      return false;
+    }
+    setError("");
+    setNotice("");
+    try {
+      await replaceFileProjects(selectedItem.item.id, projectId ? [projectId] : []);
+      const detail = await fetchFileItemDetail(selectedItem.item.id);
+      replaceItemInState(detail);
+      setNotice("File project updated");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  }
+
+  async function toggleSelectedItemLabel(labelPath) {
+    if (!selectedItem) {
+      return false;
+    }
+    const currentPaths = selectedLabelPaths();
+    const nextPaths = currentPaths.includes(labelPath)
+      ? currentPaths.filter((entry) => entry !== labelPath)
+      : [...currentPaths, labelPath];
+    setError("");
+    setNotice("");
+    try {
+      await replaceFileLabels(selectedItem.item.id, nextPaths);
+      const detail = await fetchFileItemDetail(selectedItem.item.id);
+      replaceItemInState(detail);
+      setNotice("File labels updated");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  }
+
+  async function handleSearchLinkCandidates() {
+    if (!selectedItem) {
+      return [];
+    }
+    setLinking(true);
+    setError("");
+    try {
+      const existingIds = new Set((selectedItem.related_items ?? []).map((item) => item.id));
+      const candidates = (await searchLinkCandidates(linkQuery)).filter(
+        (item) => item.id !== selectedItem.item.id && !existingIds.has(item.id),
+      );
+      setLinkCandidates(candidates);
+      return candidates;
+    } catch (err) {
+      setError(err.message);
+      setLinkCandidates([]);
+      return [];
     } finally {
-      setSummarySaving(false);
+      setLinking(false);
+    }
+  }
+
+  async function handleLinkItem(targetItemId) {
+    if (!selectedItem) {
+      return false;
+    }
+    setLinking(true);
+    setError("");
+    setNotice("");
+    try {
+      const detail = await linkFileItem(selectedItem.item.id, targetItemId);
+      replaceItemInState(detail);
+      setLinkCandidates((current) => current.filter((item) => item.id !== targetItemId));
+      setNotice("Item linked");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  async function handleUnlinkItem(linkId) {
+    if (!selectedItem) {
+      return false;
+    }
+    setLinking(true);
+    setError("");
+    setNotice("");
+    try {
+      const detail = await unlinkFileItem(linkId);
+      replaceItemInState(detail);
+      setNotice("Item unlinked");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setLinking(false);
+    }
+  }
+
+  async function uploadNewFile(file) {
+    if (!file) {
+      return false;
+    }
+
+    setUploading(true);
+    setUploadProgress({ percent: 0 });
+    setError("");
+    setNotice("");
+    try {
+      const projectIds = selectedProjectId ? [selectedProjectId] : [];
+      const detail = await uploadFileItem(file, {
+        category_key: selectedCategoryKey || null,
+        project_ids: projectIds,
+        onProgress: setUploadProgress,
+      });
+      let uploadedDetail = detail;
+      if (selectedLabels.length > 0) {
+        await replaceFileLabels(detail.item.id, selectedLabels);
+        uploadedDetail = await fetchFileItemDetail(detail.item.id);
+      }
+      setItems((currentItems) => [uploadedDetail, ...currentItems.filter((entry) => entry.item.id !== uploadedDetail.item.id)]);
+      setSelectedId(uploadedDetail.item.id);
+      setNotice("File uploaded");
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    } finally {
+      setUploading(false);
     }
   }
 
   return {
+    availableCategories,
     availableLabels,
-    categoryPrefix,
+    availableProjects,
+    clearLabelFilters,
+    contentSaving,
+    coreDraft,
+    coreSaving,
+    descriptionDraft,
     error,
     filteredItems,
+    handleLinkItem,
+    handleSearchLinkCandidates,
+    handleUnlinkItem,
     items,
+    linkCandidates,
+    linking,
+    linkQuery,
     loading,
     notice,
     query,
     refresh: loadItems,
-    renderedSummary,
-    saveSummary,
+    replaceSelectedItemProject,
     selectedId,
     selectedItem,
+    selectedCategoryKey,
     selectedLabels,
-    setCategoryPrefix,
+    selectedProjectId,
+    setCoreDraft,
+    setDescriptionDraft,
+    setLinkQuery,
     setQuery,
+    setSelectedCategoryKey,
     setSelectedId,
-    setSummaryEditorHtml,
-    setSummaryEditing,
-    setTreeLayout,
-    summaryEditing,
-    summaryEditorHtml,
-    summarySaving,
+    setSelectedProjectId,
+    toggleSelectedItemLabel,
     toggleLabelFilter,
     tree,
-    treeLayout,
+    updateSelectedItemCategory,
+    uploading,
+    uploadNewFile,
+    uploadProgress,
     refreshLabels() {
       void loadItems();
     },

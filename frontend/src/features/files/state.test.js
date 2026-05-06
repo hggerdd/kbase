@@ -33,7 +33,7 @@ test("summary markdown falls back to the primary content part", () => {
   assert.match(getSummaryMarkdown(detail), /Alpha/);
 });
 
-test("file filter requires matching labels and category key prefix", () => {
+test("file filter requires matching labels and selected category keys", () => {
   const detail = makeDetail({
     id: "a",
     title: "Salary 2025",
@@ -45,7 +45,7 @@ test("file filter requires matching labels and category key prefix", () => {
   assert.equal(
     itemMatchesFileFilters(detail, {
       query: "salary",
-      categoryPrefix: "income",
+      selectedCategoryKeys: ["income_document"],
       selectedLabels: ["test", "year/2025"],
     }),
     true,
@@ -53,7 +53,7 @@ test("file filter requires matching labels and category key prefix", () => {
   assert.equal(
     itemMatchesFileFilters(detail, {
       query: "salary",
-      categoryPrefix: "invoice",
+      selectedCategoryKeys: ["invoice"],
       selectedLabels: ["test"],
     }),
     false,
@@ -63,13 +63,11 @@ test("file filter requires matching labels and category key prefix", () => {
 test("file tree groups files by assigned category key value", () => {
   const tree = buildFileTree(
     [makeDetail({ id: "a", title: "Alpha", categoryKey: "finance/income", labels: ["year/2025"], filename: "alpha.pdf" })],
-    {
-      treeLayout: "category-file",
-    },
   );
 
   assert.equal(tree[0].label, "finance/income");
-  assert.equal(tree[0].children[0].label, "alpha.pdf");
+  assert.equal(tree[0].children[0].label, "year/2025");
+  assert.equal(tree[0].children[0].children[0].label, "alpha.pdf");
 });
 
 test("category-label-file tree groups files under category and selected labels", () => {
@@ -79,7 +77,6 @@ test("category-label-file tree groups files under category and selected labels",
       makeDetail({ id: "b", title: "Beta", categoryKey: "income_document", labels: ["test", "year/2026"], filename: "beta.pdf" }),
     ],
     {
-      treeLayout: "category-label-file",
       selectedLabels: ["year/2025", "year/2026"],
     },
   );
@@ -89,18 +86,4 @@ test("category-label-file tree groups files under category and selected labels",
     tree[0].children.map((child) => child.label),
     ["year/2025", "year/2026"],
   );
-});
-
-test("label-category-file tree flips the grouping order", () => {
-  const tree = buildFileTree(
-    [makeDetail({ id: "a", title: "Alpha", categoryKey: "income_document", labels: ["test", "year/2025"], filename: "alpha.pdf" })],
-    {
-      treeLayout: "label-category-file",
-      selectedLabels: ["year/2025"],
-    },
-  );
-
-  assert.equal(tree[0].label, "year/2025");
-  assert.equal(tree[0].children[0].label, "income_document");
-  assert.equal(tree[0].children[0].children[0].label, "alpha.pdf");
 });

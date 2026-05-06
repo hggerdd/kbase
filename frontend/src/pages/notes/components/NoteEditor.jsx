@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill";
 import TurndownService from "turndown";
-import { NOTE_CATEGORIES, NOTE_STATUSES } from "../../../features/notes/constants";
+import { NOTE_STATUSES } from "../../../features/notes/constants";
+import { ItemContextPills } from "../../../shared/items/ItemContextPills";
 import { EmptyState } from "../../../shared/ui/EmptyState";
 import { HistoryIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from "../../../shared/ui/Icons";
 import { OptionSelectModal } from "../../../shared/ui/OptionSelectModal";
 import { Panel } from "../../../shared/ui/Panel";
 import { formatDate } from "../../../shared/utils/format";
-import { NoteLabelModal } from "./NoteLabelModal";
 import { NoteMetaPanel } from "./NoteMetaPanel";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
@@ -23,38 +23,13 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
   const currentStatus = workspace.editor.status || activeNote?.status || "draft";
   const currentCategory = workspace.editor.category_key || activeNote?.category_key || "research";
   const statusOptions = NOTE_STATUSES.includes(currentStatus) ? NOTE_STATUSES : [currentStatus, ...NOTE_STATUSES];
-  const managedCategoryOptions = workspace.availableCategories.map((category) => ({
-    value: category.key,
-    label: category.full_path && category.full_path !== category.key
-      ? category.full_path.split("/").map(formatLabel).join(" / ")
-      : category.label || formatLabel(category.key),
-  }));
-  const fallbackCategoryOptions = NOTE_CATEGORIES.map((category) => ({
-    value: category,
-    label: formatLabel(category),
-  }));
-  const categoryOptions = managedCategoryOptions.length > 0 ? managedCategoryOptions : fallbackCategoryOptions;
-  const hasCurrentCategoryOption = categoryOptions.some((option) => option.value === currentCategory);
-  const visibleCategoryOptions = hasCurrentCategoryOption
-    ? categoryOptions
-    : [{ value: currentCategory, label: formatLabel(currentCategory) }, ...categoryOptions];
   const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [pendingTitle, setPendingTitle] = useState("");
   const selectedLabelPaths = workspace.editor.selected_labels;
   const editorInstanceKey = workspace.selectedId ?? "no-note";
   const currentProject = workspace.selectedNote?.projects?.[0] ?? null;
-  const projectOptions = [
-    { value: "", label: "No project" },
-    ...workspace.availableProjects.map((project) => ({
-      value: project.id,
-      label: project.title,
-    })),
-  ];
   const summaryBits = [
     workspaceSummary?.categoryLabel ?? formatLabel(currentCategory),
     workspaceSummary?.labelPath ?? null,
@@ -97,17 +72,11 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
   }
 
   async function handleCategorySelect(categoryKey) {
-    const success = await workspace.updateSelectedNoteFields({ category_key: categoryKey });
-    if (success) {
-      setIsCategoryModalOpen(false);
-    }
+    return workspace.updateSelectedNoteFields({ category_key: categoryKey });
   }
 
   async function handleProjectSelect(projectId) {
-    const success = await workspace.updateSelectedNoteProjects(projectId ? [projectId] : []);
-    if (success) {
-      setIsProjectModalOpen(false);
-    }
+    return workspace.updateSelectedNoteProjects(projectId ? [projectId] : []);
   }
 
   async function handleToggleLabel(labelPath) {
@@ -162,69 +131,18 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
                 ) : null}
               </div>
 
-              <div className="note-taxonomy-row">
-                <div className="note-project-row">
-                  <button
-                    className={`note-project-pill ${currentProject ? "" : "empty"}`.trim()}
-                    type="button"
-                    onClick={() => setIsProjectModalOpen(true)}
-                  >
-                    {currentProject?.title ?? "No project selected"}
-                  </button>
-                  <button
-                    className="plain-icon-button small"
-                    type="button"
-                    aria-label="Edit note project"
-                    title="Edit note project"
-                    onClick={() => setIsProjectModalOpen(true)}
-                  >
-                    <PencilIcon />
-                  </button>
-                </div>
-
-                <div className="note-category-row">
-                  <button
-                    className="note-category-pill"
-                    type="button"
-                    onClick={() => setIsCategoryModalOpen(true)}
-                  >
-                    {formatLabel(currentCategory)}
-                  </button>
-                  <button
-                    className="plain-icon-button small"
-                    type="button"
-                    aria-label="Edit note category"
-                    title="Edit note category"
-                    onClick={() => setIsCategoryModalOpen(true)}
-                  >
-                    <PencilIcon />
-                  </button>
-                </div>
-
-                <div className="note-label-pills">
-                  {selectedLabelPaths.length > 0 ? (
-                    selectedLabelPaths.map((labelPath) => (
-                      <button
-                        key={labelPath}
-                        type="button"
-                        className="note-label-pill"
-                        onClick={() => setIsLabelModalOpen(true)}
-                        title={labelPath}
-                      >
-                        {labelPath}
-                      </button>
-                    ))
-                  ) : (
-                    <button
-                      type="button"
-                      className="note-label-pill empty"
-                      onClick={() => setIsLabelModalOpen(true)}
-                    >
-                      No labels selected
-                    </button>
-                  )}
-                </div>
-              </div>
+              <ItemContextPills
+                availableCategories={workspace.availableCategories}
+                availableLabels={workspace.availableLabels}
+                availableProjects={workspace.availableProjects}
+                categoryKey={currentCategory}
+                onSelectCategory={handleCategorySelect}
+                onSelectProject={handleProjectSelect}
+                onToggleLabel={handleToggleLabel}
+                projectId={currentProject?.id ?? ""}
+                projectTitle={currentProject?.title ?? ""}
+                selectedLabelPaths={selectedLabelPaths}
+              />
             </div>
 
             <div className="workspace-detail-actions">
@@ -337,35 +255,6 @@ export function NoteEditor({ onClose, onOpenCreate, workspace, workspaceSummary 
               selectedValue={currentStatus}
               onSelect={handleStatusSelect}
               onClose={() => setIsStatusModalOpen(false)}
-            />
-          ) : null}
-
-          {isCategoryModalOpen ? (
-            <OptionSelectModal
-              title="Set category"
-              options={visibleCategoryOptions}
-              selectedValue={currentCategory}
-              onSelect={handleCategorySelect}
-              onClose={() => setIsCategoryModalOpen(false)}
-            />
-          ) : null}
-
-          {isProjectModalOpen ? (
-            <OptionSelectModal
-              title="Set project"
-              options={projectOptions}
-              selectedValue={currentProject?.id ?? ""}
-              onSelect={handleProjectSelect}
-              onClose={() => setIsProjectModalOpen(false)}
-            />
-          ) : null}
-
-          {isLabelModalOpen ? (
-            <NoteLabelModal
-              labels={workspace.availableLabels}
-              selectedPaths={selectedLabelPaths}
-              onToggleLabel={handleToggleLabel}
-              onClose={() => setIsLabelModalOpen(false)}
             />
           ) : null}
 
