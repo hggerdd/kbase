@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "./navigation/BottomNav";
 import { NAV_ITEMS } from "./navigation/nav-config";
-import { getNavIcon, HelpIcon, PlusIcon, SearchIcon, SettingsIcon } from "../shared/ui/Icons";
+import { getNavIcon, HelpIcon, PlusIcon, SettingsIcon } from "../shared/ui/Icons";
 import { AppBarPageHeader } from "../shared/ui/AppBarPageHeader";
-import { getSearchScopeForRoute } from "../features/search/state.js";
 import { getBuildInfo } from "../shared/build-info.js";
+import { RoundIconButton } from "../shared/ui/RoundIconButton.jsx";
 
 const PAGE_HEADER_CONFIG = {
   home: {
@@ -31,31 +31,36 @@ const PAGE_HEADER_CONFIG = {
     createEvent: "kbase:projects-create",
     statusLabel: "Projects connected",
   },
+  files: {
+    title: "Files",
+    statusLabel: "Files connected",
+  },
+  imports: {
+    title: "Imports",
+    statusLabel: "Imports connected",
+  },
+  settings: {
+    title: "Settings",
+    statusLabel: "Settings connected",
+  },
 };
 
 export function AppShell({
   activeRoute,
   children,
-  globalScope,
-  globalSearch,
   onLogout,
-  onGlobalScopeChange,
-  onGlobalSearchChange,
-  onGlobalSearchSubmit,
   onNavigate,
-  searchContextRoute,
   session,
 }) {
-  const activeNav = useMemo(() => {
+  const activeNavId = useMemo(() => {
     if (activeRoute === "notes") {
-      return NAV_ITEMS.find((item) => item.id === "home") ?? NAV_ITEMS[0];
+      return "home";
     }
-    return NAV_ITEMS.find((item) => item.id === activeRoute) ?? NAV_ITEMS[0];
+    return NAV_ITEMS.some((item) => item.id === activeRoute) ? activeRoute : null;
   }, [activeRoute]);
+  const activeNav = activeNavId ? NAV_ITEMS.find((item) => item.id === activeNavId) ?? null : null;
   const buildInfo = getBuildInfo();
-  const searchScope = getSearchScopeForRoute(searchContextRoute, globalScope);
   const pageHeaderConfig = PAGE_HEADER_CONFIG[activeRoute] ?? null;
-  const showGlobalSearch = !pageHeaderConfig;
   const isWorkspaceRoute = activeRoute === "home" || activeRoute === "notes";
   const [pageHeaderMeta, setPageHeaderMeta] = useState({
     home: { count: 0 },
@@ -81,6 +86,8 @@ export function AppShell({
 
   const activePageMeta = pageHeaderMeta[activeRoute] ?? { count: 0 };
   const activeCountLabel = pageHeaderConfig
+    && pageHeaderConfig.singular
+    && pageHeaderConfig.plural
     ? `${activePageMeta.count} ${activePageMeta.count === 1 ? pageHeaderConfig.singular : pageHeaderConfig.plural}`
     : "";
 
@@ -103,7 +110,7 @@ export function AppShell({
                 <button
                   key={item.id}
                   type="button"
-                  className={`sidebar-link sidebar-link-rail ${activeNav.id === item.id ? "active" : ""}`}
+                  className={`sidebar-link sidebar-link-rail ${activeNavId === item.id ? "active" : ""}`}
                   onClick={() => onNavigate(item.id)}
                   aria-label={item.label}
                   title={item.label}
@@ -137,49 +144,14 @@ export function AppShell({
       </aside>
 
       <section className="app-content">
-        <header className={`app-bar ${showGlobalSearch ? "" : "app-bar-page"}`.trim()}>
-          {showGlobalSearch ? (
-            <div className="app-bar-left">
-              <div className="app-bar-brand">
-                <strong>kbase</strong>
-                <span>{activeNav.label}</span>
-              </div>
-            </div>
-          ) : null}
-
-          {showGlobalSearch ? (
-            <form className="global-search" onSubmit={onGlobalSearchSubmit}>
-              <span className="input-icon">
-                <SearchIcon />
-              </span>
-              <div className="global-search-input-group">
-                <input
-                  value={globalSearch}
-                  onChange={(event) => onGlobalSearchChange(event.target.value)}
-                  placeholder="Search notes, docs, decisions, projects"
-                  aria-label="Global search"
-                />
-                <label className="search-toggle global-search-toggle">
-                  <input
-                    type="checkbox"
-                    checked={globalScope}
-                    onChange={(event) => onGlobalScopeChange(event.target.checked)}
-                  />
-                  <span>Global</span>
-                </label>
-              </div>
-              <span className="search-scope-pill">{globalScope ? "All content" : searchScope.label}</span>
-              <button className="global-search-submit" type="submit">Search</button>
-            </form>
-          ) : (
-            <div className="app-bar-page-slot">
-              <AppBarPageHeader
-                title={pageHeaderConfig.title}
-                countLabel={activeCountLabel}
-                status={{ label: pageHeaderConfig.statusLabel }}
-              />
-            </div>
-          )}
+        <header className="app-bar app-bar-page">
+          <div className="app-bar-page-slot">
+            <AppBarPageHeader
+              title={pageHeaderConfig?.title ?? activeNav?.label ?? "kbase"}
+              countLabel={activeCountLabel}
+              status={pageHeaderConfig?.statusLabel ? { label: pageHeaderConfig.statusLabel } : null}
+            />
+          </div>
 
           <div className="app-bar-actions">
             <div
@@ -191,9 +163,9 @@ export function AppShell({
               <span className="build-version-commit">{buildInfo.commitShort}</span>
               <span className="build-version-date">{buildInfo.commitDateLabel}</span>
             </div>
-            {!showGlobalSearch ? (
-              <button
-                className="header-link header-icon-button"
+            {pageHeaderConfig?.createEvent ? (
+              <RoundIconButton
+                className="header-link"
                 type="button"
                 aria-label={pageHeaderConfig.addLabel}
                 title={pageHeaderConfig.addLabel}
@@ -202,13 +174,13 @@ export function AppShell({
                 <span className="header-link-icon">
                   <PlusIcon />
                 </span>
-              </button>
+              </RoundIconButton>
             ) : null}
-            <button className="header-link header-help-button" type="button" aria-label="Help" title="Help">
+            <RoundIconButton className="header-link" type="button" aria-label="Help" title="Help">
               <span className="header-link-icon">
                 <HelpIcon />
               </span>
-            </button>
+            </RoundIconButton>
             <button className="header-link" type="button" onClick={onLogout}>
               Logout
             </button>
@@ -218,7 +190,7 @@ export function AppShell({
         <main className={`app-main ${isWorkspaceRoute ? "app-main-workspace" : ""}`.trim()}>{children}</main>
       </section>
 
-      <BottomNav activeRoute={activeNav.id} onNavigate={onNavigate} />
+      <BottomNav activeRoute={activeNavId} onNavigate={onNavigate} />
     </div>
   );
 }

@@ -1,6 +1,5 @@
 export const NAV_ITEMS = [
   { id: "home", label: "Home", shortLabel: "HM" },
-  { id: "search", label: "Search", shortLabel: "SR" },
   { id: "files", label: "Files", shortLabel: "FL" },
   { id: "imports", label: "Imports", shortLabel: "IM" },
 ];

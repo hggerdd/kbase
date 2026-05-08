@@ -227,7 +227,6 @@ npm run test:files
 npm run test:files:ui
 npm run test:notes
 npm run test:settings
-npm run test:search
 npm run build
 ```
 

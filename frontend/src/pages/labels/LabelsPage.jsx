@@ -5,7 +5,9 @@ import { EmptyState } from "../../shared/ui/EmptyState";
 import { FolderClosedIcon, FolderOpenIcon, PlusIcon, TagIcon } from "../../shared/ui/Icons.jsx";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
+import { RoundIconButton } from "../../shared/ui/RoundIconButton.jsx";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
+import { TreeActionButtons } from "../../shared/ui/TreeActionButtons.jsx";
 
 const EMPTY_DRAFT = {
   name: "",
@@ -226,10 +228,14 @@ export function LabelsPage() {
               />
               <span>Show inactive</span>
             </label>
-            <button className="primary icon-text-button" type="button" onClick={() => setModalMode("create")}>
-              <span className="button-icon"><PlusIcon /></span>
-              Add label
-            </button>
+            <RoundIconButton
+              type="button"
+              aria-label="Add label"
+              title="Add label"
+              onClick={() => setModalMode("create")}
+            >
+              <PlusIcon />
+            </RoundIconButton>
           </>
         }
         aside={<span className="settings-count-pill">{workspace.labels.filter((label) => label.is_active).length} active</span>}
@@ -243,26 +249,13 @@ export function LabelsPage() {
           eyebrow="Labels"
           title={`Known labels (${workspace.labels.length})`}
           action={(
-            <div className="settings-tree-actions">
-              <button
-                type="button"
-                className="secondary icon-only-button settings-tree-action-button"
-                aria-label="Expand all labels"
-                title="Expand all labels"
-                onClick={() => setExpandedIds(new Set(collectLabelIds(tree)))}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                className="secondary icon-only-button settings-tree-action-button"
-                aria-label="Collapse all labels"
-                title="Collapse all labels"
-                onClick={() => setExpandedIds(new Set())}
-              >
-                -
-              </button>
-            </div>
+            <TreeActionButtons
+              className="settings-tree-actions"
+              expandLabel="Expand all labels"
+              collapseLabel="Collapse all labels"
+              onExpand={() => setExpandedIds(new Set(collectLabelIds(tree)))}
+              onCollapse={() => setExpandedIds(new Set())}
+            />
           )}
         >
           {workspace.loading ? <p className="muted">Loading labels...</p> : null}

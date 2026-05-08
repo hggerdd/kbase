@@ -14,6 +14,7 @@ import {
 import { ResponsiveContainer } from "../../shared/layout/ResponsiveContainer";
 import { FolderIcon, NoteIcon, SearchIcon, TagIcon } from "../../shared/ui/Icons";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
+import { TreeActionButtons } from "../../shared/ui/TreeActionButtons.jsx";
 import { formatDate } from "../../shared/utils/format";
 import { CreateNotePanel } from "../notes/components/CreateNotePanel";
 import { NoteEditor } from "../notes/components/NoteEditor";
@@ -465,14 +466,12 @@ export function HomePage() {
           <section className="workspace-section workspace-filter-section">
             <div className="workspace-section-head">
               <div className="workspace-section-title">Category</div>
-              <div className="workspace-tree-tools">
-                <button type="button" className="workspace-tree-action" aria-label="Expand all categories" title="Expand all categories" onClick={expandAllCategories}>
-                  +
-                </button>
-                <button type="button" className="workspace-tree-action" aria-label="Collapse all categories" title="Collapse all categories" onClick={collapseAllCategories}>
-                  -
-                </button>
-              </div>
+              <TreeActionButtons
+                expandLabel="Expand all categories"
+                collapseLabel="Collapse all categories"
+                onExpand={expandAllCategories}
+                onCollapse={collapseAllCategories}
+              />
             </div>
             <div className="workspace-tree-scroll">
               <ul className="workspace-tree-list" role="tree" aria-label="Category filters">
@@ -547,14 +546,12 @@ export function HomePage() {
           <section className="workspace-section workspace-filter-section">
             <div className="workspace-section-head">
               <div className="workspace-section-title">Labels</div>
-              <div className="workspace-tree-tools">
-                <button type="button" className="workspace-tree-action" aria-label="Expand all labels" title="Expand all labels" onClick={expandAllLabels}>
-                  +
-                </button>
-                <button type="button" className="workspace-tree-action" aria-label="Collapse all labels" title="Collapse all labels" onClick={collapseAllLabels}>
-                  -
-                </button>
-              </div>
+              <TreeActionButtons
+                expandLabel="Expand all labels"
+                collapseLabel="Collapse all labels"
+                onExpand={expandAllLabels}
+                onCollapse={collapseAllLabels}
+              />
             </div>
             <label className="workspace-search-shell">
               <span className="workspace-search-icon">

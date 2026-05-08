@@ -143,7 +143,8 @@ Search:
 Saved queries:
 
 - No saved-query endpoints are exposed.
-- The current frontend search history is browser-local.
+- The current frontend does not expose a dedicated search page or saved-search
+  UI.
 - The `saved_queries` table is reserved future storage.
 - User-specific UI preferences use the separate `user_preferences` capability
   and are principal-scoped server state.

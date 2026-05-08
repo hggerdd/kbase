@@ -15,7 +15,6 @@ created by `POST /api/auth/login`, refreshes identity through
 Implemented pages:
 
 - Home
-- Search
 - Files
 - Projects
 - Imports
@@ -29,11 +28,13 @@ Implemented app concerns:
 - Session bootstrap through `GET /api/auth/session`.
 - Login/logout through `/api/auth/login` and `/api/auth/logout`.
 - Hash-based navigation via `frontend/src/app/navigation/nav-config.js`.
-- Reduced primary navigation: Home, Search, Files, Imports, plus a reachable
-  Settings entry from the desktop app rail and the mobile bottom navigation.
+- Reduced primary navigation: Home, Files, Imports, plus a reachable Settings
+  entry from the desktop app rail.
 - Home is the primary notes workspace and reuses the existing notes capability
   flow instead of a separate dashboard.
-- Global search state in `App.jsx` with page-scoped default behavior.
+- The dedicated Search tab/page has been removed from the frontend. Search
+  remains inside page-specific flows such as Home note search, link pickers,
+  and project/file lookups.
 - Shared API client with `credentials: "include"` in
   `frontend/src/shared/api/client.js`.
 - File upload progress through `XMLHttpRequest` in the shared API client.
@@ -58,6 +59,9 @@ Implemented app concerns:
 - The top-right app chrome shows the deployment label, Git branch, short commit,
   and commit date from Vite build metadata.
 - Plain CSS styling in `frontend/src/styles.css`.
+- Shared round icon actions come from
+  `frontend/src/shared/ui/RoundIconButton.jsx`, and shared tree expand/collapse
+  controls come from `frontend/src/shared/ui/TreeActionButtons.jsx`.
 - Shared rich-content sanitization in `frontend/src/shared/utils/rich-content.js`
   for stored markdown/html render paths.
 
@@ -69,13 +73,6 @@ Not implemented or incomplete:
 - OCR/preview generation pipeline.
 - Derived thumbnail/PDF preview generation pipeline.
 - Broad browser/E2E smoke coverage.
-
-Search history:
-
-- Search history is stored in browser `localStorage` under
-  `kbase.search.history`.
-- There is no server-backed saved-query UI or API contract yet.
-- Clearing browser storage clears this history for that browser only.
 
 ## Runtime
 
@@ -132,7 +129,7 @@ LAN usage:
 
 ```text
 frontend/src/main.jsx                         React entry point
-frontend/src/App.jsx                          session bootstrap, routing, global search
+frontend/src/App.jsx                          session bootstrap and hash routing
 frontend/src/app/AppShell.jsx                 shared app frame and navigation
 frontend/src/app/navigation/nav-config.js     route definitions
 frontend/src/shared/api/client.js             fetch/XHR wrapper
@@ -169,8 +166,6 @@ Home/notes workspace behavior:
 
 - The `home` route is the main notes workspace.
 - The legacy `notes` route renders the same workspace for compatibility.
-- Home search is note-scoped by default when the global search flow forwards
-  into the Search page.
 - Category filters render the managed category tree. Selecting a parent category
   filters notes by `category_path_prefixes`, so descendant categories are
   included.
@@ -181,20 +176,6 @@ Home/notes workspace behavior:
 - The `Files and links` panel can add note links and image/PDF file-item links.
   Existing linked notes are clickable cards; image/PDF file links are clickable
   preview cards. Linked note and file-item cards expose an unlink action.
-
-Search:
-
-- `GET /api/search/content`
-
-Search filter wording:
-
-- Categories can be exact keys or branch filters, depending on UI surface.
-- Home category branch filters use category `full_path` prefixes.
-- Exact labels are exact full label paths.
-- Label branches are subtree/prefix filters that include the selected path and
-  its descendants.
-- Multiple entries in one field are alternatives; different filter fields narrow
-  the result together.
 
 Rich content:
 
@@ -232,6 +213,8 @@ Settings/Projects:
 - Settings exposes Projects alongside Labels and Categories.
 - The standalone `projects` route still exists and is hash-reachable, but it is
   no longer part of the reduced primary navigation set.
+- Opening Settings no longer leaves a primary content tab highlighted; only the
+  Settings rail action is active.
 - Settings/Labels, Settings/Categories, and Settings/Projects share the same
   two-pane workspace layout: a bounded list/tree panel on the left and a
   detail/edit panel on the right.
@@ -254,6 +237,8 @@ Settings/Labels lifecycle wording:
 - The page can include inactive labels so they can be inspected and reactivated.
 - The label settings tree now shares the same bounded explorer/detail layout as
   Categories and Projects, including inline search in the header area.
+- Labels, Categories, and Projects now reuse the same round add-action styling
+  and shared tree expand/collapse controls.
 
 Categories:
 
@@ -307,7 +292,6 @@ npm run test:files
 npm run test:files:ui
 npm run test:notes
 npm run test:settings
-npm run test:search
 npm run build
 ```
 

@@ -183,8 +183,7 @@ Python tests:
 frontend/src/**/*.test.js
 ```
 
-Frontend Node tests for layout, files, notes, settings, projects, and search
-state/workspace behavior.
+Frontend Node tests for layout, files, notes, and settings behavior.
 
 ```text
 scripts/seed_file_viewer_test_data.py
@@ -237,10 +236,8 @@ Saved queries:
 
 - The `saved_queries` table exists in the schema for future server-backed saved
   searches.
-- It is not used by current capabilities, API routes, CLI commands, or
-  frontend state.
-- Current search history is browser-local `localStorage`, not synchronized
-  between users or devices.
+- It is not used by current capabilities, API routes, CLI commands, or the
+  current frontend.
 
 Frontend:
 

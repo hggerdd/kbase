@@ -10,7 +10,9 @@ import { EmptyState } from "../../shared/ui/EmptyState";
 import { NoteIcon, PlusIcon, TrashIcon } from "../../shared/ui/Icons.jsx";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
+import { RoundIconButton } from "../../shared/ui/RoundIconButton.jsx";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
+import { TreeActionButtons } from "../../shared/ui/TreeActionButtons.jsx";
 
 const ITEM_KIND_OPTIONS = [
   { value: "", label: "All item types" },
@@ -418,15 +420,15 @@ export function CategoriesSettingsPage() {
         title="Categories"
         description="Manage the possible categories that can be assigned to notes, files and projects."
         actions={(
-          <button
-            className="primary icon-only-button settings-workspace-create-button"
+          <RoundIconButton
+            className="settings-workspace-create-button"
             type="button"
             aria-label="Create category"
             title="Create category"
             onClick={() => startCreateCategory()}
           >
             <PlusIcon />
-          </button>
+          </RoundIconButton>
         )}
         aside={<span className="settings-count-pill">{activeCount} active</span>}
       />
@@ -439,26 +441,13 @@ export function CategoriesSettingsPage() {
           eyebrow="Categories"
           title={`Known categories (${workspace.categories.length})`}
           action={(
-            <div className="settings-tree-actions">
-              <button
-                type="button"
-                className="secondary icon-only-button settings-tree-action-button"
-                aria-label="Expand all categories"
-                title="Expand all categories"
-                onClick={() => setExpandedKeys(new Set(categoryKeys))}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                className="secondary icon-only-button settings-tree-action-button"
-                aria-label="Collapse all categories"
-                title="Collapse all categories"
-                onClick={() => setExpandedKeys(new Set())}
-              >
-                -
-              </button>
-            </div>
+            <TreeActionButtons
+              className="settings-tree-actions"
+              expandLabel="Expand all categories"
+              collapseLabel="Collapse all categories"
+              onExpand={() => setExpandedKeys(new Set(categoryKeys))}
+              onCollapse={() => setExpandedKeys(new Set())}
+            />
           )}
         >
           <div className="settings-workspace-toolbar settings-workspace-toolbar-grid">

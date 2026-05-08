@@ -266,8 +266,6 @@ export function getNavIcon(routeId) {
   switch (routeId) {
     case "home":
       return HomeIcon;
-    case "search":
-      return SearchIcon;
     case "settings":
       return SettingsIcon;
     case "files":

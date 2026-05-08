@@ -5,6 +5,7 @@ import { EmptyState } from "../../shared/ui/EmptyState";
 import { FolderIcon, PlusIcon, TrashIcon } from "../../shared/ui/Icons.jsx";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { Panel } from "../../shared/ui/Panel";
+import { RoundIconButton } from "../../shared/ui/RoundIconButton.jsx";
 import { StatusBanner } from "../../shared/ui/StatusBanner";
 import { formatDate } from "../../shared/utils/format";
 import { CreateProjectModal } from "../projects/components/CreateProjectModal.jsx";
@@ -44,10 +45,14 @@ export function ProjectsSettingsPage() {
                 placeholder="Search title, category or status"
               />
             </label>
-            <button className="primary icon-text-button" type="button" onClick={() => setIsCreateOpen(true)}>
-              <span className="button-icon"><PlusIcon /></span>
-              Add project
-            </button>
+            <RoundIconButton
+              type="button"
+              aria-label="Add project"
+              title="Add project"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <PlusIcon />
+            </RoundIconButton>
           </>
         }
         aside={<span className="settings-count-pill">{workspace.projects.length} active</span>}

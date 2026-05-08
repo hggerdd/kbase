@@ -12,6 +12,7 @@ const hooksSource = readFileSync(resolve(process.cwd(), "src/features/notes/hook
 const homePageSource = readFileSync(resolve(process.cwd(), "src/pages/home/HomePage.jsx"), "utf8");
 const preferencesApiSource = readFileSync(resolve(process.cwd(), "src/features/preferences/api.js"), "utf8");
 const sharedApiClientSource = readFileSync(resolve(process.cwd(), "src/shared/api/client.js"), "utf8");
+const treeActionButtonsSource = readFileSync(resolve(process.cwd(), "src/shared/ui/TreeActionButtons.jsx"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 function cssRule(selector) {
@@ -92,10 +93,9 @@ test("note label interactions use the workspace toggle path instead of rebuildin
 });
 
 test("home metadata filters expose compact tree controls and internal scroll regions", () => {
-  assert.match(homePageSource, /aria-label="Expand all categories"/);
-  assert.match(homePageSource, /aria-label="Collapse all categories"/);
-  assert.match(homePageSource, /aria-label="Expand all labels"/);
-  assert.match(homePageSource, /aria-label="Collapse all labels"/);
+  assert.match(homePageSource, /<TreeActionButtons/);
+  assert.match(treeActionButtonsSource, /aria-label=\{expandLabel\}/);
+  assert.match(treeActionButtonsSource, /aria-label=\{collapseLabel\}/);
   assert.match(homePageSource, /NOTE_SORT_OPTIONS/);
   assert.match(homePageSource, /NOTE_SORT_PREFERENCE_KEY/);
   assert.match(homePageSource, /fetchUserPreference\(NOTE_SORT_PREFERENCE_KEY\)/);
@@ -108,7 +108,8 @@ test("home metadata filters expose compact tree controls and internal scroll reg
   assert.match(homePageSource, /className="workspace-tree-scroll"/);
   assert.match(styles, /\.workspace-filter-section\s*\{[\s\S]*?flex:\s*1 1 0[\s\S]*?\n\}/);
   assert.match(styles, /\.workspace-tree-scroll,\r?\n\.workspace-flat-scroll\s*\{[\s\S]*?overflow:\s*auto[\s\S]*?\n\}/);
-  assert.match(styles, /\.workspace-tree-action\s*\{[\s\S]*?width:\s*24px[\s\S]*?\n\}/);
+  assert.match(styles, /\.round-icon-button-sm\s*\{[\s\S]*?width:\s*24px[\s\S]*?\n\}/);
+  assert.match(styles, /\.workspace-tree-action\s*\{[\s\S]*?background:\s*rgba\(255, 255, 255, 0\.08\)[\s\S]*?\n\}/);
   assert.match(styles, /\.workspace-sort-menu\s*\{[\s\S]*?position:\s*absolute[\s\S]*?\n\}/);
 });
 
