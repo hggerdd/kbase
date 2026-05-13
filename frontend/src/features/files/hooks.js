@@ -14,6 +14,7 @@ import {
   updateFileCore,
   uploadFileItem,
 } from "./api.js";
+import { appendAutoDateLabelPaths } from "../../shared/labels/autoDateLabels.js";
 import { buildFileTree, itemMatchesFileFilters } from "./state.js";
 
 export function useFileViewerWorkspace() {
@@ -339,7 +340,7 @@ export function useFileViewerWorkspace() {
     }
   }
 
-  async function uploadNewFile(file) {
+  async function uploadNewFile(file, { createAutoLabels = false, date = new Date() } = {}) {
     if (!file) {
       return false;
     }
@@ -350,15 +351,20 @@ export function useFileViewerWorkspace() {
     setNotice("");
     try {
       const projectIds = selectedProjectId ? [selectedProjectId] : [];
+      const labelPaths = createAutoLabels
+        ? await appendAutoDateLabelPaths(selectedLabels, date)
+        : selectedLabels;
       const detail = await uploadFileItem(file, {
         category_key: selectedCategoryKey || null,
         project_ids: projectIds,
         onProgress: setUploadProgress,
       });
       let uploadedDetail = detail;
-      if (selectedLabels.length > 0) {
-        await replaceFileLabels(detail.item.id, selectedLabels);
+      if (labelPaths.length > 0) {
+        await replaceFileLabels(detail.item.id, labelPaths);
         uploadedDetail = await fetchFileItemDetail(detail.item.id);
+        const labels = await fetchFileLabels();
+        setAvailableLabels(labels);
       }
       setItems((currentItems) => [uploadedDetail, ...currentItems.filter((entry) => entry.item.id !== uploadedDetail.item.id)]);
       setSelectedId(uploadedDetail.item.id);

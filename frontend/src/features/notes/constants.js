@@ -30,4 +30,5 @@ export const EMPTY_DRAFT = {
   html_body: "",
   label_paths: "",
   selected_labels: [],
+  create_auto_labels: false,
 };

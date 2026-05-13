@@ -26,7 +26,7 @@ export async function fetchFileLabels(query = "") {
   if (query) {
     params.set("query", query);
   }
-  params.set("limit", "100");
+  params.set("limit", "500");
   return request(`/api/labels?${params.toString()}`);
 }
 

@@ -1735,3 +1735,77 @@ test("workspace creates notes inside the active project scope when requested", a
     root.unmount();
   });
 });
+
+test("workspace can append auto date labels when creating a note", async () => {
+  const container = createDom();
+  let latestWorkspace;
+  const Harness = createFilteredWorkspaceHarness({}, null, (workspace) => {
+    latestWorkspace = workspace;
+  });
+  let createPayload = null;
+  let labels = [];
+
+  global.fetch = async (url, options = {}) => {
+    const value = String(url);
+    const method = options.method ?? "GET";
+    if (value.includes("/api/items?item_kind=note")) {
+      return createResponse({ items: [] });
+    }
+    if (value.includes("/api/labels?") && method === "GET") {
+      return createResponse(labels);
+    }
+    if (value.endsWith("/api/categories?applies_to_kind=note&limit=200")) {
+      return createResponse({ categories: [] });
+    }
+    if (value.endsWith("/api/labels") && method === "POST") {
+      const body = JSON.parse(String(options.body));
+      const parent = labels.find((label) => label.id === body.parent_id) ?? null;
+      const fullPath = parent ? `${parent.full_path}/${body.name}` : body.name;
+      const created = {
+        id: `label-${labels.length + 1}`,
+        name: body.name,
+        parent_id: body.parent_id ?? null,
+        full_path: fullPath,
+        description: null,
+        depth: parent ? parent.depth + 1 : 0,
+        is_active: true,
+      };
+      labels = [...labels, created];
+      return createResponse(created);
+    }
+    if (value.endsWith("/api/notes") && method === "POST") {
+      createPayload = JSON.parse(options.body);
+      return createResponse({ item: { id: "note-new" } });
+    }
+    throw new Error(`Unhandled fetch: ${value}`);
+  };
+
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(Harness));
+  });
+  await waitFor(() => {
+    assert.equal(container.querySelector('[data-testid="notes-count"]').textContent, "0");
+  });
+
+  await act(async () => {
+    latestWorkspace.setDraft({
+      ...latestWorkspace.draft,
+      title: "Dated note",
+      category_key: "research",
+      html_body: "<p>Dated body</p>",
+      markdown_body: "Dated body",
+      create_auto_labels: true,
+    });
+  });
+
+  await act(async () => {
+    await latestWorkspace.handleCreateNote({ preventDefault() {} }, { date: new Date("2026-05-12T10:00:00Z") });
+  });
+
+  assert.deepEqual(createPayload.label_paths, ["Date/2026/May"]);
+
+  await act(async () => {
+    root.unmount();
+  });
+});

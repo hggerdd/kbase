@@ -35,6 +35,7 @@ test("file viewer exposes autosave and add-file upload controls", () => {
   assert.match(pageSource, /round-add-button/);
   assert.match(pageSource, /capture="environment"/);
   assert.match(pageSource, /uploadNewFile/);
+  assert.match(pageSource, /Create auto labels/);
 });
 
 test("file viewer renders tree-based filters in the sidebar", () => {

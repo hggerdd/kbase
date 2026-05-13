@@ -29,6 +29,7 @@ import {
   provisionalNoteFromSummary,
   serializeEditorCoreState,
 } from "./state.js";
+import { appendAutoDateLabelPaths } from "../../shared/labels/autoDateLabels.js";
 
 const turndown = new TurndownService({ headingStyle: "atx", bulletListMarker: "-" });
 
@@ -621,14 +622,17 @@ export function useNotesWorkspace({
     await loadNotes(query, { refreshCurrentDetail: true });
   }
 
-  async function handleCreateNote(event) {
+  async function handleCreateNote(event, { date = new Date() } = {}) {
     event.preventDefault();
     setSaving(true);
     setError("");
     setNotice("");
     try {
       const markdownBody = turndown.turndown(sanitizeRichHtml(draft.html_body || ""));
-      const labelPaths = combineLabelPaths(draft.selected_labels, draft.label_paths);
+      const combinedLabelPaths = combineLabelPaths(draft.selected_labels, draft.label_paths);
+      const labelPaths = draft.create_auto_labels
+        ? await appendAutoDateLabelPaths(combinedLabelPaths, date)
+        : combinedLabelPaths;
       const payload = await createNote({
         title: draft.title,
         category_key: draft.category_key,

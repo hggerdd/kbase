@@ -285,6 +285,7 @@ export function FileViewerPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  const [createAutoLabels, setCreateAutoLabels] = useState(false);
   const selectedFile = workspace.selectedItem?.files?.[0] ?? null;
   const selectedLabels = selectedLabelPaths(workspace.selectedItem);
   const linkedLinksByItemId = useMemo(
@@ -380,8 +381,9 @@ export function FileViewerPage() {
     if (!file) {
       return;
     }
-    const success = await workspace.uploadNewFile(file);
+    const success = await workspace.uploadNewFile(file, { createAutoLabels });
     if (success) {
+      setCreateAutoLabels(false);
       setIsAddModalOpen(false);
     }
   }
@@ -746,6 +748,15 @@ export function FileViewerPage() {
                 Take picture
               </button>
             </div>
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={createAutoLabels}
+                onChange={(event) => setCreateAutoLabels(event.target.checked)}
+                disabled={workspace.uploading}
+              />
+              <span>Create auto labels</span>
+            </label>
             {workspace.uploading ? (
               <div className="upload-progress" aria-live="polite">
                 <div className="upload-progress-track">
@@ -755,7 +766,14 @@ export function FileViewerPage() {
               </div>
             ) : null}
             <div className="modal-actions">
-              <button className="secondary" type="button" onClick={() => setIsAddModalOpen(false)}>
+              <button
+                className="secondary"
+                type="button"
+                onClick={() => {
+                  setCreateAutoLabels(false);
+                  setIsAddModalOpen(false);
+                }}
+              >
                 Cancel
               </button>
             </div>

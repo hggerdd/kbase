@@ -89,6 +89,20 @@ export function CreateNotePanel({ workspace, isOpen, onClose }) {
             />
           </label>
 
+          <label className="inline-check">
+            <input
+              type="checkbox"
+              checked={Boolean(workspace.draft.create_auto_labels)}
+              onChange={(event) =>
+                workspace.setDraft({
+                  ...workspace.draft,
+                  create_auto_labels: event.target.checked,
+                })
+              }
+            />
+            <span>Create auto labels</span>
+          </label>
+
           <div className="modal-actions">
             <button className="secondary" type="button" onClick={onClose}>
               Cancel
