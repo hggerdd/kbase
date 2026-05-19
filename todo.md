@@ -759,7 +759,7 @@ Acceptance:
 | `ARCH-001` | done | docs | README/API docs were synchronized with session/token auth and category endpoints. |
 | `ARCH-002` | done | architecture | Capability matrix exists in `docs/capabilities.md`. |
 | `FE-003` | done | frontend | Home now hosts the primary notes workspace with category, project, and label filters. |
-| `FE-SEARCH-001` | done | search | Global search state and explicit Search page exist. |
+| `FE-SEARCH-001` | done | search | Global search state, explicit Search page, and notes workspace server-side search exist. |
 | `FE-FILES-001` | done | files | Files page with configurable explorer tree and test seed files exists. |
 | `FE-NOTES-001` | done | notes | Notes autosave with debounce exists. |
 | `FE-NOTES-002` | done | notes | Notes can change project membership and link notes or image/PDF file items with modals and previews. |

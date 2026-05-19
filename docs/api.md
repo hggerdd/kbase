@@ -143,8 +143,9 @@ Search:
 Saved queries:
 
 - No saved-query endpoints are exposed.
-- The current frontend does not expose a dedicated search page or saved-search
-  UI.
+- The frontend exposes a dedicated Search page and uses `GET /api/search/content`
+  for note search and scoped filtering.
+- Saved-search persistence/UI is not implemented.
 - The `saved_queries` table is reserved future storage.
 - User-specific UI preferences use the separate `user_preferences` capability
   and are principal-scoped server state.
